@@ -60,6 +60,38 @@ psm1's hundreds of functions and aliases through the providers costs what defini
 cheaper revert needs session-state internals PowerShell does not expose. Removed, not kept as an
 opt-in.
 
+## Is the fast pass CPU-bound? (runner CPU sampling)
+
+The runner samples `/proc/stat` once a second during the fast pass (`.tman/runner/cpu.fast.json`).
+First run (706 s total): mean 84% busy, saturated (>=95%) only 33% of the time, ~80 s tail with 1-2
+assemblies at 40-58%. So not purely CPU-bound: the first ~180 s run at 97-99%, the middle at 85-90%,
+and the Differential long pole leaves cores idle at the end. The sampler is machine-wide: two later
+runs (882 s, 1004 s, unchanged Cmdlets code 526 -> 887 s) overlapped another checkout's docker /
+Playwright e2e run that the tman gate does not cover, so suite wall times are only comparable on a
+quiet machine.
+
+## Runspace rebuild cost (the daemon builds one per command)
+
+Warm `SdkRunspace.Create`, median of 20 (Host.Tests spike, `PSBASH_TRACE_STARTUP=1`):
+
+| Phase | Before | After |
+|---|---|---|
+| ISS build + cmdlet registration | 12 ms | 12 ms |
+| runspace Open | 42 ms | 41 ms |
+| setup script | 28 ms | 23 ms |
+| psm1 | 148 ms | 48 ms |
+| grep/sed proxy drop | 23 ms | 0 ms |
+| **total wall / CPU** | **256 / 347 ms** | **128 / 139 ms** |
+
+The psm1's 246 top-level statements execute in ~41 ms; the other ~105 ms was `AddScript(text)`
+re-parsing and re-compiling 160 KB per runspace. Parsing once and reusing the AST saved 53 ms;
+reusing one compiled `ScriptBlock` saved 99 ms, so the host now compiles each startup script once
+per process. That also corrects the revert finding above: defining the functions is cheap, compiling
+them was the cost. Caching the InitialSessionState was the first idea and is worth ~12 ms: rejected.
+What is left: runspace Open (SMA, ~41 ms), psm1 execution (~41 ms: 24 Update-TypeData ~14 ms, 112
+Set-Alias ~12 ms), and the setup script's `GetNewClosure` dynamic module (~23 ms). Moving aliases and
+type data into the ISS would roughly halve that, at the cost of a second definition site for them.
+
 ## Product bugs found on the way (fixed, each with a regression test)
 
 - Linux: no warm daemon reuse without `PSBASH_SESSION`. The session key embedded .NET's
@@ -70,3 +102,5 @@ opt-in.
   (EAGAIN, which .NET reports as `WouldBlock`). Backlog 512 plus a bounded connect retry.
 - Core.Tests: a static runtime-directory override leaked a 0777 root into parallel tests.
 - Canary: AllModes tests skipped everywhere; in-process modes reported exit 1 for any stderr.
+- Linux find/ls -l: one `stat -c` child per examined file; a failed spawn under load left the
+  owner unknown, so `find -nouser` matched an owned file. Now in-process statx + getpwuid_r.
