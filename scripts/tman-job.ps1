@@ -118,7 +118,8 @@ try {
     # The full suite drives `ps-bash -c` thousands of times. The Debug launcher is a JIT process that
     # spends ~375 ms per call starting the runtime and JIT-compiling the transpiler and IPC client
     # (PSBASH_TRACE_LAUNCH=1 shows the phases); the AOT launcher we ship does the same call in ~45 ms
-    # because each call is a fresh process. So `test` publishes the AOT launcher once (~2 min) and every harness
+    # because each call is a fresh process. So `test` publishes the AOT launcher (~90 s; skipped while its
+    # inputs hash is unchanged, see Get-TestLauncherInputsHash) and every harness
     # runs it via PSBASH_TEST_LAUNCHER (PsBashLocator, InteractiveShellHarness, PwshTestFixture),
     # which also means the suite exercises the shipped binary. `test-proj` keeps the Debug launcher
     # for a fast edit loop. PSBASH_TEST_AOT=0 opts out (no native toolchain, e.g. a Windows box
@@ -130,11 +131,58 @@ try {
         }
         $rid = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
         $out = Join-Path $repo "artifacts/test-launcher/$rid"
-        Invoke-Native dotnet (@('publish', 'src/PsBash.Shell', '-c', 'Release', '-r', $rid, '-p:PublishAot=true', '-o', $out) + $common)
         $exe = Join-Path $out ($IsWindows ? 'ps-bash.exe' : 'ps-bash')
-        if (-not (Test-Path -LiteralPath $exe)) { throw "tman-job: AOT publish produced no launcher at $exe (set PSBASH_TEST_AOT=0 to test the Debug launcher)" }
+        $stampFile = Join-Path $out '.inputs.sha256'
+        $stamp = Get-TestLauncherInputsHash $rid
+        if ((Test-Path -LiteralPath $exe) -and (Test-Path -LiteralPath $stampFile) -and
+            (Get-Content -Raw -LiteralPath $stampFile) -eq $stamp) {
+            Write-Host "tman-job: AOT launcher inputs unchanged ($($stamp.Substring(0, 12))), reusing $exe"
+        }
+        else {
+            Remove-Item -LiteralPath $stampFile -ErrorAction SilentlyContinue
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            Invoke-Native dotnet (@('publish', 'src/PsBash.Shell', '-c', 'Release', '-r', $rid, '-p:PublishAot=true', '-o', $out) + $common)
+            if (-not (Test-Path -LiteralPath $exe)) { throw "tman-job: AOT publish produced no launcher at $exe (set PSBASH_TEST_AOT=0 to test the Debug launcher)" }
+            Set-Content -NoNewline -LiteralPath $stampFile -Value $stamp
+            Write-Host "tman-job: AOT launcher published in $([int]$sw.Elapsed.TotalSeconds)s"
+        }
         $env:PSBASH_TEST_LAUNCHER = $exe
         Write-Host "tman-job: tests use the AOT launcher $exe"
+    }
+
+    # Content hash of everything the AOT launcher (and its ReadyToRun host sidecar) is built from:
+    # the six shipped projects' sources minus bin/obj, the shared MSBuild/NuGet inputs, the Strata
+    # feed's package names (Strata is compiled in when the feed exists), the SDK version and RID.
+    # Content, not mtimes, so a checkout that rewrites identical files still reuses the launcher.
+    # Not hashed: the git commit. A reused launcher reports the commit it was published at in
+    # --version and its build identity, which is self-consistent (launcher and sidecar host are
+    # always published together) and nothing in the suite compares it to HEAD.
+    function Get-TestLauncherInputsHash([string]$Rid) {
+        $projects = 'Shell', 'Host', 'Core', 'Transpiler', 'Cmdlets', 'Module' | ForEach-Object { Join-Path $repo "src/PsBash.$_" }
+        $files = foreach ($dir in $projects) {
+            Get-ChildItem -LiteralPath $dir -Directory | Where-Object Name -notin 'bin', 'obj' |
+                Get-ChildItem -Recurse -File
+            Get-ChildItem -LiteralPath $dir -File
+        }
+        $files = @($files) + @('src/Strata.props', 'nuget.config' | ForEach-Object { Get-Item -LiteralPath (Join-Path $repo $_) })
+        $feeds = @((Join-Path $repo '../strata/local-feed'))
+        $gitFile = Join-Path $repo '.git'
+        if (Test-Path -LiteralPath $gitFile -PathType Leaf) {
+            # A worktree finds the feed beside its MAIN checkout (src/Strata.props does the same).
+            $gitDir = ((Get-Content -Raw -LiteralPath $gitFile) -replace '(?s)^gitdir:\s*', '').Trim()
+            $feeds += Join-Path $gitDir '../../../../strata/local-feed'
+        }
+        $lines = [Collections.Generic.List[string]]::new()
+        $lines.Add("rid=$Rid sdk=$(dotnet --version)")
+        foreach ($f in $files | Sort-Object FullName) {
+            $rel = [IO.Path]::GetRelativePath($repo, $f.FullName).Replace('\', '/')
+            $lines.Add("$rel $([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($f.FullName))))")
+        }
+        foreach ($feed in $feeds | Where-Object { Test-Path -LiteralPath $_ }) {
+            Get-ChildItem -LiteralPath $feed -Filter *.nupkg | Sort-Object Name | ForEach-Object { $lines.Add("feed $($_.Name) $($_.Length)") }
+        }
+        $bytes = [Text.Encoding]::UTF8.GetBytes(($lines -join "`n"))
+        [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
     }
 
     switch ($Verb) {
