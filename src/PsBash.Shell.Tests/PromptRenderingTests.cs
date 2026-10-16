@@ -401,7 +401,9 @@ public class PromptRenderingIntegrationTests
             else
             {
                 await File.WriteAllTextAsync(scriptPath, "#!/bin/sh\necho external-ok\n");
-                File.SetUnixFileMode(scriptPath, UnixFileMode.UserExecute);
+                // rwx, not x alone: /bin/sh must READ a script to run it, so an execute-only
+                // script fails with "Permission denied" in bash too and printed nothing here.
+                File.SetUnixFileMode(scriptPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             }
 
             await using var harness = await StartAsync();
