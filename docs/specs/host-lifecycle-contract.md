@@ -88,6 +88,42 @@ the server drained. Before this, every daemon that had run a background job
 lingered indefinitely. Regression-pinned by
 `ProcessLifecycleTests.IdleDaemon_AfterBackgroundJob_ExitsInsteadOfLingering`.
 
+## Session anchor lifetime: a daemon ends with its session
+
+A `Daemon` host outlives the launcher that spawned it (that is the point: the next `-c` in the
+session reuses it warm), but it must not outlive the **session**. When the endpoint was keyed by
+the automatic session anchor (no `PSBASH_IPC_ENDPOINT`, no `PSBASH_SESSION`, top level — not
+nested), the spawning launcher passes that anchor to the host as
+`--session-anchor=<pid>:<startTicks>` (`ProcessIdentity.SessionAnchorArg`,
+`IpcWorker.SpawnAndWaitAsync`). The host's `SessionAnchorWatcher` polls it every second; once the
+pid is gone **or now belongs to a different process** (start time differs: PID reuse), it calls
+`IdleShutdown.ShortenTimeout(5 s)`. In-flight commands finish; the host exits 5 s after the last
+one ends. The host log records `session anchor <pid>:<ticks> exited; idle 5s with no connection`.
+
+Why shortening the idle timer and not cancelling outright (as `ParentDeathWatcher` does for a
+private host): the endpoint name embeds the anchor's pid **and** start time, so once the anchor
+is gone no new launcher can ever resolve this endpoint — the only work left is what is already
+connected, and cutting it off would fail a running command. A grace longer than the configured
+idle timeout never extends it.
+
+**Why this exists (GH #7).** The anchor walk (`ProcessAncestry.SelectSessionAnchor`) climbs
+through recognized shells/agents only. An agent whose own process name is not recognized, and
+that runs each command in a fresh shell, makes that per-call shell the anchor. Every call then
+keys a new daemon, and before this watcher each one idled for the full 600 s — an agent session
+left a stack of ~65 MB `ps-bash-host` processes. With the watcher each such daemon exits ~5 s
+after its call. Recognized-agent sessions are unchanged: one warm daemon for the session, which
+now exits when the agent does instead of 10 minutes later.
+
+Not watched (idle timeout only, `PSBASH_HOST_IDLE_SECS`, default 600 s): an explicit
+`PSBASH_SESSION` (the caller owns the grouping; no process represents it), an explicit
+`PSBASH_IPC_ENDPOINT`, the per-user fallback, and nested daemons (already 60 s). A
+`PerInvocation` host is private to its launcher and dies with it (`--launcher-pid`).
+
+Regression-pinned by `SessionAnchorWatcherTests.Daemon_ExitsAfterItsSessionAnchorDies` (real
+daemon, idle pinned at 600 s, stand-in anchor killed → host exits; verified red without the
+watcher), `IdleShutdownTests.ShortenTimeout_*`, `ProcessIdentityTests`, and
+`IpcTransportFactoryTests.ResolveEndpoint_*Anchor*`.
+
 ## Nested invocations never reuse the parent's host
 
 A command executing inside a `Daemon` host may itself start a ps-bash: `bash -c '…'` in a

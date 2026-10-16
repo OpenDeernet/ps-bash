@@ -160,6 +160,24 @@ RUN ps-bash -c "echo ready"
 | **GitHub Copilot** | VS Code terminal profile | `terminal.integrated.defaultProfile.windows` |
 | **Gemini CLI** | Not configurable | Run inside ps-bash interactive shell |
 
+## Background host processes
+
+`ps-bash -c` hands each command to a warm background `ps-bash-host`, one per agent session, so
+commands don't pay PowerShell's startup cost. Seeing one `ps-bash-host` per running agent is
+expected. Each host exits a few seconds after its agent does, or after 10 idle minutes.
+
+If you start the agent from PowerShell and want exactly one host for the whole session, set a
+session name first:
+
+```powershell
+$env:PSBASH_SESSION = "claude"
+claude
+```
+
+To leave nothing running between commands, at the cost of a cold start each time, set
+`$env:PSBASH_PER_INVOCATION = "1"` instead. Full details: the
+[Host Daemon reference](https://dev.standardbeagle.com/ps-bash/reference/host-daemon/).
+
 ## Verify Your Setup
 
 ```powershell
@@ -184,5 +202,11 @@ ps-bash -c "ls -la | grep '.txt'"
 **"no command specified"** — The agent is calling ps-bash without `-c`. Verify the binary path is correct.
 
 **Commands return unexpected output** — Set `$env:PSBASH_DEBUG = '1'` to see the transpiled PowerShell on stderr.
+
+**Many `ps-bash-host` processes in Task Manager** — Before v0.11.6, an agent whose process
+name ps-bash didn't recognize could leave one idle host per command for 10 minutes
+([#7](https://github.com/standardbeagle/ps-bash/issues/7)). Upgrade, or set
+`$env:PSBASH_SESSION = "claude"` before starting the agent. See
+[Background host processes](#background-host-processes).
 
 **Interactive tools (claude, copilot) crash in ps-bash shell** — Make sure you're running v0.8.7+. Earlier versions routed all commands through a pipe protocol that broke interactive executables.
