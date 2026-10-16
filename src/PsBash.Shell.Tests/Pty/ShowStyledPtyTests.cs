@@ -21,6 +21,17 @@ namespace PsBash.Shell.Tests.Pty;
 [Collection("PtyHarness")]
 public class ShowStyledPtyTests
 {
+    // Show-Styled is compiled only with Strata (src/Strata.props), which is optional: CI and a box
+    // without ../strata/local-feed build without it, and these tests then got "Show-Styled:
+    // command not found" and timed out instead of skipping. Probed by what was actually built: the
+    // host extracts its cmdlets from resources embedded in PsBash.Core, and a Strata build embeds
+    // the Strata.* assemblies beside PsBash.Cmdlets.dll there (not in this test's bin directory).
+    private static bool StrataBuiltIn => typeof(PsBash.Core.Runtime.ModuleExtractor).Assembly
+        .GetManifestResourceNames()
+        .Any(n => n.StartsWith("PsBash.Module/cmdlets/", StringComparison.Ordinal) && n.Contains("/Strata.", StringComparison.Ordinal));
+    private const string StrataSkipReason =
+        "Strata is not built in (UseStrata=false; no ../strata/local-feed): Show-Styled is compiled out.";
+
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
     /// <summary>
@@ -36,6 +47,7 @@ public class ShowStyledPtyTests
 
         var psBash = PtyHarness.FindPsBashBinary();
         Skip.If(psBash is null, "ps-bash launcher binary not found — build src/PsBash.Shell first");
+        Skip.IfNot(StrataBuiltIn, StrataSkipReason);
 
         await using var harness = await PtyHarness.StartAsync(psBash!);
 
@@ -76,6 +88,7 @@ public class ShowStyledPtyTests
 
         var psBash = PtyHarness.FindPsBashBinary();
         Skip.If(psBash is null, "ps-bash launcher binary not found — build src/PsBash.Shell first");
+        Skip.IfNot(StrataBuiltIn, StrataSkipReason);
 
         await using var harness = await PtyHarness.StartAsync(psBash!);
 
