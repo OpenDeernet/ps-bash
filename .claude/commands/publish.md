@@ -24,6 +24,9 @@ invariants** (`ReleaseNotes_UnderPsGalleryLimit`, cap 10600 chars). Run Pester l
    guard-capped at **10600 chars** — if you go over, trim your entry AND drop the oldest
    entries (the trailing version-history URL still links them). Verify:
    `(Import-PowerShellDataFile src/PsBash.Module/PsBash.psd1).PrivateData.PSData.ReleaseNotes.Length`.
+   Add the same entry as a `## vX.Y.Z` section at the top of `CHANGELOG.md` in the same commit:
+   the psd1 drops old entries, the changelog is the full history (it once fell ten releases
+   behind, v0.10.23–v0.11.6, because this step only named the psd1).
 
 2. **Run both blocking gates locally** (NOT just xunit):
    - **Pester (easy path): `./scripts/pester.ps1`** — builds PsBash.Cmdlets, refreshes the
