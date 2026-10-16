@@ -183,6 +183,7 @@ public sealed class IpcWorker : IWorker
             : nestDepth > 0
                 ? IpcTransportFactory.ResolveNestedEndpoint(nestDepth)
                 : IpcTransportFactory.ResolveEndpoint(null, out sessionAnchor);
+        LaunchTrace.Mark("endpoint-resolved");
         var timeout = startupTimeout ?? GetStartupTimeout();
         var poll = startupPollInterval ?? TimeSpan.FromMilliseconds(50);
         var worker = new IpcWorker(scheme, endpoint, hostBinaryPath, timeout, poll, lifetime)
@@ -194,6 +195,7 @@ public sealed class IpcWorker : IWorker
             await worker.SpawnPrivateHostAsync(ct).ConfigureAwait(false);
         else
             await worker.EnsureHostReachableAsync(ct).ConfigureAwait(false);
+        LaunchTrace.Mark("host-reachable");
         return worker;
     }
 
@@ -932,6 +934,7 @@ public sealed class IpcWorker : IWorker
         try
         {
             stream = await transport.ConnectAsync(linked.Token).ConfigureAwait(false);
+            LaunchTrace.Mark("connected");
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
         {
@@ -986,6 +989,7 @@ public sealed class IpcWorker : IWorker
             await using (stream)
             {
                 await HostProtocol.WriteRequestAsync(stream, mode, linked.Token).ConfigureAwait(false);
+                LaunchTrace.Mark("request-sent");
                 ArmIdle(); // reset: now waiting for the first response frame
 
                 // Forward the launcher's stdin once the host has ACKNOWLEDGED execution start: a reset before

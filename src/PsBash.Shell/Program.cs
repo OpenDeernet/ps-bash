@@ -38,6 +38,7 @@ var debug = Environment.GetEnvironmentVariable("PSBASH_DEBUG") == "1";
 // Diagnostic: when PSBASH_TRACE=<path> is set, append a line per invocation
 // recording argv (and stdin redirect state) so we can see exactly how a parent
 // process — e.g. the Claude Code Bash tool — is invoking us. No behavior change.
+LaunchTrace.Mark("main");
 var tracePath = Environment.GetEnvironmentVariable("PSBASH_TRACE");
 if (!string.IsNullOrEmpty(tracePath))
 {
@@ -385,6 +386,7 @@ else
             : null;
         forwardStdin = scopedCommand is not null;
         pwshCommand = scopedCommand ?? BashTranspiler.Transpile(bashCommand);
+        LaunchTrace.Mark("transpiled");
     }
     catch (ParseException ex)
     {
@@ -446,6 +448,7 @@ if (debug)
 int exitCode = await HostFailureGuard.RunAsync(async () =>
 {
     await using IWorker worker = await workerFactory();
+    LaunchTrace.Mark("worker-ready");
     if (forwardStdin && worker is IpcWorker ipcWorker)
         ipcWorker.LauncherStdin = Console.OpenStandardInput();
     return await worker.ExecuteAsync(
@@ -453,6 +456,7 @@ int exitCode = await HostFailureGuard.RunAsync(async () =>
         environment: CaptureLauncherEnvironment());
 });
 
+LaunchTrace.Mark("executed");
 if (debug)
 {
     Console.Error.WriteLine($"[ps-bash] exit:       {exitCode}");
