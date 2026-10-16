@@ -209,4 +209,18 @@ name ps-bash didn't recognize could leave one idle host per command for 10 minut
 `$env:PSBASH_SESSION = "claude"` before starting the agent. See
 [Background host processes](#background-host-processes).
 
+**A mistyped command takes seconds or minutes on WSL** — WSL appends the Windows `PATH` by
+default (`/mnt/c/Windows/System32`, ...). PowerShell lists every `PATH` directory before it
+reports a command as missing, and over the WSL file bridge that costs about 9 s for
+`System32` alone. ps-bash prints a one-time `ps-bash: note: PATH has N Windows directories
+under /mnt` hint when this happens. Fix it in `/etc/wsl.conf`, then run `wsl --shutdown`:
+
+```ini
+[interop]
+appendWindowsPath = false
+```
+
+Windows tools stay reachable by full path (`/mnt/c/Windows/System32/notepad.exe`) or by adding
+the few you need back to `PATH`.
+
 **Interactive tools (claude, copilot) crash in ps-bash shell** — Make sure you're running v0.8.7+. Earlier versions routed all commands through a pipe protocol that broke interactive executables.

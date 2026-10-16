@@ -102,6 +102,47 @@ public class SdkWorkerEnvironmentTests : IAsyncLifetime
         }
     }
 
+    // WSL with Windows dirs on PATH: each command-not-found pays PowerShell's wildcard listing of
+    // every /mnt dir (~9 s for System32 alone). The first miss in a host says why and how to fix it;
+    // later misses and non-WSL hosts keep the plain bash message.
+    [SkippableFact]
+    public async Task CommandNotFound_WslWindowsPath_HintsOncePerHost()
+    {
+        Skip.IfNot(OperatingSystem.IsLinux(), "WSL hint is Linux-only");
+        const string flag = "PsBash.WslPathHintShown";
+        AppContext.SetData(flag, null); // the hint is once per process; other tests may have tripped it
+        var worker = _fixture.CreateWorker();
+        var path = "/mnt/z/psbash-no-such-dir:" + Environment.GetEnvironmentVariable("PATH");
+        var miss = "pbnope" + Guid.NewGuid().ToString("N")[..8];
+
+        async Task<string> MissAsync(params KeyValuePair<string, string>[] set)
+        {
+            var err = new List<string>();
+            var exit = await worker.ExecuteWithOutputAsync(miss, _ => { }, err.Add, default,
+                Block(set.Append(new("PATH", path)), "WSL_DISTRO_NAME"));
+            Assert.Equal(127, exit);
+            return string.Concat(err);
+        }
+
+        try
+        {
+            var notWsl = await MissAsync();
+            var first = await MissAsync(new KeyValuePair<string, string>("WSL_DISTRO_NAME", "test"));
+            var second = await MissAsync(new KeyValuePair<string, string>("WSL_DISTRO_NAME", "test"));
+
+            Assert.DoesNotContain("appendWindowsPath", notWsl);
+            Assert.Contains($"{miss}: command not found", first);
+            Assert.Matches(@"PATH has [1-9]\d* Windows directories under /mnt", first);
+            Assert.Contains("appendWindowsPath=false", first);
+            Assert.Contains($"{miss}: command not found", second);
+            Assert.DoesNotContain("appendWindowsPath", second);
+        }
+        finally
+        {
+            AppContext.SetData(flag, null);
+        }
+    }
+
     // A var CHANGED between two invocations must be observed by the second.
     // Pre-fix the worker reuses whatever the process environment held from the
     // previous run (or from host spawn), so the second prints the first value.

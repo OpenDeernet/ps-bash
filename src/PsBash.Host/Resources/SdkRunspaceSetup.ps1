@@ -149,6 +149,22 @@ function Resolve-BashAutoloadModule {
     return $null
 }
 
+# WSL: Windows drive directories appended to PATH (/etc/wsl.conf [interop] appendWindowsPath)
+# make every command-not-found slow. PowerShell's own discovery lists each PATH directory with a
+# wildcard BEFORE this handler runs, over the 9p mount: /mnt/c/Windows/System32 alone costs ~9 s
+# per miss, 52 such entries cost ~80 s in plain pwsh. There is no cheap hook ahead of that
+# search, so the user is told once per host process how to remove the cause.
+function Get-BashWslPathHint {
+    if (-not $IsLinux -or -not $env:WSL_DISTRO_NAME) { return $null }
+    if ([System.AppContext]::GetData('PsBash.WslPathHintShown')) { return $null }
+    $mnt = @($env:PATH -split ':' | Where-Object { $_ -match '^/mnt/[a-zA-Z]/' })
+    if ($mnt.Count -eq 0) { return $null }
+    [System.AppContext]::SetData('PsBash.WslPathHintShown', $true)
+    return ("ps-bash: note: PATH has $($mnt.Count) Windows directories under /mnt, so each unknown command " +
+            "scans them over the WSL file bridge and takes seconds. Set appendWindowsPath=false under " +
+            "[interop] in /etc/wsl.conf, then run 'wsl --shutdown' (shown once per host).")
+}
+
 $ExecutionContext.InvokeCommand.CommandNotFoundAction = {
     param($CommandName, $EventArgs)
     # Skip if another handler already supplied a substitute.
@@ -202,9 +218,11 @@ $ExecutionContext.InvokeCommand.CommandNotFoundAction = {
     # cmdlet sees `bash: Foo: command not found`. In a bash-emulation shell that
     # form is vanishingly rare, and parity for real bash commands is the priority.
     $name = if ($CommandName -match '^[Gg]et-(.+)$') { $Matches[1] } else { $CommandName }
+    $wslHint = Get-BashWslPathHint
     $EventArgs.CommandScriptBlock = {
         $msg = "bash: ${name}: command not found"
         Write-Error -Message $msg -Category ObjectNotFound -TargetObject $name
+        if ($wslHint) { Write-Error -Message $wslHint -Category ResourceUnavailable }
         $global:LASTEXITCODE = 127
     }.GetNewClosure()
     $EventArgs.StopSearch = $true
