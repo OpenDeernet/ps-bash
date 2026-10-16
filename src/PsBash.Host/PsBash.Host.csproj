@@ -5,6 +5,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PublishAot>false</PublishAot>
+    <!-- Precompile on publish. The PowerShell SDK NuGet package ships System.Management.Automation
+         and the command assemblies as plain IL (the pwsh install has them ReadyToRun), so every cold
+         host start JIT-compiled the PowerShell engine: ~1.8 s for a first `ps-bash -c` against
+         ~0.9 s precompiled (first runspace 1.2 s -> 0.66 s). Costs ~33 MB of archive size. Only
+         applies to a RID-specific publish (release archives, the AOT test launcher's host). -->
+    <PublishReadyToRun Condition="'$(RuntimeIdentifier)' != ''">true</PublishReadyToRun>
     <AssemblyName>ps-bash-host</AssemblyName>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <NoWarn>$(NoWarn);IL2026</NoWarn>

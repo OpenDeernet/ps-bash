@@ -33,14 +33,15 @@
 
   <Target Name="PublishHostSidecar" AfterTargets="Publish" Condition="'$(PublishDir)' != ''">
     <PropertyGroup>
-      <_HostRuntimeOutDir>$(MSBuildThisFileDirectory)..\PsBash.Host\bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</_HostRuntimeOutDir>
+      <_HostPublishDir>$(MSBuildThisFileDirectory)..\PsBash.Host\bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\sidecar-publish\</_HostPublishDir>
     </PropertyGroup>
+    <!-- Publish, not Build: the host's ReadyToRun precompilation (PsBash.Host.csproj) runs only in
+         the publish pipeline, and a Build-target sidecar shipped the PowerShell engine as plain IL. -->
     <MSBuild Projects="..\PsBash.Host\PsBash.Host.csproj"
-             Targets="Build"
-             Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishAot=false" />
+             Targets="Publish"
+             Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishAot=false;PublishDir=$(_HostPublishDir)" />
     <ItemGroup>
-      <_PublishedHostFiles Include="$(_HostRuntimeOutDir)**\*"
-                           Exclude="$(_HostRuntimeOutDir)publish\**\*" />
+      <_PublishedHostFiles Include="$(_HostPublishDir)**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(_PublishedHostFiles)"
           DestinationFiles="@(_PublishedHostFiles->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')"
