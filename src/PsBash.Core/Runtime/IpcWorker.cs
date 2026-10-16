@@ -1342,24 +1342,7 @@ public sealed class IpcWorker : IWorker
     /// then said "still running but dropped the connection" for a host that had died.
     /// </summary>
     private static bool IsLinuxZombie(int pid)
-    {
-        if (!OperatingSystem.IsLinux()) return false;
-        try { return IsDeadProcStatState(File.ReadAllText($"/proc/{pid}/stat")); }
-        catch (IOException) { return true; }               // vanished between the two probes
-        catch (UnauthorizedAccessException) { return false; }
-    }
-
-    /// <summary>
-    /// True when a <c>/proc/&lt;pid&gt;/stat</c> line is in state Z (zombie) or X (dead). The state
-    /// is the field after the LAST ')' — the command name in parentheses may itself contain ')'.
-    /// </summary>
-    internal static bool IsDeadProcStatState(string stat)
-    {
-        int close = stat.LastIndexOf(')');
-        if (close < 0 || close + 2 >= stat.Length) return false;
-        char state = stat[close + 2];
-        return state is 'Z' or 'X';
-    }
+        => OperatingSystem.IsLinux() && (!ProcStat.TryRead(pid, out var state, out _) || ProcStat.IsDead(state));
 
     /// <summary>
     /// Recovery for a per-call timeout. A short health re-probe distinguishes a

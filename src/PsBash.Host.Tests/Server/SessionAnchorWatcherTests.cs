@@ -76,7 +76,7 @@ public sealed class SessionAnchorWatcherTests
         Skip.If(hostBinary is null, "ps-bash-host binary not found — build src/PsBash.Host first");
 
         using var anchorProc = StartLongLivedProcess();
-        var anchor = new ProcessIdentity(anchorProc.Id, ProcessIdentity.StartTicksOf(anchorProc));
+        var anchor = new ProcessIdentity(anchorProc.Id, ProcessIdentity.StartStampOf(anchorProc));
 
         var priorEndpoint = Environment.GetEnvironmentVariable(IpcTransportFactory.EndpointEnvVar);
         var priorSession = Environment.GetEnvironmentVariable(IpcTransportFactory.SessionEnvVar);

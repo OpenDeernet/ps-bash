@@ -154,7 +154,7 @@ internal static partial class ProcessAncestry
         try
         {
             using var p = System.Diagnostics.Process.GetProcessById(pid);
-            return (p.ProcessName, ProcessIdentity.StartTicksOf(p));
+            return (p.ProcessName, ProcessIdentity.StartStampOf(p));
         }
         catch { return null; }
     }

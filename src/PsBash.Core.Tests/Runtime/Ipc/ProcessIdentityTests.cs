@@ -37,7 +37,7 @@ public class ProcessIdentityTests
     public void IsRunning_CurrentProcessWithItsStartTime_True()
     {
         using var self = Process.GetCurrentProcess();
-        var id = new ProcessIdentity(self.Id, ProcessIdentity.StartTicksOf(self));
+        var id = new ProcessIdentity(self.Id, ProcessIdentity.StartStampOf(self));
         Assert.True(id.IsRunning());
     }
 
@@ -46,8 +46,21 @@ public class ProcessIdentityTests
     {
         // A recycled pid: same number, different process. Must not count as the anchor.
         using var self = Process.GetCurrentProcess();
-        var id = new ProcessIdentity(self.Id, ProcessIdentity.StartTicksOf(self) - TimeSpan.TicksPerSecond);
+        var id = new ProcessIdentity(self.Id, ProcessIdentity.StartStampOf(self) - 1);
         Assert.False(id.IsRunning());
+    }
+
+    // Two launchers key one session's daemon endpoint from this stamp, so it must not depend on
+    // which process computes it. .NET's Process.StartTime does on Linux (each process derives its
+    // own boot time), which gave every `ps-bash -c` a new endpoint and a cold daemon.
+    [SkippableFact]
+    public void StartStampOf_OnLinux_IsTheProcStatStartTime()
+    {
+        Skip.IfNot(OperatingSystem.IsLinux(), "the /proc start stamp is Linux-only");
+        using var self = Process.GetCurrentProcess();
+        var fields = File.ReadAllText($"/proc/{self.Id}/stat");
+        var afterComm = fields[(fields.LastIndexOf(')') + 2)..].Split(' ');
+        Assert.Equal(long.Parse(afterComm[19]), ProcessIdentity.StartStampOf(self));
     }
 
     [Fact]
@@ -58,7 +71,7 @@ public class ProcessIdentityTests
             ? new ProcessStartInfo("ping", "-n 60 127.0.0.1") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true }
             : new ProcessStartInfo("sleep", "60") { UseShellExecute = false };
         using var p = Process.Start(si)!;
-        var id = new ProcessIdentity(p.Id, ProcessIdentity.StartTicksOf(p));
+        var id = new ProcessIdentity(p.Id, ProcessIdentity.StartStampOf(p));
         Assert.True(id.IsRunning());
         p.Kill(entireProcessTree: true);
         p.WaitForExit();

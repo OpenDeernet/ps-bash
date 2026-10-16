@@ -51,7 +51,7 @@ public class ProcessAncestrySessionAnchorTests
 
         Assert.NotNull(anchor);
         Assert.Equal(20, anchor.Value.Pid);
-        Assert.Equal(50, anchor.Value.StartTimeUtcTicks);
+        Assert.Equal(50, anchor.Value.StartStamp);
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class ProcessAncestrySessionAnchorTests
 
         Assert.NotNull(anchor);
         Assert.Equal(10, anchor.Value.Pid);
-        Assert.Equal(42, anchor.Value.StartTimeUtcTicks);
+        Assert.Equal(42, anchor.Value.StartStamp);
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class ProcessAncestrySessionAnchorTests
 
         Assert.NotNull(anchor);
         Assert.Equal(10, anchor.Value.Pid);
-        Assert.Equal(7, anchor.Value.StartTimeUtcTicks);
+        Assert.Equal(7, anchor.Value.StartStamp);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class ProcessAncestrySessionAnchorTests
         Assert.NotNull(second);
         Assert.Equal(20, first.Value.Pid);
         Assert.Equal(20, second.Value.Pid);
-        Assert.NotEqual(first.Value.StartTimeUtcTicks, second.Value.StartTimeUtcTicks);
+        Assert.NotEqual(first.Value.StartStamp, second.Value.StartStamp);
     }
 }
 

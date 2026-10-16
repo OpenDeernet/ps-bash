@@ -44,20 +44,6 @@ public class HostLossDiagnosticTests
             IpcWorker.DescribeStartedReset(new IpcWorker.HostObservation { Pid = 0 }, aliveNow: true));
     }
 
-    // A SIGKILLed host that is not the launcher's child is a zombie until init reaps it; .NET
-    // reports it as running. The state field follows the LAST ')' (the comm may contain one).
-    [Theory]
-    [InlineData("4242 (ps-bash-host) Z 1 4242 4242 0 -1", true)]
-    [InlineData("4242 (ps-bash-host) X 1 4242 4242 0 -1", true)]
-    [InlineData("4242 (ps-bash-host) S 1 4242 4242 0 -1", false)]
-    [InlineData("4242 (ps-bash-host) R 1 4242 4242 0 -1", false)]
-    [InlineData("4242 (odd) name) Z 1 4242", true)]
-    [InlineData("4242 (odd) Z name) S 1 4242", false)]
-    [InlineData("garbage", false)]
-    [InlineData("4242 (x)", false)]
-    public void IsDeadProcStatState_ReadsStateAfterLastParen(string stat, bool dead)
-        => Assert.Equal(dead, IpcWorker.IsDeadProcStatState(stat));
-
     /// <summary>A real exited process, so RecordExit reads a genuine exit code.</summary>
     private static System.Diagnostics.Process ExitedProcess(int code)
     {

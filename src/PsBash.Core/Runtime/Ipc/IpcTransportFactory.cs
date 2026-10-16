@@ -212,7 +212,7 @@ public static class IpcTransportFactory
         // with a new start time is a distinct session, so it can never attach to a
         // previous session's stale daemon.
         return SanitizeUser(
-            $"{id.Pid}-{id.StartTimeUtcTicks.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+            $"{id.Pid}-{id.StartStamp.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
     }
 
     /// <summary>
