@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Reflection;
@@ -103,6 +104,7 @@ internal sealed class SdkRunspace : IAsyncDisposable
         // CommandNotFoundAction handler, but no longer does Import-Module.
         var cmdletsDll = ModuleExtractor.GetCmdletsDllPath();
         bool issPreRegistered = false;
+        var registeredBashCmdlets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (File.Exists(cmdletsDll))
         {
             try
@@ -110,14 +112,13 @@ internal sealed class SdkRunspace : IAsyncDisposable
                 var asm = System.Reflection.Assembly.LoadFrom(cmdletsDll);
                 // Metadata-first scan: NOT asm.GetTypes(), which loads every type (and so the
                 // Strata assemblies its helper types derive from) into every runspace.
-                int registered = 0;
                 foreach (var (type, attr) in CmdletTypeScanner.FindCmdletTypes(asm))
                 {
-                    iss.Commands.Add(new SessionStateCmdletEntry(
-                        $"{attr.VerbName}-{attr.NounName}", type, null));
-                    registered++;
+                    var name = $"{attr.VerbName}-{attr.NounName}";
+                    iss.Commands.Add(new SessionStateCmdletEntry(name, type, null));
+                    registeredBashCmdlets.Add(name);
                 }
-                issPreRegistered = registered > 0;
+                issPreRegistered = registeredBashCmdlets.Count > 0;
             }
             catch
             {
@@ -182,8 +183,7 @@ internal sealed class SdkRunspace : IAsyncDisposable
         using var ps = PowerShell.Create();
         ps.Runspace = runspace;
 
-        ps.AddScript(setupScriptContent).Invoke();
-        ps.Commands.Clear();
+        InvokeStartupScript(ps, runspace, setupScriptContent);
         Trace("setup-script-invoked");
 
         var psm1Path = Path.Combine(Path.GetDirectoryName(modulePath)!, "PsBash.psm1");
@@ -194,8 +194,7 @@ internal sealed class SdkRunspace : IAsyncDisposable
             runspace.SessionStateProxy.SetVariable("PsBashModulePsm1Path", psm1Path);
             var psm1Content = ReadStartupModule(psm1Path);
             Trace("psm1-read");
-            ps.AddScript(psm1Content).Invoke();
-            ps.Commands.Clear();
+            InvokeStartupScript(ps, runspace, psm1Content);
             Trace("psm1-invoked");
 
             // The psm1's Invoke-BashGrep / Invoke-BashSed are literal-argument PROXIES for DIRECT
@@ -204,13 +203,12 @@ internal sealed class SdkRunspace : IAsyncDisposable
             // They are also a steppable-pipeline hop, which makes the real cmdlet's early stop
             // (`grep -q`, `grep -m N`, `sed q`) unable to reach the caller's upstream. Drop them here so a
             // transpiled `producer | grep -q x` resolves straight to the cmdlet and stops the producer.
-            // Run inside `& { }` so the loop variable is local: a global `$n` would shadow the bash variable `n`
-            // (the arithmetic evaluator and `$env`-less lookups read PS variables first).
-            ps.AddScript(
-                "& { foreach ($proxy in 'Invoke-BashGrep','Invoke-BashSed') { " +
-                "if (Microsoft.PowerShell.Core\\Get-Command $proxy -CommandType Cmdlet -ErrorAction SilentlyContinue) { " +
-                "Microsoft.PowerShell.Management\\Remove-Item -LiteralPath \"Function:\\$proxy\" -ErrorAction SilentlyContinue } } }").Invoke();
-            ps.Commands.Clear();
+            // The cmdlets registered above are known here, so no Get-Command lookup (~20 ms a runspace).
+            foreach (var proxy in LiteralArgumentProxies)
+            {
+                if (registeredBashCmdlets.Contains(proxy) && runspace.SessionStateProxy.InvokeProvider.Item.Exists($"Function:\\{proxy}"))
+                    runspace.SessionStateProxy.InvokeProvider.Item.Remove($"Function:\\{proxy}", recurse: false);
+            }
         }
 
         Interlocked.Increment(ref ModuleLoadCount);
@@ -221,6 +219,47 @@ internal sealed class SdkRunspace : IAsyncDisposable
         {
             try { runspace.Dispose(); } catch { }
             throw;
+        }
+    }
+
+    private static readonly string[] LiteralArgumentProxies = { "Invoke-BashGrep", "Invoke-BashSed" };
+
+    /// <summary>
+    /// The startup scripts, parsed and compiled once per process. The daemon builds a fresh runspace
+    /// for every command, and <c>AddScript(text)</c> re-parses and re-compiles its text each time: for
+    /// the 160 KB psm1 that was ~100 ms of the ~250 ms build. A <see cref="ScriptBlock"/> made without a
+    /// runspace carries only compiled code, no session state, so dot-sourcing the same one into each new
+    /// runspace still defines that runspace's own functions, aliases and script variables (SMA shares
+    /// compiled script files across runspaces the same way). Keyed by content: a re-extracted module
+    /// with new text compiles anew.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, ScriptBlock> CompiledStartupScripts = new(StringComparer.Ordinal);
+
+    /// <summary>Holds the block for the one-line dot-source; removed again before the runspace is handed out.</summary>
+    private const string StartupBlockVariable = "__PsBashStartupBlock";
+
+    // Test seam: how many startup scripts were compiled (stays flat as runspaces are rebuilt).
+    internal static int StartupScriptCompileCount;
+
+    private static ScriptBlock CompileStartupScript(string text)
+    {
+        Interlocked.Increment(ref StartupScriptCompileCount);
+        return ScriptBlock.Create(text);
+    }
+
+    /// <summary>Dot-source a startup script into the runspace's global scope, as <c>AddScript(text)</c> did.</summary>
+    private static void InvokeStartupScript(PowerShell ps, Runspace runspace, string text)
+    {
+        var block = CompiledStartupScripts.GetOrAdd(text, CompileStartupScript);
+        runspace.SessionStateProxy.SetVariable(StartupBlockVariable, block);
+        try
+        {
+            ps.AddScript(". $" + StartupBlockVariable).Invoke();
+        }
+        finally
+        {
+            ps.Commands.Clear();
+            runspace.SessionStateProxy.PSVariable.Remove(StartupBlockVariable);
         }
     }
 
