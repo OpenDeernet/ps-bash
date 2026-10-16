@@ -159,6 +159,7 @@ public sealed class HostServer : IAsyncDisposable
                 {
                     var conn = new Connection(stream, _pool, this);
                     await conn.HandleAsync(ct);
+                    await CloseGracefullyAsync(stream).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -179,6 +180,39 @@ public sealed class HostServer : IAsyncDisposable
         {
             _idle?.ConnectionEnded();
             ConnectionEnded();
+        }
+    }
+
+    // Bounds for the post-exchange drain: the launcher closes as soon as it reads EXIT, so a
+    // drain normally ends at once; the caps only stop a misbehaving client holding a slot.
+    private static readonly TimeSpan GracefulCloseTimeout = TimeSpan.FromSeconds(2);
+    private const int GracefulCloseMaxBytes = 4 * 1024 * 1024;
+
+    /// <summary>
+    /// End a finished exchange on a socket without a reset. Closing a socket that still has unread
+    /// input makes the kernel send RST instead of FIN, and the launcher's pending read then fails
+    /// before it has consumed the EXIT frame already sent: `yes | ps-bash -c 'head -n 1'` printed
+    /// `y` and exited 125 ("dropped the connection after the command started"). So: shut down the
+    /// send side (EXIT is flushed as FIN), then discard the launcher's leftover STDIN frames until
+    /// it closes. Named pipes have no reset semantics and are left alone.
+    /// </summary>
+    private static async Task CloseGracefullyAsync(Stream stream)
+    {
+        if (stream is not System.Net.Sockets.NetworkStream ns) return;
+        try
+        {
+            ns.Socket.Shutdown(System.Net.Sockets.SocketShutdown.Send);
+            using var cts = new CancellationTokenSource(GracefulCloseTimeout);
+            var buffer = new byte[64 * 1024];
+            int drained = 0, n;
+            while (drained < GracefulCloseMaxBytes
+                   && (n = await ns.ReadAsync(buffer, cts.Token).ConfigureAwait(false)) > 0)
+                drained += n;
+        }
+        catch (Exception ex) when (ex is IOException or OperationCanceledException
+                                      or System.Net.Sockets.SocketException or ObjectDisposedException)
+        {
+            // Peer already gone, or it kept sending past the bounds: dispose closes it either way.
         }
     }
 
