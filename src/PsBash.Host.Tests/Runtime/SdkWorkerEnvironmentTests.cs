@@ -71,6 +71,37 @@ public class SdkWorkerEnvironmentTests : IAsyncLifetime
         Assert.False(PsBash.Core.Runtime.Ipc.IpcTransportFactory.IsInsideHostCommand());
     }
 
+    // bash `$HOME` / `~` emit PowerShell `$HOME` and the provider `~`, which a runspace captures
+    // when it is CREATED — from the daemon's environment. Pre-fix a launcher with its own HOME
+    // read the daemon's (`cd ~/x` went to the wrong tree), and switching back must work too.
+    [Fact]
+    public async Task Environment_LauncherHome_DrivesHomeVariableAndTilde()
+    {
+        var worker = _fixture.CreateWorker();
+        var homeVar = OperatingSystem.IsWindows() ? "USERPROFILE" : "HOME";
+        var daemonHome = Environment.GetEnvironmentVariable(homeVar)!;
+        var launcherHome = Directory.CreateTempSubdirectory("psbash-home-").FullName;
+        const string probe = "Invoke-BashEcho \"var=$HOME\"; Invoke-BashEcho \"tilde=$((Resolve-Path ~).ProviderPath)\"";
+        try
+        {
+            var asLauncher = await RunAsync(worker, probe,
+                Block(new[] { new KeyValuePair<string, string>(homeVar, launcherHome) }));
+            var asDaemon = await RunAsync(worker, probe,
+                Block(new[] { new KeyValuePair<string, string>(homeVar, daemonHome) }));
+
+            // Output is coalesced into multi-line frames: compare whole lines.
+            static string[] Lines(List<string> frames)
+                => string.Concat(frames).Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Assert.Equal(0, asLauncher.ExitCode);
+            Assert.Equal(new[] { $"var={launcherHome}", $"tilde={launcherHome}" }, Lines(asLauncher.Lines));
+            Assert.Equal(new[] { $"var={daemonHome}", $"tilde={daemonHome}" }, Lines(asDaemon.Lines));
+        }
+        finally
+        {
+            Directory.Delete(launcherHome, recursive: true);
+        }
+    }
+
     // A var CHANGED between two invocations must be observed by the second.
     // Pre-fix the worker reuses whatever the process environment held from the
     // previous run (or from host spawn), so the second prints the first value.
