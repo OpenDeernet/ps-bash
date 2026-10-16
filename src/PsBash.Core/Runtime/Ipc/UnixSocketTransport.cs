@@ -52,7 +52,10 @@ public sealed class UnixSocketTransport : IIpcTransport
         var sock = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         var ep = new UnixDomainSocketEndPoint(_socketPath);
         sock.Bind(ep);
-        sock.Listen(backlog: 16);
+        // Declared cap. 16 overflowed under a burst of parallel launchers (an agent fanning out
+        // commands): HostServer handles up to 64 at once, and once the queue is full a Unix
+        // socket connect fails at once with EAGAIN instead of waiting (ConnectAsync retries).
+        sock.Listen(backlog: ListenBacklog);
         _listener = sock;
         _listening = true;
 
@@ -74,13 +77,43 @@ public sealed class UnixSocketTransport : IIpcTransport
         return new NetworkStream(client, ownsSocket: true);
     }
 
+    internal const int ListenBacklog = 512;
+
+    // A full accept queue is transient (the host drains it), so EAGAIN is retried for a bounded
+    // ~2 s before it is reported. 30 concurrent `ps-bash -c` against a backlog of 16 failed one
+    // of them with "host communication failed: Resource temporarily unavailable" (exit 125).
+    private static readonly TimeSpan BacklogFullRetryWindow = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan BacklogFullRetryDelay = TimeSpan.FromMilliseconds(10);
+
+    // EAGAIN. .NET reports it as WouldBlock (EAGAIN == EWOULDBLOCK on Linux); TryAgain is the
+    // DNS code, kept for platforms that map it there.
+    private static bool IsQueueFull(SocketException ex)
+        => ex.SocketErrorCode is SocketError.WouldBlock or SocketError.TryAgain;
+
     public async Task<Stream> ConnectAsync(CancellationToken ct = default)
     {
         ThrowIfDisposed();
-        var sock = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         var ep = new UnixDomainSocketEndPoint(_socketPath);
-        await sock.ConnectAsync(ep, ct);
-        return new NetworkStream(sock, ownsSocket: true);
+        var giveUpAt = DateTime.UtcNow + BacklogFullRetryWindow;
+        while (true)
+        {
+            var sock = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            try
+            {
+                await sock.ConnectAsync(ep, ct);
+                return new NetworkStream(sock, ownsSocket: true);
+            }
+            catch (SocketException ex) when (IsQueueFull(ex) && DateTime.UtcNow < giveUpAt)
+            {
+                sock.Dispose();
+            }
+            catch
+            {
+                sock.Dispose();
+                throw;
+            }
+            await Task.Delay(BacklogFullRetryDelay, ct);
+        }
     }
 
     public ValueTask DisposeAsync()
