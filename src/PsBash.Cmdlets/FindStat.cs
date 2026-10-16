@@ -10,8 +10,9 @@ namespace PsBash.Cmdlets;
 /// The stat(2)-shaped facts <c>find</c> needs about one entry (<c>-perm -user -uid -links -inum -ctime -printf -ls</c>),
 /// read lazily and once per visited item. .NET exposes only part of stat, so the rest comes from the platform:
 /// <list type="bullet">
-/// <item><b>Unix</b>: one bounded <c>stat -c</c> child (<see cref="BashRuntime.RunChildProcess"/>) for mode, uid/gid and
-/// names, inode, link count, blocks and ctime; times/size from the .NET info object.</item>
+/// <item><b>Linux</b>: <see cref="LinuxStat"/> (in-process statx + getpwuid_r/getgrgid_r) for mode, uid/gid and names,
+/// inode, link count, blocks, ctime and device; times/size from the .NET info object.</item>
+/// <item><b>macOS</b>: one bounded <c>stat -f</c> child (<see cref="BashRuntime.RunChildProcess"/>) for the same fields.</item>
 /// <item><b>Windows</b> (documented mapping, GNU has no equivalent): mode is synthesised (directory 0755, file 0644, 0755
 /// for an executable extension, read-only clears the write bits, link 0777); owner/group are the owner / primary-group
 /// SIDs of the ACL (user name = account name without the domain; <c>uid</c>/<c>gid</c> = the SID's last sub-authority);
@@ -195,6 +196,7 @@ internal sealed class FindStat
     [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
     private static void ReadUnix(FindStat s, FileSystemInfo eff, bool following)
     {
+        if (OperatingSystem.IsLinux()) { ReadLinux(s, eff, following); return; }
         try
         {
             var psi = new System.Diagnostics.ProcessStartInfo("stat")
@@ -215,7 +217,7 @@ internal sealed class FindStat
                     ? Convert.ToInt32(f[0], 8)
                     : int.Parse(f[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                 s.Mode = raw & 0xFFF;
-                s.TypeChar = (raw & 0xF000) switch { 0x4000 => 'd', 0xA000 => 'l', 0x1000 => 'p', 0xC000 => 's', 0x2000 => 'c', 0x6000 => 'b', _ => 'f' };
+                s.TypeChar = TypeCharOf(raw);
                 s.Uid = long.Parse(f[1], CultureInfo.InvariantCulture); s.Gid = long.Parse(f[2], CultureInfo.InvariantCulture);
                 // stat prints UNKNOWN when there is no passwd/group entry
                 // (BSD stat prints the number itself when there is no passwd/group entry)
@@ -260,8 +262,44 @@ internal sealed class FindStat
         return s.Ctime;
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    private static void ReadLinux(FindStat s, FileSystemInfo eff, bool following)
+    {
+        if (LinuxStat.TryRead(eff.FullName, following, out var st))
+        {
+            s.Mode = st.Mode & 0xFFF;
+            s.TypeChar = TypeCharOf(st.Mode);
+            s.Uid = st.Uid; s.Gid = st.Gid;
+            // No passwd/group entry: GNU prints the number (User/Group fall back to the id).
+            var user = LinuxStat.UserName(st.Uid); s.UserKnown = user is not null; s.UserName = user ?? "UNKNOWN";
+            var group = LinuxStat.GroupName(st.Gid); s.GroupKnown = group is not null; s.GroupName = group ?? "UNKNOWN";
+            s.Inode = st.Inode;
+            s.Nlink = st.Nlink;
+            s.BlocksK = (long)(st.Blocks512 / 2);
+            s.Ctime = CtimeOf(st);
+            s.Device = st.Device;
+        }
+        if (s.Mode == 0)
+        {
+            try { s.Mode = (int)eff.UnixFileMode; } catch { s.Mode = 0x1A4; }
+        }
+    }
+
+    private static char TypeCharOf(int rawMode) => (rawMode & 0xF000) switch
+    {
+        0x4000 => 'd', 0xA000 => 'l', 0x1000 => 'p', 0xC000 => 's', 0x2000 => 'c', 0x6000 => 'b', _ => 'f',
+    };
+
+    private static DateTime CtimeOf(LinuxStat.Info st)
+        => DateTimeOffset.FromUnixTimeSeconds(st.CtimeSeconds).AddTicks(st.CtimeNanoseconds / 100).LocalDateTime;
+
     private static void ReadUnixCtimeOnly(FileSystemInfo info, FindStat s)
     {
+        if (OperatingSystem.IsLinux())
+        {
+            if (LinuxStat.TryRead(info.FullName, follow: false, out var st)) s.Ctime = CtimeOf(st);
+            return;
+        }
         try
         {
             var psi = new System.Diagnostics.ProcessStartInfo("stat") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
