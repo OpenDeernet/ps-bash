@@ -21,12 +21,17 @@
          PrivateAssets/ExcludeAssets cause, so a regression is diagnosed rather than
          surfacing as an opaque connection timeout;
       3. the package runs a real command end to end (launcher spawns host from the same
-         directory) and produces the expected output with exit 0.
+         directory) and produces the expected output with exit 0;
+      4. with -ExpectedVersion, `ps-bash --version` reports that version (a v0.11.5 archive
+         reported the stale csproj 0.10.19, GH #7).
 
     See docs/bugs/publish-host-missing-sma.md.
 
 .PARAMETER StageDir
     The assembled package directory to test (e.g. ./publish/stage, dist/slim/win-x64).
+
+.PARAMETER ExpectedVersion
+    The release version (no leading v) the launcher must report. Omit for snapshot builds.
 
 .EXAMPLE
     ./scripts/smoke-archive.ps1 -StageDir ./publish/stage
@@ -34,7 +39,9 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [string]$StageDir
+    [string]$StageDir,
+
+    [string]$ExpectedVersion
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,5 +87,12 @@ Write-Host "smoke run exit=$code output:`n$text"
 if ($code -ne 0) { throw "package failed to run a command (exit $code): $text" }
 if ($text -notmatch 'smoke-ok') { throw "package produced no 'smoke-ok' marker: $text" }
 if ($text -notmatch '3') { throw "package pipeline produced no line count: $text" }
+
+if ($ExpectedVersion) {
+    $banner = (& $exe --version 2>&1 | Out-String)
+    if ($banner -notmatch "version $([regex]::Escape($ExpectedVersion))\b") {
+        throw "launcher reports the wrong version (expected $ExpectedVersion): $banner"
+    }
+}
 
 Write-Host "Package smoke test passed: $StageDir"
