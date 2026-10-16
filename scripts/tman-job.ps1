@@ -144,9 +144,12 @@ try {
             Invoke-Native dotnet (@('build') + $target + @('-c', 'Debug', '-f', 'net10.0') + $common)
         }
         'test' {
+            # The tiered runner (src/PsBash.TestRunner, docs/spikes/tiered-test-runner.md): every test
+            # assembly at once in its own process, then a strict single-threaded rerun of whatever
+            # failed. Extra args go to the runner (e.g. --concurrency 2, --no-strict, a test .dll).
             Build-Solution
             Publish-TestLauncher
-            Invoke-Native dotnet (@('test', 'ps-bash.sln', '-c', 'Debug', '-f', 'net10.0', '--no-build') + $common + $Rest)
+            Invoke-Native dotnet (@('src/PsBash.TestRunner/bin/Debug/net10.0/PsBash.TestRunner.dll', 'suite') + $Rest)
         }
         'test-proj' {
             if (-not $Rest -or $Rest[0].StartsWith('-')) { throw 'usage: tman test-proj <project-dir-or-csproj> [dotnet test args, e.g. --filter "..."]' }

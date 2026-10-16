@@ -24,3 +24,4 @@ src/PsBash.Module/*.dll
 
 # Cygwin/MSYS crash dumps — git-bash occasionally drops these in the repo root
 *.stackdump
+/.tman/

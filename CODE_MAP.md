@@ -20,7 +20,7 @@ Launcher `ps-bash.exe` (**Shell**) talks IPC to `ps-bash-host.exe` (**Host**).
 | **Shell** | AOT launcher | `Program.cs`, `Args.cs` |
 | **Testing** | harness | `CanonicalEnv`, `PsBashRunner`, `ProcessSpawn` |
 
-Tests: `*.Tests`, `Differential.Tests` (bash oracle), `Canary.Tests`, `Escalation.Tests`.
+Tests: `*.Tests`, `Differential.Tests` (bash oracle), `Canary.Tests`, `Escalation.Tests`; `tman test` runs them via **TestRunner** (`SuiteRun.cs` tiers, `AssemblyRun.cs`).
 
 ## Where to find X
 

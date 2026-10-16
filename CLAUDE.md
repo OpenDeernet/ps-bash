@@ -33,6 +33,10 @@ tman dev -c '<snippet>' | tman dev script.sh      # run THIS checkout's dev ps-b
 tman ls --all | tman status <id> | tman kill all
 ```
 
+`tman test` = tiered runner (`src/PsBash.TestRunner`): all assemblies in parallel against an AOT
+launcher, then a strict rerun of failures. `FAIL` = failed both passes (real); `FAST-ONLY` =
+contention/isolation, fix the harness. Results: `.tman/runner/*.json`, logs `.tman/runner/*.log`.
+
 Never run `src/*/bin/**/ps-bash.exe` directly: it takes no lock, so a concurrent build swaps DLLs
 under it, and its leftover daemon holds `bin/` (next build MSB3021). `tman dev` builds, takes the
 checkout lock, and uses a per-invocation host. In an agent worktree without it: set
