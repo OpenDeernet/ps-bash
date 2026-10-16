@@ -77,9 +77,6 @@ public sealed class CanarySmokeTests
     // Internal helpers
     // -------------------------------------------------------------------------
 
-    private async Task<ModeResult> RunSingleMode(Mode mode, string script)
-    {
-        var all = await _runner.RunAllAsync(script);
-        return all.First(r => r.Mode == mode);
-    }
+    // One mode only: this used to run all five and keep one.
+    private Task<ModeResult> RunSingleMode(Mode mode, string script) => _runner.RunAsync(mode, script);
 }

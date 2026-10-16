@@ -69,39 +69,67 @@ public sealed class ModeRunner
     public string? PsBashPath => _psBashPath;
 
     /// <summary>
-    /// Runs <paramref name="script"/> in all available modes.
-    /// Modes whose prerequisite is unavailable return a skip sentinel (ExitCode = -999).
+    /// Runs <paramref name="script"/> in every mode available here and returns one result per
+    /// mode that ran. An unavailable mode is left out, not reported as a skip: a skip sentinel
+    /// in this list made each `*_AllModes` test Skip.If the WHOLE test and discard the modes
+    /// that did run — M5 (Invoke-BashEval) ships only in the experimental module, so all 25
+    /// AllModes tests skipped everywhere, ran nothing, and still paid ~6 s each. Only when no
+    /// mode at all is available does the list hold skip sentinels (ExitCode = -999).
     /// </summary>
     public async Task<IReadOnlyList<ModeResult>> RunAllAsync(
         string script,
         TimeSpan? timeout = null)
     {
-        var runner = timeout is { } t ? _baseRunner.WithTimeout(t) : _baseRunner;
-        var results = new List<ModeResult>();
-
-        var tasks = new List<Task<ModeResult>>();
-
-        if (_psBashPath != null)
-        {
-            tasks.Add(RunSpawnModeAsync(runner, Mode.M1_CFlag, PsBashMode.M1_CFlag, script));
-            tasks.Add(RunSpawnModeAsync(runner, Mode.M2_StdinPipe, PsBashMode.M2_StdinPipe, script));
-            tasks.Add(RunSpawnModeAsync(runner, Mode.M3_FileArg, PsBashMode.M3_FileArg, script));
-        }
-        else
-        {
-            results.Add(new ModeResult(Mode.M1_CFlag, "", "ps-bash binary not found", -999, 0));
-            results.Add(new ModeResult(Mode.M2_StdinPipe, "", "ps-bash binary not found", -999, 0));
-            results.Add(new ModeResult(Mode.M3_FileArg, "", "ps-bash binary not found", -999, 0));
-        }
-
-        tasks.Add(RunM5Async(script));
-        tasks.Add(RunM6Async(script));
-
-        var completed = await Task.WhenAll(tasks);
-        results.AddRange(completed);
-
-        return results;
+        var modes = AllModes.Where(IsAvailable).ToList();
+        if (modes.Count == 0)
+            return AllModes.Select(m => Unavailable(m)).ToList();
+        return await Task.WhenAll(modes.Select(m => RunAsync(m, script, timeout)));
     }
+
+    /// <summary>
+    /// Runs <paramref name="script"/> in one mode, or returns the skip sentinel (ExitCode = -999)
+    /// when that mode is unavailable here.
+    /// </summary>
+    public Task<ModeResult> RunAsync(Mode mode, string script, TimeSpan? timeout = null)
+    {
+        if (!IsAvailable(mode)) return Task.FromResult(Unavailable(mode));
+        var runner = timeout is { } t ? _baseRunner.WithTimeout(t) : _baseRunner;
+        return mode switch
+        {
+            Mode.M5_InvokeEval => RunM5Async(script),
+            Mode.M6_InvokeSource => RunM6Async(script),
+            _ => RunSpawnModeAsync(runner, mode, (PsBashMode)(int)mode, script),
+        };
+    }
+
+    private static readonly Mode[] AllModes =
+        [Mode.M1_CFlag, Mode.M2_StdinPipe, Mode.M3_FileArg, Mode.M5_InvokeEval, Mode.M6_InvokeSource];
+
+    private bool IsAvailable(Mode mode) => mode switch
+    {
+        Mode.M5_InvokeEval => InProcessCmdlets.Value.Eval,
+        Mode.M6_InvokeSource => InProcessCmdlets.Value.Source,
+        _ => _psBashPath is not null,
+    };
+
+    private static ModeResult Unavailable(Mode mode) => new(mode, "", mode switch
+    {
+        Mode.M5_InvokeEval => "Invoke-BashEval not available (experimental module only)",
+        Mode.M6_InvokeSource => "Invoke-BashSource not available",
+        _ => "ps-bash binary not found",
+    }, -999, 0);
+
+    // Which in-process cmdlets the canary runspace exports, asked once per process: the per-call
+    // Get-Command probe built a whole runspace (module load included) just to learn the answer.
+    private static readonly Lazy<(bool Eval, bool Source)> InProcessCmdlets = new(() =>
+    {
+        using var pwsh = CanaryPwshFixture.Create();
+        pwsh.Commands.Clear();
+        pwsh.AddScript("[bool](Get-Command Invoke-BashEval -ErrorAction SilentlyContinue); " +
+                       "[bool](Get-Command Invoke-BashSource -ErrorAction SilentlyContinue)");
+        var found = pwsh.Invoke();
+        return (found.Count > 0 && found[0].BaseObject is true, found.Count > 1 && found[1].BaseObject is true);
+    });
 
     // -------------------------------------------------------------------------
     // M1/M2/M3: external-process modes — delegate to the shared PsBashRunner.
@@ -126,13 +154,6 @@ public sealed class ModeRunner
                 using var pwsh = CanaryPwshFixture.Create();
                 pwsh.Commands.Clear();
 
-                // Check whether Invoke-BashEval is available
-                pwsh.AddScript("Get-Command Invoke-BashEval -ErrorAction SilentlyContinue");
-                var cmdCheck = pwsh.Invoke();
-                pwsh.Commands.Clear();
-                if (cmdCheck.Count == 0)
-                    return new ModeResult(Mode.M5_InvokeEval, "", "Invoke-BashEval not available", -999, 0);
-
                 // Clear errors that accumulated during fixture setup so we only see script errors
                 pwsh.Streams.Error.Clear();
 
@@ -142,9 +163,8 @@ public sealed class ModeRunner
 
                 var stdout = string.Join("\n", results.Select(r => r.ToString()));
                 var stderr = string.Join("\n", pwsh.Streams.Error.Select(e => e.ToString()));
-                var exitCode = pwsh.Streams.Error.Count > 0 ? 1 : 0;
 
-                return new ModeResult(Mode.M5_InvokeEval, stdout, stderr, exitCode, sw.ElapsedMilliseconds);
+                return new ModeResult(Mode.M5_InvokeEval, stdout, stderr, InProcessExitCode(pwsh), sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
@@ -153,6 +173,14 @@ public sealed class ModeRunner
             }
         });
     }
+
+    /// <summary>
+    /// The script's exit status in an in-process mode: <c>$LASTEXITCODE</c>, as the spawn modes
+    /// report the process exit code. It used to be "1 if anything reached the error stream",
+    /// which made `echo err &gt;&amp;2` (bash exit 0) fail every AllModes check once M6 ran.
+    /// </summary>
+    private static int InProcessExitCode(System.Management.Automation.PowerShell pwsh)
+        => pwsh.Runspace.SessionStateProxy.GetVariable("LASTEXITCODE") is int code ? code : 0;
 
     // -------------------------------------------------------------------------
     // M6: Invoke-BashSource cmdlet (in-process, reads from .sh file)
@@ -171,14 +199,6 @@ public sealed class ModeRunner
                 {
                     using var pwsh = CanaryPwshFixture.Create();
                     pwsh.Commands.Clear();
-
-                    // Check whether Invoke-BashSource is available
-                    pwsh.AddScript("Get-Command Invoke-BashSource -ErrorAction SilentlyContinue");
-                    var cmdCheck = pwsh.Invoke();
-                    pwsh.Commands.Clear();
-                    if (cmdCheck.Count == 0)
-                        return new ModeResult(Mode.M6_InvokeSource, "", "Invoke-BashSource not available", -999, 0);
-
                     pwsh.Streams.Error.Clear();
                     pwsh.AddCommand("Invoke-BashSource").AddParameter("Path", tempFile);
                     var results = pwsh.Invoke();
@@ -186,9 +206,8 @@ public sealed class ModeRunner
 
                     var stdout = string.Join("\n", results.Select(r => r.ToString()));
                     var stderr = string.Join("\n", pwsh.Streams.Error.Select(e => e.ToString()));
-                    var exitCode = pwsh.Streams.Error.Count > 0 ? 1 : 0;
 
-                    return new ModeResult(Mode.M6_InvokeSource, stdout, stderr, exitCode, sw.ElapsedMilliseconds);
+                    return new ModeResult(Mode.M6_InvokeSource, stdout, stderr, InProcessExitCode(pwsh), sw.ElapsedMilliseconds);
                 }
                 catch (Exception ex)
                 {
