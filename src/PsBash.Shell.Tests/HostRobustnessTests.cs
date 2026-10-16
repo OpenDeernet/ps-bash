@@ -53,7 +53,9 @@ public class HostRobustnessTests
             int hostPid = ReadHostPid(endpoint);
 
             var otherBegun = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            var other = RunAsync(endpoint, new[] { "-c", "echo begun; sleep 8; echo other-ok" }, "begun", otherBegun);
+            // The host serializes execution, so the deep command waits for this whole sleep: it only has
+            // to outlast the "begun" handshake. It was 8 s, which made each of the five rows ~10 s.
+            var other = RunAsync(endpoint, new[] { "-c", "echo begun; sleep 2; echo other-ok" }, "begun", otherBegun);
             await otherBegun.Task.WaitAsync(Step); // the other session is running on the host now
 
             string cmd = via == "eval"
