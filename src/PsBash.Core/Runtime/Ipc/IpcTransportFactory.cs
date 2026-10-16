@@ -145,7 +145,17 @@ public static class IpcTransportFactory
     /// The override (CLI or env var) is malformed or names an unknown scheme.
     /// </exception>
     public static (string Scheme, string Endpoint) ResolveEndpoint(string? cliOverride = null)
+        => ResolveEndpoint(cliOverride, out _);
+
+    /// <summary>
+    /// <see cref="ResolveEndpoint(string)"/>, also reporting the automatic session anchor
+    /// folded into the endpoint name. <paramref name="sessionAnchor"/> is null when the
+    /// endpoint came from an override, from <c>PSBASH_SESSION</c>, or from the per-user
+    /// fallback — no process then owns the session, so the daemon keeps only its idle timeout.
+    /// </summary>
+    internal static (string Scheme, string Endpoint) ResolveEndpoint(string? cliOverride, out ProcessIdentity? sessionAnchor)
     {
+        sessionAnchor = null;
         if (TryParseEndpointSpec(cliOverride, "--ipc-endpoint", out var cli)) return cli;
 
         var envValue = Environment.GetEnvironmentVariable(EndpointEnvVar);
@@ -156,7 +166,7 @@ public static class IpcTransportFactory
         // agents don't contend on a single shared host (the contention that
         // serializes N callers behind one warm pool and starves it under load).
         // Empty token → the historical per-user endpoint (back-compat).
-        var session = ResolveSessionToken();
+        var session = ResolveSessionToken(out sessionAnchor);
         var suffix = session.Length > 0 ? $"-s{session}" : "";
         if (IsUnixSocketSupported())
         {
@@ -187,13 +197,14 @@ public static class IpcTransportFactory
     /// endpoint. The token is sanitized to the filesystem/pipe-safe charset (it
     /// lands in a socket path / pipe name).
     /// </summary>
-    private static string ResolveSessionToken()
+    private static string ResolveSessionToken(out ProcessIdentity? anchor)
     {
+        anchor = null;
         var explicitSession = Environment.GetEnvironmentVariable(SessionEnvVar);
         if (!string.IsNullOrWhiteSpace(explicitSession))
             return SanitizeUser(explicitSession);
 
-        var anchor = SessionAnchorOverride is { } seam
+        anchor = SessionAnchorOverride is { } seam
             ? seam()
             : ProcessAncestry.FindSessionAnchor();
         if (anchor is not { } id) return "";
@@ -267,7 +278,7 @@ public static class IpcTransportFactory
     /// call returns a new object — transports are typically single-use.
     /// </summary>
     /// <param name="cliOverride">
-    /// Optional explicit override forwarded to <see cref="ResolveEndpoint"/>.
+    /// Optional explicit override forwarded to <see cref="ResolveEndpoint(string)"/>.
     /// </param>
     public static IIpcTransport CreateDefault(string? cliOverride = null)
     {

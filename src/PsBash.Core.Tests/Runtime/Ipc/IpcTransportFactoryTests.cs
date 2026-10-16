@@ -201,6 +201,44 @@ public class IpcTransportFactoryTests : IDisposable
         Assert.NotEqual(a, b);
     }
 
+    // GH #7: the anchor that keys the endpoint is reported so the launcher can hand it to the
+    // daemon it spawns; the daemon exits once that process is gone. Only the automatic
+    // token has an owning process — every other endpoint source reports none.
+    [Fact]
+    public void ResolveEndpoint_AutomaticToken_ReportsTheAnchorItUsed()
+    {
+        IpcTransportFactory.SessionAnchorOverride = () => Anchor(12345, 987654321);
+        IpcTransportFactory.ResolveEndpoint(null, out var anchor);
+        Assert.Equal(Anchor(12345, 987654321), anchor);
+    }
+
+    [Fact]
+    public void ResolveEndpoint_ExplicitSession_ReportsNoAnchor()
+    {
+        IpcTransportFactory.SessionAnchorOverride = () => Anchor(9999, 111);
+        SetSession("explicit");
+        IpcTransportFactory.ResolveEndpoint(null, out var anchor);
+        Assert.Null(anchor);
+    }
+
+    [Fact]
+    public void ResolveEndpoint_EndpointOverride_ReportsNoAnchor()
+    {
+        IpcTransportFactory.SessionAnchorOverride = () => Anchor(9999, 111);
+        IpcTransportFactory.ResolveEndpoint("pipe:custom", out var fromCli);
+        Assert.Null(fromCli);
+        Environment.SetEnvironmentVariable(IpcTransportFactory.EndpointEnvVar, "pipe:custom");
+        IpcTransportFactory.ResolveEndpoint(null, out var fromEnv);
+        Assert.Null(fromEnv);
+    }
+
+    [Fact]
+    public void ResolveEndpoint_NoAnchorAvailable_ReportsNoAnchor()
+    {
+        IpcTransportFactory.ResolveEndpoint(null, out var anchor);
+        Assert.Null(anchor);
+    }
+
     [Fact]
     public void ResolveEndpoint_EndpointOverrideBeatsSession()
     {
