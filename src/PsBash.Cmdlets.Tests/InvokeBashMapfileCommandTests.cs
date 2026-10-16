@@ -13,18 +13,23 @@ namespace PsBash.Cmdlets.Tests;
 /// accepted-but-ignored. <c>-s</c> (skip) is a cmdlet addition required
 /// by the migration task spec.
 /// </summary>
-public class InvokeBashMapfileCommandTests
+public class InvokeBashMapfileCommandTests : IClassFixture<SharedPwshFixture>
 {
+    // A shared, reset-per-test runspace like the other cmdlet suites: a fresh PwshTestFixture.Create()
+    // per test cost ~1.5-2.5 s each (runspace + module load), 36 s for these 12 tests. mapfile only
+    // writes global variables, which SharedPwshFixture.Reset removes between tests.
+    private readonly SharedPwshFixture _fixture;
+
+    public InvokeBashMapfileCommandTests(SharedPwshFixture fixture) => _fixture = fixture;
+
     /// <summary>
     /// Run a script in the PsBash test fixture and return the value of the
     /// named variable as a string[]. Empty / unset variable returns an
     /// empty array.
     /// </summary>
-    private static string[] RunAndReadArray(string script, string varName)
+    private string[] RunAndReadArray(string script, string varName)
     {
-        using var pwsh = PwshTestFixture.Create();
-        pwsh.AddScript("$error.Clear()").Invoke();
-        pwsh.Commands.Clear();
+        var pwsh = _fixture.AcquireFresh();
 
         pwsh.AddScript(script).Invoke();
         pwsh.Commands.Clear();
@@ -44,11 +49,9 @@ public class InvokeBashMapfileCommandTests
     /// <summary>
     /// Run a script and return any error records as strings.
     /// </summary>
-    private static string[] RunAndCollectErrors(string script)
+    private string[] RunAndCollectErrors(string script)
     {
-        using var pwsh = PwshTestFixture.Create();
-        pwsh.AddScript("$error.Clear()").Invoke();
-        pwsh.Commands.Clear();
+        var pwsh = _fixture.AcquireFresh();
 
         pwsh.AddScript(script).Invoke();
         pwsh.Commands.Clear();
@@ -60,9 +63,9 @@ public class InvokeBashMapfileCommandTests
     /// <summary>
     /// Run a script for stdout/help output.
     /// </summary>
-    private static string[] RunLines(string script)
+    private string[] RunLines(string script)
     {
-        using var pwsh = PwshTestFixture.Create();
+        var pwsh = _fixture.AcquireFresh();
         var result = pwsh.AddScript(script).Invoke();
         return result.Select(o => o?.ToString() ?? "").ToArray();
     }
