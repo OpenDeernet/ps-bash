@@ -68,6 +68,13 @@ public static class PwshTestFixture
     static PwshTestFixture()
     {
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PSBASH_NESTED_EXE"))) return;
+        // `tman test` publishes the AOT launcher (scripts/tman-job.ps1, Publish-TestLauncher):
+        // awk/sed/xargs nested commands run through it instead of the ~375 ms/call Debug JIT one.
+        if (Environment.GetEnvironmentVariable("PSBASH_TEST_LAUNCHER") is { Length: > 0 } launcher)
+        {
+            Environment.SetEnvironmentVariable("PSBASH_NESTED_EXE", launcher);
+            return;
+        }
         var bin = OperatingSystem.IsWindows() ? "ps-bash.exe" : "ps-bash";
         var shellBin = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "PsBash.Shell", "bin"));
         foreach (var cfg in new[] { "Debug", "Release" })

@@ -47,6 +47,11 @@ public static class PsBashLocator
     /// </param>
     public static string? Resolve(BuildConfig config = BuildConfig.Auto)
     {
+        // `tman test` publishes the AOT launcher and points every harness at it (see
+        // scripts/tman-job.ps1, Publish-TestLauncher). Returned even when missing, so a bad
+        // override fails loudly instead of silently testing a different binary.
+        if (TestLauncherOverride is { } overridden) return overridden;
+
         var preferred = config switch
         {
             BuildConfig.Debug => "Debug",
@@ -74,6 +79,13 @@ public static class PsBashLocator
     /// for suites (e.g. Escalation) where a missing binary is a hard failure,
     /// not a skip.
     /// </summary>
+    /// <summary>
+    /// The launcher named by <c>PSBASH_TEST_LAUNCHER</c>, or <c>null</c> when unset. Every
+    /// test-side launcher lookup checks this first.
+    /// </summary>
+    public static string? TestLauncherOverride
+        => Environment.GetEnvironmentVariable("PSBASH_TEST_LAUNCHER") is { Length: > 0 } path ? path : null;
+
     public static string ResolveRequired(BuildConfig config = BuildConfig.Auto)
         => Resolve(config)
            ?? throw new InvalidOperationException(

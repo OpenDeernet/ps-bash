@@ -14,9 +14,7 @@ namespace PsBash.Shell.Tests;
 [Trait("Category", "Integration")]
 public class ProcessLifecycleTests
 {
-    private static readonly string PsBashExe = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-            "src", "PsBash.Shell", "bin", "Debug", "net10.0", "ps-bash.exe"));
+    private static readonly string? PsBashExe = InteractiveShellHarness.FindPsBashBinary();
 
     private static bool CanRun => OperatingSystem.IsWindows() && File.Exists(PsBashExe);
 
@@ -29,7 +27,7 @@ public class ProcessLifecycleTests
         // With no -c arg and closed stdin, the process must exit 0 without hanging.
         var psi = new ProcessStartInfo
         {
-            FileName = PsBashExe,
+            FileName = PsBashExe!,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -69,7 +67,7 @@ public class ProcessLifecycleTests
         // ps-bash PID. The Job Object ensures the host dies with us.
         var psi = new ProcessStartInfo
         {
-            FileName = PsBashExe,
+            FileName = PsBashExe!,
             Arguments = "-c \"exit 0\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -253,7 +251,7 @@ public class ProcessLifecycleTests
         var endpoint = PsBashTestProcess.CreateEndpoint();
         var psi = new ProcessStartInfo
         {
-            FileName = PsBashExe,
+            FileName = PsBashExe!,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -337,7 +335,7 @@ public class ProcessLifecycleTests
             {
                 var psi = new ProcessStartInfo
                 {
-                    FileName = PsBashExe,
+                    FileName = PsBashExe!,
                     Arguments = "-c \"echo ok\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,

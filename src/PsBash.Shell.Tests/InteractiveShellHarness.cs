@@ -91,6 +91,11 @@ internal sealed class InteractiveShellHarness : IAsyncDisposable
     /// </summary>
     public static string? FindPsBashBinary()
     {
+        // `tman test` points every harness at the AOT launcher it published
+        // (scripts/tman-job.ps1, Publish-TestLauncher; same contract as PsBashLocator).
+        if (Environment.GetEnvironmentVariable("PSBASH_TEST_LAUNCHER") is { Length: > 0 } launcher)
+            return launcher;
+
         // Walk up from the test assembly base dir to find the repo root, then
         // locate the built binary under src/PsBash.Shell/bin/.
         // On Windows prefer ps-bash.exe; on other platforms prefer the ELF binary.

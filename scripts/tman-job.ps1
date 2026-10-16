@@ -115,6 +115,28 @@ try {
         Invoke-Native dotnet (@('build', 'ps-bash.sln', '-c', 'Debug', '-f', 'net10.0') + $common)
     }
 
+    # The full suite drives `ps-bash -c` thousands of times. The Debug launcher is a JIT process that
+    # spends ~375 ms per call starting the runtime and JIT-compiling the transpiler and IPC client
+    # (PSBASH_TRACE_LAUNCH=1 shows the phases); the AOT launcher we ship does the same call in ~45 ms
+    # because each call is a fresh process. So `test` publishes the AOT launcher once (~2 min) and every harness
+    # runs it via PSBASH_TEST_LAUNCHER (PsBashLocator, InteractiveShellHarness, PwshTestFixture),
+    # which also means the suite exercises the shipped binary. `test-proj` keeps the Debug launcher
+    # for a fast edit loop. PSBASH_TEST_AOT=0 opts out (no native toolchain, e.g. a Windows box
+    # without the C++ build tools); a failed publish stops the run rather than silently testing Debug.
+    function Publish-TestLauncher {
+        if ($env:PSBASH_TEST_AOT -eq '0') {
+            Write-Host 'tman-job: PSBASH_TEST_AOT=0: testing the Debug launcher'
+            return
+        }
+        $rid = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+        $out = Join-Path $repo "artifacts/test-launcher/$rid"
+        Invoke-Native dotnet (@('publish', 'src/PsBash.Shell', '-c', 'Release', '-r', $rid, '-p:PublishAot=true', '-o', $out) + $common)
+        $exe = Join-Path $out ($IsWindows ? 'ps-bash.exe' : 'ps-bash')
+        if (-not (Test-Path -LiteralPath $exe)) { throw "tman-job: AOT publish produced no launcher at $exe (set PSBASH_TEST_AOT=0 to test the Debug launcher)" }
+        $env:PSBASH_TEST_LAUNCHER = $exe
+        Write-Host "tman-job: tests use the AOT launcher $exe"
+    }
+
     switch ($Verb) {
         'build' {
             # Extra args (e.g. a project path) replace the solution.
@@ -123,6 +145,7 @@ try {
         }
         'test' {
             Build-Solution
+            Publish-TestLauncher
             Invoke-Native dotnet (@('test', 'ps-bash.sln', '-c', 'Debug', '-f', 'net10.0', '--no-build') + $common + $Rest)
         }
         'test-proj' {
