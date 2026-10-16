@@ -22,7 +22,7 @@ public class ProcessAncestrySessionAnchorTests
     /// launcher's parent, and <paramref name="nodes"/> describes the rest.
     /// Parent 0 terminates the chain.
     /// </summary>
-    private static ProcessAncestry.ProcessIdentity? SelectFrom(
+    private static ProcessIdentity? SelectFrom(
         int launcherPid, int immediateParent, Dictionary<int, ChainNode> nodes)
     {
         Func<int, int?> parentOf = pid =>

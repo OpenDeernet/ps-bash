@@ -107,7 +107,7 @@ public static class IpcTransportFactory
     // P/Invoke. Null = use the real ProcessAncestry-derived anchor. A provider
     // returning null selects the per-user canonical endpoint (the pre-per-session
     // behavior).
-    internal static Func<ProcessAncestry.ProcessIdentity?>? SessionAnchorOverride { get; set; }
+    internal static Func<ProcessIdentity?>? SessionAnchorOverride { get; set; }
 
     // Test seam: override the launcher process id used in the per-invocation
     // endpoint name, so the sun_path budget can be exercised with a 6-digit pid.

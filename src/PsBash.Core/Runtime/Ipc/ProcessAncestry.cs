@@ -22,13 +22,6 @@ namespace PsBash.Core.Runtime.Ipc;
 /// </remarks>
 internal static partial class ProcessAncestry
 {
-    /// <summary>
-    /// A process's pid paired with its start time (UTC ticks). The start time makes
-    /// the identity unique over time: two different processes that reuse one PID
-    /// still get distinct identities.
-    /// </summary>
-    internal readonly record struct ProcessIdentity(int Pid, long StartTimeUtcTicks);
-
     /// <summary>How far up the ancestry chain the anchor walk may climb.</summary>
     private const int MaxAncestorDepth = 10;
 
@@ -161,7 +154,7 @@ internal static partial class ProcessAncestry
         try
         {
             using var p = System.Diagnostics.Process.GetProcessById(pid);
-            return (p.ProcessName, p.StartTime.ToUniversalTime().Ticks);
+            return (p.ProcessName, ProcessIdentity.StartTicksOf(p));
         }
         catch { return null; }
     }

@@ -35,7 +35,7 @@ public class IpcTransportFactoryTests : IDisposable
         IpcTransportFactory.SessionAnchorOverride = null;
     }
 
-    private static ProcessAncestry.ProcessIdentity Anchor(int pid, long startTicks)
+    private static ProcessIdentity Anchor(int pid, long startTicks)
         => new(pid, startTicks);
 
     private static void SetEnv(string? value)
