@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace PsBash.TestRunner;
@@ -46,8 +47,13 @@ internal static class SuiteRun
         var sw = Stopwatch.StartNew();
         var ordered = assemblies.OrderByDescending(a => LastWall(outDir, a)).ToList();
         Console.WriteLine($"fast pass: {ordered.Count} assemblies, {concurrency} at a time (logs: {outDir})");
-        var fast = RunAll(ordered, concurrency, outDir, "fast", only: null);
+        var running = new StrongBox<int>();
+        var cpu = new CpuSampler(() => Volatile.Read(ref running.Value));
+        var fast = RunAll(ordered, concurrency, outDir, "fast", only: null, running);
         var fastWall = sw.Elapsed.TotalSeconds;
+        var fastCpu = cpu.Stop();
+        if (fastCpu is not null)
+            File.WriteAllText(Path.Combine(outDir, "cpu.fast.json"), JsonSerializer.Serialize(fastCpu, RunnerJson.Options));
 
         var strictResults = new Dictionary<string, AssemblyResult?>();
         if (strict)
@@ -63,7 +69,7 @@ internal static class SuiteRun
         }
 
         var summary = Classify(fast, strictResults, strict);
-        Report.PrintSuite(summary, fast, fastWall, sw.Elapsed.TotalSeconds, Console.Out);
+        Report.PrintSuite(summary, fast, fastCpu, fastWall, sw.Elapsed.TotalSeconds, Console.Out);
         File.WriteAllText(Path.Combine(outDir, "summary.json"), JsonSerializer.Serialize(summary, RunnerJson.Options));
         return summary.RealFailures.Count == 0 && summary.Crashed.Count == 0 ? 0 : 1;
     }
@@ -103,15 +109,16 @@ internal static class SuiteRun
     }
 
     private static Dictionary<string, AssemblyResult?> RunAll(
-        List<string> assemblies, int concurrency, string outDir, string tier, List<string>? only)
+        List<string> assemblies, int concurrency, string outDir, string tier, List<string>? only, StrongBox<int> running)
     {
         var results = new Dictionary<string, AssemblyResult?>();
         using var gate = new SemaphoreSlim(concurrency);
         var tasks = assemblies.Select(async asm =>
         {
             await gate.WaitAsync();
+            Interlocked.Increment(ref running.Value);
             try { return (asm, result: await Task.Run(() => RunOne(asm, outDir, tier, only, threads: 0))); }
-            finally { gate.Release(); }
+            finally { Interlocked.Decrement(ref running.Value); gate.Release(); }
         }).ToList();
         foreach (var t in tasks)
         {

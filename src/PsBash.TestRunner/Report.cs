@@ -17,7 +17,7 @@ internal static class Report
     }
 
     public static void PrintSuite(
-        SuiteRun.SuiteSummary s, Dictionary<string, AssemblyResult?> fast, double fastWall, double totalWall, TextWriter w)
+        SuiteRun.SuiteSummary s, Dictionary<string, AssemblyResult?> fast, CpuSampler.CpuProfile? cpu, double fastWall, double totalWall, TextWriter w)
     {
         w.WriteLine();
         foreach (var c in s.Crashed) w.WriteLine($"CRASHED {c}");
@@ -25,9 +25,22 @@ internal static class Report
             w.WriteLine($"FAIL {f.Assembly} {f.Test}\n{Indent(f.StrictMessage ?? f.FastMessage)}");
         foreach (var f in s.FastOnlyFailures)
             w.WriteLine($"FAST-ONLY {f.Assembly} {f.Test} (failed in the fast pass, passed strict: contention or isolation)\n{Indent(f.FastMessage)}");
+        if (cpu is not null) w.WriteLine(CpuLine(cpu));
         int passed = fast.Values.Sum(r => r?.Passed ?? 0), skipped = fast.Values.Sum(r => r?.Skipped ?? 0);
         w.WriteLine($"suite: passed={passed} failed={s.RealFailures.Count} fast-only={s.FastOnlyFailures.Count} crashed={s.Crashed.Count} " +
                     $"skipped={skipped} fast-pass={fastWall:0}s total={totalWall:0}s{(s.StrictRan ? "" : " (strict pass skipped)")}");
+    }
+
+    /// <summary>
+    /// Saturated most of the time: the suite is CPU-bound and only less work shortens it. Low use
+    /// with one assembly running: a serial long pole, which more cores do not help.
+    /// </summary>
+    internal static string CpuLine(CpuSampler.CpuProfile c)
+    {
+        var tail = c.Timeline.Where(t => t.RunningAssemblies <= 1).ToList();
+        var tailText = tail.Count == 0 ? "" : $", single-assembly tail={tail.Count}s at {tail.Average(t => t.BusyPercent):0}% busy";
+        return $"cpu (fast pass, {c.Cores} cores): mean={c.MeanBusyPercent:0}% p50={c.P50BusyPercent:0}% p90={c.P90BusyPercent:0}% " +
+               $"saturated(>={CpuSampler.SaturatedBusyPercent:0}%)={c.SaturatedFraction * 100:0}% of {c.Samples}s iowait={c.MeanIoWaitPercent:0.#}%{tailText}";
     }
 
     private static string Indent(string? s)
