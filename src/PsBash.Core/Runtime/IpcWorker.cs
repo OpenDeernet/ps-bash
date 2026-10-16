@@ -1329,11 +1329,36 @@ public sealed class IpcWorker : IWorker
         try
         {
             using var p = Process.GetProcessById(pid);
-            return !p.HasExited;
+            return !p.HasExited && !IsLinuxZombie(pid);
         }
         catch (ArgumentException) { return false; }        // no such process
         catch (InvalidOperationException) { return false; } // exited / no handle
         catch { return true; }                               // unsure ⇒ don't force a retry
+    }
+
+    /// <summary>
+    /// A killed host that is not our child stays a zombie until init reaps it, and .NET reports a
+    /// zombie as not exited. A launcher fast enough to probe inside that window (the AOT one)
+    /// then said "still running but dropped the connection" for a host that had died.
+    /// </summary>
+    private static bool IsLinuxZombie(int pid)
+    {
+        if (!OperatingSystem.IsLinux()) return false;
+        try { return IsDeadProcStatState(File.ReadAllText($"/proc/{pid}/stat")); }
+        catch (IOException) { return true; }               // vanished between the two probes
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    /// <summary>
+    /// True when a <c>/proc/&lt;pid&gt;/stat</c> line is in state Z (zombie) or X (dead). The state
+    /// is the field after the LAST ')' — the command name in parentheses may itself contain ')'.
+    /// </summary>
+    internal static bool IsDeadProcStatState(string stat)
+    {
+        int close = stat.LastIndexOf(')');
+        if (close < 0 || close + 2 >= stat.Length) return false;
+        char state = stat[close + 2];
+        return state is 'Z' or 'X';
     }
 
     /// <summary>
