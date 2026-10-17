@@ -63,6 +63,14 @@ public class BashPatternTests
         => Assert.Equal(expected, BashPattern.HasExtGlob(pattern));
 
     [Fact]
+    public void ToRegex_DeeplyNestedGroups_IsAParseErrorNotAStackOverflow()
+    {
+        const int n = 20000;
+        var pattern = string.Concat(Enumerable.Repeat("@(", n)) + "a" + new string(')', n);
+        Assert.Throws<ParseException>(() => BashPattern.ToAnchoredRegex(pattern));
+    }
+
+    [Fact]
     public void ToRegex_UnterminatedList_IsLiteral()
         => Assert.Matches(new Regex(BashPattern.ToAnchoredRegex("@(a")), "@(a");
 }

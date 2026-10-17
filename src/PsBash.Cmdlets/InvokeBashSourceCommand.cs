@@ -91,12 +91,19 @@ public sealed class InvokeBashSourceCommand : PSCmdlet
             return null;
         }
 
+        // bash: sourcing a file with no commands succeeds (`false; . empty.sh; echo $?` -> 0).
         if (string.IsNullOrWhiteSpace(content))
+        {
+            SessionState.PSVariable.Set("global:LASTEXITCODE", 0);
             return null;
+        }
 
         var result = BashTranspiler.Transpile(content, TranspileContext.Eval);
         if (string.IsNullOrEmpty(result))
+        {
+            SessionState.PSVariable.Set("global:LASTEXITCODE", 0);
             return null;
+        }
 
         // bash: `source f a b` sets $1.. to a b for the file, then RESTORES the caller's; with no
         // arguments the caller's positional parameters stay visible. This used to clear them

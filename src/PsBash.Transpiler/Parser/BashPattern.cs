@@ -109,6 +109,9 @@ public static class BashPattern
         private bool TryExtGlob(ref int pos, out string regex)
         {
             regex = "";
+            // Sequence ↔ TryExtGlob recurse once per nested group: bounded like every other descent
+            // (a pattern with 20,000 nested groups overflowed the stack and killed the host).
+            using var nesting = NestingGuard.Enter();
             char op = raw[pos];
             int p = pos + 2;
             var items = new List<string>();

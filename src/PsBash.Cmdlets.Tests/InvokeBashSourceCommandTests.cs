@@ -34,6 +34,24 @@ public class InvokeBashSourceCommandTests : IClassFixture<SharedPwshFixture>
     }
 
     [Fact]
+    public void SourceEmptyFile_ResetsAPreviousFailureStatus()
+    {
+        var pwsh = _fixture.AcquireFresh();
+        var tempFile = Path.Combine(Path.GetTempPath(), $"psbash_source_empty_{Guid.NewGuid()}.sh");
+        File.WriteAllText(tempFile, "");
+        try
+        {
+            var result = pwsh.AddScript(
+                $"$global:LASTEXITCODE = 1; $null = Invoke-BashSource -AsScriptBlock '{tempFile.Replace("'", "''")}'; $global:LASTEXITCODE").Invoke();
+            Assert.Equal("0", result[^1].ToString());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public void SourcePs1File_DotSourcesNatively()
     {
         var pwsh = _fixture.AcquireFresh();

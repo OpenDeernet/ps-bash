@@ -4872,6 +4872,15 @@ public class PsEmitterTests
         Assert.Equal("$ErrorActionPreference = 'Stop'; $global:__BashErrexit = $true; if (-not (Test-Path variable:global:__BashErrexitSuppress)) { $global:__BashErrexitSuppress = 0 }; Set-StrictMode -Version Latest", result);
     }
 
+    [Fact]
+    public void Transpile_SourceFileNamedLikeTheCmdlet_KeepsTheSwitchOnTheCmdlet()
+    {
+        Assert.Equal(". $(Invoke-BashSource -AsScriptBlock Invoke-BashSource.sh)",
+            PsEmitter.Transpile("source Invoke-BashSource.sh"));
+        var split = PsEmitter.Transpile("source $f Invoke-BashSource.sh");
+        Assert.Contains("Invoke-BashSource -AsScriptBlock @__bashsplat0 Invoke-BashSource.sh", split);
+    }
+
     // source file.sh -> the CALLER dot-sources the prepared block, so the file's output streams
     [Fact]
     public void Transpile_SourceShFile_EmitsInvokeBashSource()

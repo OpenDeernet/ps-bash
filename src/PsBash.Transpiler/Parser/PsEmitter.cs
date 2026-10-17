@@ -3203,9 +3203,8 @@ public static class PsEmitter
         // `& { $__bashsplat0 = …; Invoke-BashSource @__bashsplat0 }`, where a trailing switch would be
         // an argument of the script block. The operands are ordered-arg quoted, so none binds to it.
         const string Cmdlet = "Invoke-BashSource";
-        string call = EmitPassthrough(Cmdlet, cmd.Words.RemoveAt(0));
-        int at = call.LastIndexOf(Cmdlet, StringComparison.Ordinal) + Cmdlet.Length;
-        return ". $(" + call.Insert(at, " -AsScriptBlock") + ")";
+        // (Spliced by EmitPassthrough, not searched for in the text: a file named Invoke-BashSource.sh.)
+        return ". $(" + EmitPassthrough(Cmdlet, cmd.Words.RemoveAt(0), cmdletSwitch: " -AsScriptBlock") + ")";
     }
 
     private static string EmitMappedStandalone(Command.Simple cmd, string mapped)
@@ -7486,10 +7485,11 @@ public static class PsEmitter
     private static string EmitPassthrough(
         string cmdlet,
         ImmutableArray<CompoundWord> args,
-        IReadOnlySet<string>? forceQuoteFlags = null)
+        IReadOnlySet<string>? forceQuoteFlags = null,
+        string cmdletSwitch = "")
     {
         if (args.IsEmpty)
-            return cmdlet;
+            return cmdlet + cmdletSwitch;
 
         var pipelineProcessSubIndex = GetPipelineProcessSubArgIndex(cmdlet, args);
 
@@ -7546,9 +7546,9 @@ public static class PsEmitter
         // empty-word elision match bash. The pipeline process-sub operand is
         // never a pure variable word, so it is unaffected.
         if (HasUnquotedVarSplatArg(args, pipelineProcessSubIndex))
-            return EmitCommandWithSplatArgs(cmdlet, args, EmitPlainArg);
+            return EmitCommandWithSplatArgs(cmdlet + cmdletSwitch, args, EmitPlainArg);
 
-        var sb = new StringBuilder(cmdlet);
+        var sb = new StringBuilder(cmdlet).Append(cmdletSwitch);
         for (int i = 0; i < args.Length; i++)
         {
             sb.Append(' ');

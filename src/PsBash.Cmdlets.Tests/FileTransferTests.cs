@@ -254,4 +254,31 @@ public class FileTransferTests : IDisposable, IClassFixture<SharedPwshFixture>
     [InlineData("pwsh.exe", false)]
     public void IsTransient_OnlyScannersAreWaitedOut(string name, bool expected)
         => Assert.Equal(expected, FileTransfer.IsTransient(name));
+
+    [SkippableFact]
+    public void Cp_SourceNamedLikeAnAside_SurvivesTheReplace()
+    {
+        Skip.IfNot(OperatingSystem.IsWindows(), "Windows file sharing");
+        Write(".t.psbash-replaced-12345678", "new"); Write("b", "old");
+        Hold("b", FileShare.Read | FileShare.Delete);
+
+        InTmp("Invoke-BashCp .t.psbash-replaced-12345678 b").AssertSuccess();
+
+        Assert.Equal("new", Read("b"));
+        Assert.Equal("new", Read(".t.psbash-replaced-12345678"));
+    }
+
+    [Fact]
+    public void ReplaceAside_PlaceFailsLeavingAPartialFile_RestoresTheOriginal()
+    {
+        Write("src", "new"); Write("dest", "old");
+
+        Assert.Throws<IOException>(() => FileTransfer.ReplaceAside(P("src"), P("dest"),
+            overwrite: () => throw new IOException("locked"),
+            place: () => { File.WriteAllText(P("dest"), "part"); throw new IOException("disk full"); },
+            clearReadOnly: false, original: new IOException("locked")));
+
+        Assert.Equal("old", Read("dest"));
+        Assert.Empty(Directory.GetFiles(_tmp, ".*psbash-replaced-*"));
+    }
 }

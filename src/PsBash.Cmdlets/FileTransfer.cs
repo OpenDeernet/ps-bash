@@ -51,7 +51,7 @@ public static class FileTransfer
             try { File.Move(src, dest, overwrite: true); }
             catch (Exception ex) when (CanReplaceAside(ex, src, dest))
             {
-                ReplaceAside(dest, () => File.Move(src, dest, overwrite: true), () => File.Move(src, dest),
+                ReplaceAside(src, dest, () => File.Move(src, dest, overwrite: true), () => File.Move(src, dest),
                     clearReadOnly: true, ex);
             }
         }, () => ExistingOf(src, dest));
@@ -75,7 +75,7 @@ public static class FileTransfer
             try { File.Copy(src, dest, overwrite: true); }
             catch (Exception ex) when (CanReplaceAside(ex, src, dest) && !IsReadOnly(dest) && !HasOtherLinks(dest))
             {
-                ReplaceAside(dest, () => File.Copy(src, dest, overwrite: true), () => File.Copy(src, dest, overwrite: false),
+                ReplaceAside(src, dest, () => File.Copy(src, dest, overwrite: true), () => File.Copy(src, dest, overwrite: false),
                     clearReadOnly: false, ex);
             }
         }, () => ExistingOf(src, dest));
@@ -299,7 +299,7 @@ public static class FileTransfer
     /// then the old file is renamed aside. Nothing is deleted until the new file is in place, and any
     /// failure puts the old one back.
     /// </summary>
-    private static void ReplaceAside(string dest, Action overwrite, Action place, bool clearReadOnly, Exception original)
+    internal static void ReplaceAside(string src, string dest, Action overwrite, Action place, bool clearReadOnly, Exception original)
     {
         var attributes = File.GetAttributes(dest);
         bool readOnly = (attributes & FileAttributes.ReadOnly) != 0;
@@ -317,7 +317,7 @@ public static class FileTransfer
             }
         }
 
-        SweepAsides(dest);
+        SweepAsides(dest, src);
         var aside = File.Exists(dest) ? MoveAside(dest) : null;
         if (aside is null && File.Exists(dest))
         {
@@ -332,6 +332,12 @@ public static class FileTransfer
         {
             if (aside is not null)
             {
+                // A failed place can leave a partial file under the name; it blocks putting the original back.
+                if (File.Exists(dest))
+                {
+                    try { FileSystemHelpers.DeleteFileForce(dest); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                }
                 Restore(aside, dest);
                 if (clearReadOnly && readOnly) TrySetAttributes(dest, attributes);
             }
@@ -351,16 +357,19 @@ public static class FileTransfer
     private static string AsideName(string path) =>
         "." + Path.GetFileName(Path.TrimEndingDirectorySeparator(path)) + AsideMarker + Guid.NewGuid().ToString("N")[..8];
 
-    /// <summary>Removes earlier move-aside leftovers next to <paramref name="path"/> whose process has let go.</summary>
-    private static void SweepAsides(string path)
+    /// <summary>Removes earlier move-aside leftovers next to <paramref name="path"/> whose process has let go.
+    /// <paramref name="keep"/> (the operation's own source) is never swept, whatever it is named.</summary>
+    private static void SweepAsides(string path, string keep)
     {
         var parent = Path.GetDirectoryName(Path.GetFullPath(path));
         if (parent is null) return;
+        var keepFull = Path.GetFullPath(keep);
         try
         {
             foreach (var old in Directory.EnumerateFiles(parent, "." + "*" + AsideMarker + "*",
                          new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = true }))
             {
+                if (string.Equals(Path.GetFullPath(old), keepFull, StringComparison.OrdinalIgnoreCase)) continue;
                 try { FileSystemHelpers.DeleteFileForce(old); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             }
