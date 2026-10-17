@@ -3865,9 +3865,11 @@ public static class PsEmitter
             var part = word.Parts[i];
             sb.Append(EmitWordPart(part));
 
-            // After TildeSub, insert backslash separator if more parts follow.
+            // After TildeSub, restore the '/' ParseTilde consumed if more parts follow. bash
+            // appends the rest of the word verbatim; a '\' here made `~/x` a literal
+            // `/home/u\x` on Linux, so `cd ~/x` failed. Windows accepts '/' too.
             if (part is WordPart.TildeSub && i + 1 < word.Parts.Length)
-                sb.Append('\\');
+                sb.Append('/');
         }
         return EscapeLeadingSplatSigil(word, TransformWordPath(sb.ToString()));
     }
@@ -4152,7 +4154,7 @@ public static class PsEmitter
             // `PATH=~/bin:~/x` emitted "$HOMEbin:$HOMEx" — and `$HOMEbin` is not a
             // valid PowerShell variable reference, so the whole file failed to parse.
             if (part is WordPart.TildeSub && i + 1 < parts.Length)
-                sb.Append('\\');
+                sb.Append('/');
         }
     }
 
@@ -6665,9 +6667,8 @@ public static class PsEmitter
         else
         {
             var emitted = EmitWord(args[0]);
-            if (emitted.StartsWith("$HOME\\", StringComparison.Ordinal) ||
-                emitted.StartsWith("$HOME/", StringComparison.Ordinal))
-                targetExpr = "$HOME + " + QuotePsString("\\" + emitted["$HOME\\".Length..]);
+            if (emitted.StartsWith("$HOME/", StringComparison.Ordinal))
+                targetExpr = "$HOME + " + QuotePsString(emitted["$HOME".Length..]);
             else if (emitted.StartsWith('~'))
                 // Unresolved ~user / ~N (dirstack) has no PowerShell equivalent and degrades
                 // to the literal bareword text (WordPart.TildeSub's `_ => $"~{ts.User}"`

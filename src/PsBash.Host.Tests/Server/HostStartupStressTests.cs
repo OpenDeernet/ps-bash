@@ -141,7 +141,7 @@ public sealed class HostStartupStressTests
         try { IpcTransportFactory.RetireEndpoint(scheme, endpoint); } catch { }
     }
 
-    private static string? TryLocateHostBinary()
+    internal static string? TryLocateHostBinary()
     {
         var name = OperatingSystem.IsWindows() ? "ps-bash-host.exe" : "ps-bash-host";
         var asmDir = Path.GetDirectoryName(typeof(HostStartupStressTests).Assembly.Location)!;

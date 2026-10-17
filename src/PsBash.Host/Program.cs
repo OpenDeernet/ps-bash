@@ -173,6 +173,8 @@ internal sealed class Program
 
         int? launcherPid = GetNonInteractiveLauncherPid(args);
         await using var deathWatcher = ParentDeathWatcher.TryCreate(launcherPid, cts);
+        // A daemon keyed by a session anchor exits soon after that session is gone (GH #7).
+        await using var anchorWatcher = SessionAnchorWatcher.TryCreate(GetSessionAnchor(args), idle);
 
         await using var server = new HostServer(transport, pool, idle);
 
@@ -266,6 +268,9 @@ internal sealed class Program
         var val = GetArg(args, name);
         return int.TryParse(val, out var n) ? n : null;
     }
+
+    internal static ProcessIdentity? GetSessionAnchor(string[] args)
+        => ProcessIdentity.TryParse(GetArg(args, ProcessIdentity.SessionAnchorArg), out var anchor) ? anchor : null;
 
     internal static int? GetNonInteractiveLauncherPid(string[] args)
     {

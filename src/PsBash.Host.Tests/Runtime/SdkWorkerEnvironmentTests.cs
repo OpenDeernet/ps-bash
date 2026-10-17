@@ -71,6 +71,78 @@ public class SdkWorkerEnvironmentTests : IAsyncLifetime
         Assert.False(PsBash.Core.Runtime.Ipc.IpcTransportFactory.IsInsideHostCommand());
     }
 
+    // bash `$HOME` / `~` emit PowerShell `$HOME` and the provider `~`, which a runspace captures
+    // when it is CREATED — from the daemon's environment. Pre-fix a launcher with its own HOME
+    // read the daemon's (`cd ~/x` went to the wrong tree), and switching back must work too.
+    [Fact]
+    public async Task Environment_LauncherHome_DrivesHomeVariableAndTilde()
+    {
+        var worker = _fixture.CreateWorker();
+        var homeVar = OperatingSystem.IsWindows() ? "USERPROFILE" : "HOME";
+        var daemonHome = Environment.GetEnvironmentVariable(homeVar)!;
+        var launcherHome = Directory.CreateTempSubdirectory("psbash-home-").FullName;
+        const string probe = "Invoke-BashEcho \"var=$HOME\"; Invoke-BashEcho \"tilde=$((Resolve-Path ~).ProviderPath)\"";
+        try
+        {
+            var asLauncher = await RunAsync(worker, probe,
+                Block(new[] { new KeyValuePair<string, string>(homeVar, launcherHome) }));
+            var asDaemon = await RunAsync(worker, probe,
+                Block(new[] { new KeyValuePair<string, string>(homeVar, daemonHome) }));
+
+            // Output is coalesced into multi-line frames: compare whole lines.
+            static string[] Lines(List<string> frames)
+                => string.Concat(frames).Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Assert.Equal(0, asLauncher.ExitCode);
+            Assert.Equal(new[] { $"var={launcherHome}", $"tilde={launcherHome}" }, Lines(asLauncher.Lines));
+            Assert.Equal(new[] { $"var={daemonHome}", $"tilde={daemonHome}" }, Lines(asDaemon.Lines));
+        }
+        finally
+        {
+            Directory.Delete(launcherHome, recursive: true);
+        }
+    }
+
+    // WSL with Windows dirs on PATH: each command-not-found pays PowerShell's wildcard listing of
+    // every /mnt dir (~9 s for System32 alone). The first miss in a host says why and how to fix it;
+    // later misses and non-WSL hosts keep the plain bash message.
+    [SkippableFact]
+    public async Task CommandNotFound_WslWindowsPath_HintsOncePerHost()
+    {
+        Skip.IfNot(OperatingSystem.IsLinux(), "WSL hint is Linux-only");
+        const string flag = "PsBash.WslPathHintShown";
+        AppContext.SetData(flag, null); // the hint is once per process; other tests may have tripped it
+        var worker = _fixture.CreateWorker();
+        var path = "/mnt/z/psbash-no-such-dir:" + Environment.GetEnvironmentVariable("PATH");
+        var miss = "pbnope" + Guid.NewGuid().ToString("N")[..8];
+
+        async Task<string> MissAsync(params KeyValuePair<string, string>[] set)
+        {
+            var err = new List<string>();
+            var exit = await worker.ExecuteWithOutputAsync(miss, _ => { }, err.Add, default,
+                Block(set.Append(new("PATH", path)), "WSL_DISTRO_NAME"));
+            Assert.Equal(127, exit);
+            return string.Concat(err);
+        }
+
+        try
+        {
+            var notWsl = await MissAsync();
+            var first = await MissAsync(new KeyValuePair<string, string>("WSL_DISTRO_NAME", "test"));
+            var second = await MissAsync(new KeyValuePair<string, string>("WSL_DISTRO_NAME", "test"));
+
+            Assert.DoesNotContain("appendWindowsPath", notWsl);
+            Assert.Contains($"{miss}: command not found", first);
+            Assert.Matches(@"PATH has [1-9]\d* Windows directories under /mnt", first);
+            Assert.Contains("appendWindowsPath=false", first);
+            Assert.Contains($"{miss}: command not found", second);
+            Assert.DoesNotContain("appendWindowsPath", second);
+        }
+        finally
+        {
+            AppContext.SetData(flag, null);
+        }
+    }
+
     // A var CHANGED between two invocations must be observed by the second.
     // Pre-fix the worker reuses whatever the process environment held from the
     // previous run (or from host spawn), so the second prints the first value.

@@ -1919,7 +1919,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("ls ~/docs");
 
-        Assert.Equal("Invoke-BashLs $HOME\\docs", result);
+        Assert.Equal("Invoke-BashLs $HOME/docs", result);
     }
 
     [Fact]
@@ -2044,6 +2044,20 @@ public class PsEmitterTests
         Assert.Contains("Set-Location -LiteralPath $__psbash_cd_resolved -ErrorAction SilentlyContinue", result);
     }
 
+    [Theory]
+    [InlineData("cd ~/work/x", "$__psbash_cd_target = $HOME + '/work/x'")]
+    [InlineData("ls ~/work/x", "Invoke-BashLs $HOME/work/x")]
+    public void Transpile_TildeSlash_KeepsForwardSlashSeparator(string bash, string expectedPrefix)
+    {
+        // bash appends the rest of the word to $HOME verbatim. A hard-coded '\' made `cd ~/x`
+        // look for `/home/u\x` on Linux and fail (ps-bash-specific emit shape; e2e oracle in
+        // AgentPatternEndToEndTests.Pwd_AfterHomeRelativeCd_PrintsDirectory).
+        var result = PsEmitter.Transpile(bash);
+
+        Assert.StartsWith(expectedPrefix, result);
+        Assert.DoesNotContain("$HOME\\", result);
+    }
+
     [Fact]
     public void Transpile_CdTildeUser_QuotesUnresolvedTildeLiteral()
     {
@@ -2142,7 +2156,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("ls ~/.config/app");
 
-        Assert.Equal("Invoke-BashLs $HOME\\.config/app", result);
+        Assert.Equal("Invoke-BashLs $HOME/.config/app", result);
     }
 
     [Fact]
@@ -2150,7 +2164,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("ls ~bob/docs");
 
-        Assert.Equal("Invoke-BashLs ~bob\\docs", result);
+        Assert.Equal("Invoke-BashLs ~bob/docs", result);
     }
 
     [Fact]
@@ -6170,7 +6184,7 @@ public class PsEmitterTests
     [InlineData("$gobin/go help", "& \"$env:gobin/go\" help")]
     [InlineData("$dir/$name x", "& \"$env:dir/$env:name\" x")]
     [InlineData("\"$d\"/go v", "& \"$env:d/go\" v")]
-    [InlineData("~/bin/foo a", "& \"$HOME\\bin/foo\" a")]
+    [InlineData("~/bin/foo a", "& \"$HOME/bin/foo\" a")]
     public void Transpile_ComposedCommandWord_EmitsCallOperatorAndSingleToken(
         string bash, string expected)
         => Assert.Equal(expected, PsEmitter.Transpile(bash));

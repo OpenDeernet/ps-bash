@@ -35,6 +35,7 @@ jobs:
       contents: write
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - id: tag
         shell: bash
@@ -45,6 +46,7 @@ jobs:
             *) tag='v${{ github.event.inputs.version }}' ;;
           esac
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
       - name: Create the GitHub release for a pushed tag
         if: github.event_name == 'push'
         env:
@@ -85,13 +87,18 @@ jobs:
       # platform. The launcher is the only AOT-published binary; the host is
       # non-AOT (Microsoft.PowerShell.SDK is not AOT-compatible) and is
       # published self-contained without warnaserror.
+      #
+      # /p:Version stamps the release into both binaries. The csproj <Version> is only patched
+      # in the `publish` job (for NuGet), so every archive used to report the stale csproj
+      # value: a v0.11.5 zip printed "ps-bash, version 0.10.19" (GH #7). The smoke step below
+      # now fails the release if `--version` disagrees with the tag.
       - name: Publish AOT launcher binary
-        run: dotnet publish src/PsBash.Shell -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishAot=true /p:StripSymbols=true /warnaserror -o ./publish/launcher
+        run: dotnet publish src/PsBash.Shell -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishAot=true /p:StripSymbols=true /p:Version=${{ needs.release-tag.outputs.version }} /warnaserror -o ./publish/launcher
 
       # Host is non-AOT — Microsoft.PowerShell.SDK is not AOT-compatible.
       # Self-contained so the SDK runtime assets ship inside the host folder.
       - name: Publish ps-bash-host binary
-        run: dotnet publish src/PsBash.Host -c Release -r ${{ matrix.rid }} --self-contained true -o ./publish/host
+        run: dotnet publish src/PsBash.Host -c Release -r ${{ matrix.rid }} --self-contained true /p:Version=${{ needs.release-tag.outputs.version }} -o ./publish/host
 
       - name: Package binary
         shell: pwsh
@@ -133,7 +140,7 @@ jobs:
       # See docs/bugs/publish-host-missing-sma.md.
       - name: Smoke-test staged archive
         shell: pwsh
-        run: ./scripts/smoke-archive.ps1 -StageDir ./publish/stage
+        run: ./scripts/smoke-archive.ps1 -StageDir ./publish/stage -ExpectedVersion '${{ needs.release-tag.outputs.version }}'
 
       - name: Upload release asset
         env:

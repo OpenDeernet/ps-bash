@@ -24,7 +24,8 @@ public sealed class IdleShutdown : IDisposable
         int.TryParse(Environment.GetEnvironmentVariable("PSBASH_HOST_IDLE_SECS"), out var s) && s > 0 ? s : 600);
 
     private readonly CancellationTokenSource _cts;
-    private readonly TimeSpan _timeout;
+    private TimeSpan _timeout;
+    private string? _shortenedReason;
     private readonly object _gate = new();
     private int _inFlight;
     private Timer? _timer;
@@ -47,6 +48,23 @@ public sealed class IdleShutdown : IDisposable
         _recordExitReason = recordExitReason ?? HostLog.SetExitReason;
         // Host starts idle; schedule first fire.
         lock (_gate) ScheduleTimer();
+    }
+
+    /// <summary>
+    /// Lower the idle timeout to <paramref name="grace"/> (never raises it) and restart the
+    /// countdown if no connection is in flight. In-flight connections still finish: the host
+    /// exits <paramref name="grace"/> after the last one ends. Used when the session that keys
+    /// this daemon is gone (<see cref="SessionAnchorWatcher"/>), so nothing new can arrive.
+    /// </summary>
+    public void ShortenTimeout(TimeSpan grace, string reason)
+    {
+        lock (_gate)
+        {
+            if (grace >= _timeout) return;
+            _timeout = grace;
+            _shortenedReason = reason;
+            if (_inFlight == 0 && Volatile.Read(ref _disposed) == 0) ScheduleTimer();
+        }
     }
 
     public void ConnectionStarted()
@@ -89,7 +107,9 @@ public sealed class IdleShutdown : IDisposable
         {
             if (generation != _generation) return; // superseded — a newer schedule/cancel won the race
             if (_inFlight > 0) return;              // a connection started concurrently — do not tear down
-            _recordExitReason($"idle timeout ({_timeout.TotalSeconds:0}s with no connection)");
+            _recordExitReason(_shortenedReason is { } why
+                ? $"{why}; idle {_timeout.TotalSeconds:0}s with no connection"
+                : $"idle timeout ({_timeout.TotalSeconds:0}s with no connection)");
             _cts.TryCancel();
         }
     }

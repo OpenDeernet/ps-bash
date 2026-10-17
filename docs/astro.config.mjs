@@ -67,6 +67,7 @@ export default defineConfig({
           items: [
             { label: 'Object Types', slug: 'reference/object-types' },
             { label: 'Cross-Platform', slug: 'reference/cross-platform' },
+            { label: 'The Host Daemon', slug: 'reference/host-daemon' },
             { label: 'ls Provider Architecture', slug: 'reference/ls-provider-architecture' },
           ],
         },

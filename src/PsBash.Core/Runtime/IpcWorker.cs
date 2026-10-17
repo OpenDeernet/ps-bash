@@ -177,14 +177,19 @@ public sealed class IpcWorker : IWorker
             }
         }
 
+        ProcessIdentity? sessionAnchor = null;
         var (scheme, endpoint) = lifetime == Lifetime.PerInvocation
             ? IpcTransportFactory.ResolvePerInvocationEndpoint()
             : nestDepth > 0
                 ? IpcTransportFactory.ResolveNestedEndpoint(nestDepth)
-                : IpcTransportFactory.ResolveEndpoint();
+                : IpcTransportFactory.ResolveEndpoint(null, out sessionAnchor);
         var timeout = startupTimeout ?? GetStartupTimeout();
         var poll = startupPollInterval ?? TimeSpan.FromMilliseconds(50);
-        var worker = new IpcWorker(scheme, endpoint, hostBinaryPath, timeout, poll, lifetime) { _nestDepth = nestDepth };
+        var worker = new IpcWorker(scheme, endpoint, hostBinaryPath, timeout, poll, lifetime)
+        {
+            _nestDepth = nestDepth,
+            _sessionAnchor = sessionAnchor,
+        };
         if (lifetime == Lifetime.PerInvocation)
             await worker.SpawnPrivateHostAsync(ct).ConfigureAwait(false);
         else
@@ -562,6 +567,10 @@ public sealed class IpcWorker : IWorker
     }
 
     private int _nestDepth;
+    // The process whose session keys this daemon's endpoint (null for an explicit endpoint,
+    // PSBASH_SESSION, nested, or per-user daemons). Passed to a daemon this worker spawns so it
+    // exits once the session is gone instead of idling out (GH #7).
+    private ProcessIdentity? _sessionAnchor;
     private const string NestedIdleEnvVar = "PSBASH_HOST_IDLE_SECS";
     private const int NestedIdleSecs = 60;
 
@@ -575,6 +584,12 @@ public sealed class IpcWorker : IWorker
         // outlive any single launcher.
         if (_lifetime == Lifetime.PerInvocation)
             args.Add($"--launcher-pid={Environment.ProcessId}");
+        // The daemon outlives this launcher but not its session: it watches the anchor that
+        // keyed its endpoint and exits soon after that process is gone. Without this, an
+        // anchor that is a per-call shell (an unrecognized agent above it) left one idle
+        // daemon per call for the full idle timeout.
+        else if (_sessionAnchor is { } anchor)
+            args.Add($"{ProcessIdentity.SessionAnchorArg}={anchor.ToArgumentValue()}");
 
         Process? proc = null;
         bool spawnSucceeded = false;

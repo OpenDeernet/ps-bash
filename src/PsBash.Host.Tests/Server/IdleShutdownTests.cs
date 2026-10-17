@@ -142,4 +142,48 @@ public sealed class IdleShutdownTests
         Assert.True(cts.IsCancellationRequested,
             "A non-superseded, non-racing timer callback must still cancel the CTS on idle expiry");
     }
+
+    // GH #7: once the session that keys a daemon is gone, the idle timeout drops to a short grace.
+
+    [Fact]
+    public void ShortenTimeout_WhileIdle_FiresWithinGrace()
+    {
+        using var cts = new CancellationTokenSource();
+        string? reason = null;
+        using var idle = new IdleShutdown(cts, TimeSpan.FromHours(1), r => reason = r);
+
+        idle.ShortenTimeout(TimeSpan.FromMilliseconds(50), "session anchor 1:2 exited");
+
+        Assert.True(cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)),
+            "a shortened timeout must fire on an idle host instead of waiting out the original hour");
+        Assert.Contains("session anchor 1:2 exited", reason);
+    }
+
+    [Fact]
+    public void ShortenTimeout_WithConnectionInFlight_WaitsForItToEnd()
+    {
+        using var cts = new CancellationTokenSource();
+        using var idle = new IdleShutdown(cts, TimeSpan.FromHours(1), _ => { });
+
+        idle.ConnectionStarted();
+        idle.ShortenTimeout(TimeSpan.FromMilliseconds(50), "anchor gone");
+        Assert.False(cts.Token.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(300)),
+            "a running command must finish; the anchor going away never cuts it off");
+
+        idle.ConnectionEnded();
+        Assert.True(cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)),
+            "the host must exit within the grace after its last command ends");
+    }
+
+    [Fact]
+    public void ShortenTimeout_LongerThanCurrent_DoesNotExtend()
+    {
+        using var cts = new CancellationTokenSource();
+        using var idle = new IdleShutdown(cts, TimeSpan.FromMilliseconds(50), _ => { });
+
+        idle.ShortenTimeout(TimeSpan.FromHours(1), "anchor gone");
+
+        Assert.True(cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)),
+            "a grace longer than PSBASH_HOST_IDLE_SECS must not keep the host alive longer");
+    }
 }

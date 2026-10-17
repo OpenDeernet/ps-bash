@@ -276,6 +276,7 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
                 PsBash.Core.Runtime.Ipc.IpcTransportFactory.NestDepthEnvVar,
                 (PsBash.Core.Runtime.Ipc.IpcTransportFactory.HostNestDepth + 1)
                     .ToString(System.Globalization.CultureInfo.InvariantCulture));
+            SyncHomeToEnvironment();
         }
 
         _host.Reset();
@@ -833,6 +834,32 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
         }
         foreach (var name in stale)
             Environment.SetEnvironmentVariable(name, null);
+    }
+
+    /// <summary>
+    /// R06: point this runspace's <c>$HOME</c> and the FileSystem provider's <c>~</c> at the
+    /// launcher's home. Both are captured when the runspace is CREATED — from the daemon's
+    /// environment, not the launcher's — and the emitter maps bash <c>$HOME</c> / <c>~</c> to
+    /// them, so a launcher with its own HOME (a sandboxed agent, a test) read the home of
+    /// whoever started the daemon. Same source PowerShell itself uses: HOME on Unix,
+    /// USERPROFILE on Windows. Call after <see cref="ResetEnvironment"/>.
+    /// </summary>
+    private void SyncHomeToEnvironment()
+    {
+        var home = Environment.GetEnvironmentVariable(OperatingSystem.IsWindows() ? "USERPROFILE" : "HOME");
+        if (string.IsNullOrEmpty(home)) return;
+        var proxy = _sdkRunspace.Runspace.SessionStateProxy;
+        if (string.Equals(proxy.GetVariable("HOME") as string, home, StringComparison.Ordinal)) return;
+
+        proxy.Provider.GetOne("FileSystem").Home = home;
+        // $HOME is ReadOnly+AllScope: only -Force can replace it.
+        _ps.AddCommand("Microsoft.PowerShell.Utility\\Set-Variable")
+            .AddParameter("Name", "HOME").AddParameter("Value", home)
+            .AddParameter("Option", System.Management.Automation.ScopedItemOptions.ReadOnly
+                                    | System.Management.Automation.ScopedItemOptions.AllScope)
+            .AddParameter("Scope", "Global").AddParameter("Force", true);
+        _ps.Invoke();
+        _ps.Commands.Clear();
     }
 
     private static int UnwrapExitCode(object? arg)
