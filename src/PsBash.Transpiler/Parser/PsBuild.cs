@@ -648,6 +648,14 @@ public static class PsBuild
         "& { $__psbash_native_stdin = Enter-BashNativeStdin " + SingleQuote(name) + "; try { " + command
         + " } finally { Exit-BashNativeStdin $__psbash_native_stdin } }";
 
+    /// <summary>
+    /// The pipe stage that turns the records flowing into a program into the bytes bash would write
+    /// (<c>… | ConvertTo-BashNativeStdin 'prog' | prog</c>). PowerShell's own native pipe appends <c>\r\n</c>
+    /// to every record; the stage hands a real program raw bytes instead, and a function / alias / cmdlet of
+    /// that name its text as before. <paramref name="name"/> is the literal command word.
+    /// </summary>
+    public static string NativeStdinFeed(string name) => "ConvertTo-BashNativeStdin " + SingleQuote(name);
+
     // ───────────────────────── Positional-parameter expansion ──────────────────────────
 
     /// <summary>

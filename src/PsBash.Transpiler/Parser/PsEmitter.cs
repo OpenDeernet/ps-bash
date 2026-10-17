@@ -1319,7 +1319,7 @@ public static class PsEmitter
             // /dev/null maps to $null; `Get-Content $null` errors. Its stdin is EMPTY (EOF), so feed
             // the scope nothing explicitly (it must not see an outer pipe's or queue's data).
             result = inTarget != "$null"
-                ? $"Get-Content {inTarget} | & {{ {PsBuild.StdinScope(result)} }}"
+                ? $"Invoke-BashCat {inTarget} -RawStdinBytes | & {{ {PsBuild.StdinScope(result)} }}"
                 : $"@() | & {{ {PsBuild.StdinScope(result)} }}";
         }
 
@@ -1543,7 +1543,7 @@ public static class PsEmitter
         if (input.Here is { } here)
             return $"@({EmitHereDocLiteral(here)} | Emit-BashLine)";
         var target = EmitInputRedirectTarget(input.Target);
-        return target == "$null" ? "@()" : $"@(Get-Content {target})";
+        return target == "$null" ? "@()" : $"@(Invoke-BashCat {target} -RawStdinBytes)";
     }
 
     /// <param name="varNames">The <c>read</c> variables, bound per line as loop variables.</param>
@@ -2565,7 +2565,9 @@ public static class PsEmitter
         // When multiple heredocs exist, use the last one for stdin (bash behavior).
         var innerCmd = new Command.Simple(cmd.Words, cmd.EnvPairs, cmd.Redirects);
         string cmdText = EmitSimple(innerCmd);
-        result = $"{EmitHereDocLiteral(cmd.HereDocs[^1])} | Emit-BashLine | {cmdText}";
+        // A real program must read the heredoc's bytes, not PowerShell's per-record `\r\n` rendering of them;
+        // every other consumer keeps receiving the records as before.
+        result = $"{EmitHereDocLiteral(cmd.HereDocs[^1])} | Emit-BashLine | {NativeStdinFeedOrNull(innerCmd)}{cmdText}";
         return true;
     }
 
@@ -2696,8 +2698,8 @@ public static class PsEmitter
         // as-is; a native / unmapped consumer needs their TEXT (the binder would format a record object).
         bool mappedConsumer = TryEmitMappedCommand(innerCmd, out _);
         result = mappedConsumer
-            ? $"Invoke-BashCat {target} | {inner}"
-            : $"Invoke-BashCat {target} | ForEach-Object {{ Get-BashText $_ }} | {inner}";
+            ? $"Invoke-BashCat {target} -RawStdinBytes | {inner}"
+            : $"Invoke-BashCat {target} -RawStdinBytes | {NativeStdinFeedStage(innerCmd)}{inner}";
         return true;
     }
 
@@ -6306,11 +6308,31 @@ public static class PsEmitter
             // is the ONE shared rule for cmdlet-output → native stdin;
             // Get-BashText is identity on a string and on any object with
             // no BashText, so it is safe for every pipe target.
-            return "ForEach-Object { Get-BashText $_ } | "
+            return NativeStdinFeedStage(simple)
                 + WrapPipelineStageIfStatementList(Emit(simple));
         }
         finally { _pipeStageFeedsInput = savedFeed; }
     }
+
+    /// <summary>
+    /// The stage that sits in front of a NON-MAPPED command to turn the upstream records into its stdin. A
+    /// command word that could be a real program (<see cref="StdinReaders.Kind.Native"/>) gets
+    /// <see cref="PsBuild.NativeStdinFeed"/> — the exact bytes bash would write, never PowerShell's per-record
+    /// <c>\r\n</c> — which falls back to the record's text when the name turns out to be a function or alias.
+    /// Anything else (a builtin, a computed command word) keeps the plain text conversion.
+    /// The result ends in <c>| </c>, ready to be followed by the command.
+    /// </summary>
+    private static string NativeStdinFeedStage(Command.Simple simple) =>
+        NativeStdinFeedOrNull(simple) ?? "ForEach-Object { Get-BashText $_ } | ";
+
+    /// <summary><see cref="NativeStdinFeedStage"/>'s converter stage, or null when the command is not a native candidate.</summary>
+    private static string? NativeStdinFeedOrNull(Command.Simple simple) =>
+        !simple.Words.IsDefaultOrEmpty
+        && GetLiteralValue(simple.Words[0]) is { Length: > 0 } name
+        && StdinReaders.Classify(name) == StdinReaders.Kind.Native
+        && !TryEmitMappedCommand(simple, out _)
+            ? PsBuild.NativeStdinFeed(name) + " | "
+            : null;
 
     /// <summary>
     /// <c>VAR=v</c> prefix on a pipe-target stage. The save/set/restore block is a statement list, so it
@@ -6621,7 +6643,7 @@ public static class PsEmitter
             // /dev/null maps to $null; `Get-Content $null` errors. Its stdin is EMPTY (EOF), which
             // for a stdin scope must still replace any outer pipe, so feed it nothing explicitly.
             if (inTarget != "$null")
-                result = $"Get-Content {inTarget} | {result}";
+                result = $"Invoke-BashCat {inTarget} -RawStdinBytes | {result}";
             else if (stdinScope)
                 result = $"@() | {result}";
         }

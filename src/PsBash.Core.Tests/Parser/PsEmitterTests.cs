@@ -264,7 +264,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("cmd |& other");
 
-        Assert.Equal("cmd 2>&1 | ForEach-Object { Get-BashText $_ } | other", result);
+        Assert.Equal("cmd 2>&1 | ConvertTo-BashNativeStdin 'other' | other", result);
     }
 
     [Fact]
@@ -449,7 +449,7 @@ public class PsEmitterTests
     {
         // Guard the narrow claim: a redirect that DOES have a command still pipes. The file is the
         // command's stdin BYTE STREAM, so a mapped consumer is fed exact records by Invoke-BashCat.
-        Assert.Contains("Invoke-BashCat f.txt | Invoke-BashWc '-l'",
+        Assert.Contains("Invoke-BashCat f.txt -RawStdinBytes | Invoke-BashWc '-l'",
             PsEmitter.Transpile("wc -l < f.txt"));
     }
 
@@ -767,10 +767,10 @@ public class PsEmitterTests
     {
         // `! ! cmd1 | cmd2` — double negation applies to the whole pipeline =
         // identity. No exit-code negation suffix; pipeline runs as-is. The
-        // non-mapped pipe target carries the shared Get-BashText conversion.
+        // non-mapped pipe target carries the shared native-stdin conversion.
         var result = PsEmitter.Transpile("! ! cmd1 | cmd2");
 
-        Assert.Equal("cmd1 | ForEach-Object { Get-BashText $_ } | cmd2", result);
+        Assert.Equal("cmd1 | ConvertTo-BashNativeStdin 'cmd2' | cmd2", result);
     }
 
     [Fact]
@@ -790,7 +790,7 @@ public class PsEmitterTests
 
         // Negation checks $global:LASTEXITCODE (bash exit code) not PowerShell's $?.
         Assert.Equal(
-            "cmd1 | ForEach-Object { Get-BashText $_ } | cmd2; $global:LASTEXITCODE = if ($global:LASTEXITCODE -eq 0) { 1 } else { 0 }",
+            "cmd1 | ConvertTo-BashNativeStdin 'cmd2' | cmd2; $global:LASTEXITCODE = if ($global:LASTEXITCODE -eq 0) { 1 } else { 0 }",
             result);
     }
 
@@ -1367,12 +1367,13 @@ public class PsEmitterTests
     }
 
     [Fact]
-    public void Transpile_InputRedirect_NativeConsumer_FeedsExactRecordsAsText()
+    public void Transpile_InputRedirect_NativeConsumer_FeedsExactBytes()
     {
         var result = PsEmitter.Transpile("cmd < input.txt");
 
-        // Exact records (no CRLF/BOM rewrite, invalid bytes kept), converted to text for the native binder.
-        Assert.Equal("Invoke-BashCat input.txt | ForEach-Object { Get-BashText $_ } | cmd", result);
+        // Exact records (no CRLF/BOM rewrite, invalid bytes kept), handed to the program as the bytes bash would
+        // write — not as text, which PowerShell's native binder ends with `\r\n` per record.
+        Assert.Equal("Invoke-BashCat input.txt -RawStdinBytes | ConvertTo-BashNativeStdin 'cmd' | cmd", result);
     }
 
     [Fact]
@@ -2024,7 +2025,7 @@ public class PsEmitterTests
     [InlineData("cd $d/sub", "$__psbash_cd_target = $(& { [string]$args[0] } \"$env:d/sub\");")]
     [InlineData("cd $d/sub", "GetFullPath([PsBash.Cmdlets.BashRuntime]::MapPath([string]([string]$__psbash_cd_target))")]
     [InlineData("[ -e \"$d/f\" ]", "Test-Path $(& { [PsBash.Cmdlets.BashRuntime]::MapPath([string]($args[0])) } \"$env:d/f\")")]
-    [InlineData("while read l; do :; done < $d/f", "Get-Content $(& { [PsBash.Cmdlets.BashRuntime]::MapPath([string]($args[0])) } \"$env:d/f\")")]
+    [InlineData("while read l; do :; done < $d/f", "Invoke-BashCat $(& { [PsBash.Cmdlets.BashRuntime]::MapPath([string]($args[0])) } \"$env:d/f\") -RawStdinBytes")]
     public void Transpile_RuntimeKnownPath_GoesThroughRuntimePathPolicy(string bash, string fragment)
         => Assert.Contains(fragment, PsEmitter.Transpile(bash));
 
@@ -2744,11 +2745,11 @@ public class PsEmitterTests
     }
 
     [Fact]
-    public void Transpile_EnvPrefixOnNativePipeTarget_ConvertsTextInsideTheWrapper()
+    public void Transpile_EnvPrefixOnNativePipeTarget_ConvertsInputInsideTheWrapper()
     {
         var result = PsEmitter.Transpile("echo x | FOO=1 python3");
 
-        Assert.Contains("try { $env:FOO = \"1\"; $input | ForEach-Object { Get-BashText $_ } | python3 }", result);
+        Assert.Contains("try { $env:FOO = \"1\"; $input | ConvertTo-BashNativeStdin 'python3' | python3 }", result);
     }
 
     [Fact]
@@ -6539,10 +6540,11 @@ public class PsEmitterTests
         // table ("BashText NoTrai…"), so `printf 'a\n' | sed s/a/b/ | od -c`
         // saw a table, not "b\n". bash pipes bytes, so every upstream object must
         // be converted to its bash text first. This is the ONE shared rule for
-        // cmdlet-output → native stdin.
+        // cmdlet-output → native stdin: a real program gets the exact bytes (ConvertTo-BashNativeStdin), a
+        // function or alias of that name the text — either way never the formatted object.
         var result = PsEmitter.Transpile("printf 'a\\n' | sed s/a/b/ | od -c")!;
 
-        Assert.Contains("| ForEach-Object { Get-BashText $_ } | od -c", result);
+        Assert.Contains("| ConvertTo-BashNativeStdin 'od' | od -c", result);
     }
 
     [Fact]

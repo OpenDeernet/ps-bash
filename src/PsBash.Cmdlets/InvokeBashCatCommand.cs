@@ -87,6 +87,14 @@ public sealed class InvokeBashCatCommand : PSCmdlet
     [Parameter]
     public SwitchParameter V { get; set; }
 
+    /// <summary>
+    /// Emitter-only: the file is a command's STDIN (<c>cmd &lt; file</c>), a byte stream, so read it exactly —
+    /// no CRLF or BOM rewriting — where a file OPERAND of <c>cat</c> keeps the line tools' "CRLF / BOM are
+    /// transparent" policy. Named so that no prefix of it is a cat flag (<c>-s</c>, <c>-n</c>, <c>-b</c>, …).
+    /// </summary>
+    [Parameter(DontShow = true)]
+    public SwitchParameter RawStdinBytes { get; set; }
+
     [Parameter(ValueFromRemainingArguments = true)]
     public string[]? Arguments { get; set; }
 
@@ -332,7 +340,7 @@ public sealed class InvokeBashCatCommand : PSCmdlet
             {
                 try
                 {
-                    foreach (var line in BashFileSystem.ReadTextLines(filePath, exactIfBinary: true))
+                    foreach (var line in BashFileSystem.ReadTextLines(filePath, exact: RawStdinBytes, exactIfBinary: true))
                     {
                         WriteObject(BashRuntime.NewBashObject(
                             line.Text,

@@ -927,16 +927,16 @@ public class BashTranspilerTests
     // Only Command.Simple/Subshell carried a Redirects field, so a trailing redirect on a
     // while/for/if/case/brace-group was silently dropped: `while read line; do ...; done < in`
     // read unbound stdin, `for ...; done > out` went to the console, etc. The compound now
-    // wraps in `& { ... }` and applies the redirect (input via Get-Content, output via
+    // wraps in `& { ... }` and applies the redirect (input via Invoke-BashCat -RawStdinBytes, output via
     // Invoke-BashRedirect). Assertions below check the emitted PS carries the redirect.
 
     [Fact]
-    public void Transpile_WhileReadWithInputRedirect_FeedsFileViaGetContent()
+    public void Transpile_WhileReadWithInputRedirect_FeedsFileAsExactBytes()
     {
         var result = BashTranspiler.Transpile("while read line; do echo $line; done < input.txt");
         // The file must be fed into the loop, not left unbound: the loop header reads it directly
         // (no script block, so `return` in the body still leaves an enclosing function).
-        Assert.StartsWith(":__psbash_l0 foreach ($__psbash_rec0 in @(Get-Content input.txt))", result);
+        Assert.StartsWith(":__psbash_l0 foreach ($__psbash_rec0 in @(Invoke-BashCat input.txt -RawStdinBytes))", result);
     }
 
     [Fact]
@@ -982,7 +982,7 @@ public class BashTranspilerTests
     {
         // Cascade repro: the dropped redirect used to also swallow the `| sort` stage.
         var result = BashTranspiler.Transpile("while read a; do echo $a; done < f | sort");
-        Assert.Contains("in @(Get-Content f))", result);
+        Assert.Contains("in @(Invoke-BashCat f -RawStdinBytes))", result);
         Assert.EndsWith("} | Invoke-BashSort", result);
     }
 
@@ -1005,8 +1005,8 @@ public class BashTranspilerTests
     {
         var compound = BashTranspiler.Transpile("if true; then read line; echo $line; fi < input.txt");
         var subshell = BashTranspiler.Transpile("(read line; echo $line) < input.txt");
-        // Both place the file on the group's pipeline via Get-Content.
-        Assert.StartsWith("Get-Content input.txt | & {", compound);
-        Assert.StartsWith("Get-Content input.txt | & {", subshell);
+        // Both place the file's exact bytes (not Get-Content's lossy lines) on the group's pipeline.
+        Assert.StartsWith("Invoke-BashCat input.txt -RawStdinBytes | & {", compound);
+        Assert.StartsWith("Invoke-BashCat input.txt -RawStdinBytes | & {", subshell);
     }
 }

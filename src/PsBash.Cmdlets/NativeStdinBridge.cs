@@ -301,13 +301,17 @@ public sealed class EnterBashNativeStdinCommand : PSCmdlet
 
         // Only a real program: a function or alias of the same name (which PowerShell would run instead) reads
         // its stdin through the pipeline, and must not have it pumped away underneath it.
-        CommandInfo? resolved;
-        try { resolved = InvokeCommand.GetCommand(Name, CommandTypes.All); }
-        catch { return; }
-        if (resolved is not ApplicationInfo) return;
+        if (!ResolvesToApplication(this, Name)) return;
 
         var bridge = NativeStdinBridge.Enter(stdin);
         if (bridge is not null) WriteObject(bridge);
+    }
+
+    /// <summary>True when <paramref name="name"/> runs a real program (not a function, alias, cmdlet or script).</summary>
+    internal static bool ResolvesToApplication(PSCmdlet cmdlet, string name)
+    {
+        try { return cmdlet.InvokeCommand.GetCommand(name, CommandTypes.All) is ApplicationInfo; }
+        catch { return false; }
     }
 }
 

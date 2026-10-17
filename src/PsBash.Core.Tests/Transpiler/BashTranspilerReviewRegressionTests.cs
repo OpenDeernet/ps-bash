@@ -53,13 +53,13 @@ public class BashTranspilerReviewRegressionTests
     }
 
     // ── Finding: subshell input redirect fell to the raw 0<file fallback ────
-    // (cmd) < file -> "'<' is reserved for future use". Must become Get-Content | & {}.
+    // (cmd) < file -> "'<' is reserved for future use". Must become Invoke-BashCat -RawStdinBytes | & {}.
 
     [Fact]
-    public void Transpile_SubshellInputRedirect_UsesGetContentPipe()
+    public void Transpile_SubshellInputRedirect_UsesExactBytesPipe()
     {
         var ps = BashTranspiler.Transpile("(cat foo) < bar");
-        Assert.Contains("Get-Content", ps);
+        Assert.Contains("Invoke-BashCat bar -RawStdinBytes | & {", ps);
         Assert.DoesNotContain("0<", ps);
     }
 

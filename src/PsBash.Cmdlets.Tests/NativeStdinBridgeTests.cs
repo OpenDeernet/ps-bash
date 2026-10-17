@@ -156,4 +156,80 @@ public class NativeStdinBridgeTests : IClassFixture<SharedPwshFixture>
     {
         Assert.Empty(Invoke(_fixture.AcquireFresh(), "Exit-BashNativeStdin $null"));
     }
+
+    // ── ConvertTo-BashNativeStdin: what a pipe / `< file` / heredoc feeds a program ─────────────────────────
+
+    private static object?[] Convert(PowerShell pwsh, string script)
+    {
+        var run = Task.Run(() => pwsh.AddScript(script).Invoke());
+        Assert.True(run.Wait(Limit), $"did not finish within {Limit.TotalSeconds:0}s: {script}");
+        pwsh.Commands.Clear();
+        return run.Result.Select(o => o?.BaseObject).ToArray();
+    }
+
+    [Fact]
+    public void ConvertTo_RealProgram_EmitsEachRecordAsItsExactBytes()
+    {
+        // PowerShell's native pipe renders a string record as text + "\r\n"; a byte[] it writes raw.
+        var pwsh = _fixture.AcquireFresh();
+        var chunks = Convert(pwsh, $"'a','b' | ConvertTo-BashNativeStdin '{Ignorer.Name}'");
+
+        Assert.All(chunks, c => Assert.IsType<byte[]>(c));
+        Assert.Equal("a\nb\n"u8.ToArray(), chunks.Cast<byte[]>().SelectMany(b => b).ToArray());
+    }
+
+    [Fact]
+    public void ConvertTo_RealProgram_KeepsAnUnterminatedLastLineUnterminated()
+    {
+        var pwsh = _fixture.AcquireFresh();
+        pwsh.Runspace.SessionStateProxy.SetVariable("rec", BashRuntime.TextRecord("x", unterminated: true));
+        var chunks = Convert(pwsh, $"'a', $rec | ConvertTo-BashNativeStdin '{Ignorer.Name}'");
+
+        Assert.Equal("a\nx"u8.ToArray(), chunks.Cast<byte[]>().SelectMany(b => b).ToArray());
+    }
+
+    [Fact]
+    public void ConvertTo_RealProgram_CarriesInvalidUtf8AndCarriageReturnsUntouched()
+    {
+        var pwsh = _fixture.AcquireFresh();
+        pwsh.Runspace.SessionStateProxy.SetVariable("bin", RawBytes.GetString(new byte[] { 0xFF, 0xFE, (byte)'\r' }));
+        var chunks = Convert(pwsh, $"$bin | ConvertTo-BashNativeStdin '{Ignorer.Name}'");
+
+        Assert.Equal(new byte[] { 0xFF, 0xFE, (byte)'\r', (byte)'\n' }, chunks.Cast<byte[]>().SelectMany(b => b).ToArray());
+    }
+
+    [Fact]
+    public void ConvertTo_RealProgram_NoRecords_EmitsNothing()
+    {
+        // An empty upstream is an empty stdin (EOF), not a stray newline.
+        Assert.Empty(Convert(_fixture.AcquireFresh(), $"@() | ConvertTo-BashNativeStdin '{Ignorer.Name}'"));
+    }
+
+    [Fact]
+    public void ConvertTo_NameThatIsAFunction_KeepsTheTextRecords()
+    {
+        // A function / alias of that name runs instead of any program and reads its pipeline as it always did:
+        // text, never bytes.
+        var chunks = Convert(_fixture.AcquireFresh(), "function psbnative_fn { }; 'a','b' | ConvertTo-BashNativeStdin 'psbnative_fn'");
+
+        Assert.Equal(new object?[] { "a", "b" }, chunks);
+    }
+
+    [Fact]
+    public void ConvertTo_NameThatDoesNotResolve_KeepsTheTextRecords()
+    {
+        var chunks = Convert(_fixture.AcquireFresh(), "'a' | ConvertTo-BashNativeStdin 'psbnative_no_such_command'");
+
+        Assert.Equal(new object?[] { "a" }, chunks);
+    }
+
+    [Fact]
+    public void ConvertTo_BashObjectRecord_FunctionGetsItsText()
+    {
+        var pwsh = _fixture.AcquireFresh();
+        pwsh.Runspace.SessionStateProxy.SetVariable("rec", BashRuntime.TextRecord("x", unterminated: true));
+        var chunks = Convert(pwsh, "function psbnative_fn { }; $rec | ConvertTo-BashNativeStdin 'psbnative_fn'");
+
+        Assert.Equal(new object?[] { "x" }, chunks);
+    }
 }

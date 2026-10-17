@@ -450,7 +450,8 @@ passes its pipeline to `$input` only, so the emitter builds the sharing itself
   program starts at once and the command ends when the program does. (The old `if (queue.Count -gt 0)
   { feed | prog }` form blocked before the program started, so under an open, silent launcher stdin —
   an agent's shell tool — every native hung.) Commands with an env prefix, their own heredoc /
-  `< file`, or a statement-list / RC-7 splat emission are left alone. `cmd < /dev/null` runs inside
+  `< file`, or a statement-list / RC-7 splat emission are left alone (a pipe / heredoc / `< file`
+  feeding a native outside any scope gets `ConvertTo-BashNativeStdin`, see "Pipeline emission"). `cmd < /dev/null` runs inside
   `PsBuild.EmptyStdinScope` (an empty queue, dot-sourced) so every reader in it — natives included —
   sees end of input; the redirect used to be dropped, which meant the LIVE launcher stdin.
 - **Redirects on statement-list builtins.** `cd`, `eval`, `source`/`.`, `read`, `readonly`, `set` emit
@@ -687,14 +688,31 @@ general fallback path (`EmitSimple`) and the mapped passthrough path
    (not mapped).
 2. **Subsequent** commands (pipe targets) are first tried through
    `TryEmitMappedCommand`. If the command is recognized, the mapped form is
-   used. Otherwise, the general `Emit` path is used, prefixed with the shared
-   text conversion `ForEach-Object { Get-BashText $_ } | `. PowerShell's native
-   binder *formats* objects piped to a native program, so a BashObject would
-   reach it as its property table (`BashText NoTrai…`) rather than its text;
-   bash pipes bytes, so every upstream object is converted first. `Get-BashText`
-   is identity on a string and on any object with no `BashText`, so the rule is
-   safe for every non-mapped pipe target (native tool, PowerShell cmdlet, or a
-   transpiled bash function).
+   used. Otherwise, the general `Emit` path is used, prefixed with a stdin
+   conversion stage (`NativeStdinFeedStage`). PowerShell's native binder
+   *formats* objects piped to a native program — a BashObject would reach it as
+   its property table (`BashText NoTrai…`) — and ends every record with `\r\n`
+   (every `\n` became `\r\n`, an unterminated last line gained a newline, non-UTF-8
+   bytes were re-encoded; `ssh host 'bash -s' < script` failed with `$'hostname\r'`).
+   bash pipes bytes, so a command word that could be a program
+   (`StdinReaders.Kind.Native`, not mapped) gets `ConvertTo-BashNativeStdin 'NAME' |`:
+   when NAME resolves to an application at run time each record becomes its exact
+   bytes (`NativeStdinBridge.RecordBytes`, written raw and streamed because a
+   `byte[]` is the one object PowerShell does not format); a function, alias or
+   cmdlet of that name — and any builtin or computed command word — keeps
+   `ForEach-Object { Get-BashText $_ } | ` (`Get-BashText` is identity on a string
+   and on any object with no `BashText`), so the rule is safe for every non-mapped
+   pipe target. The same stage follows a heredoc / here-string
+   (`TryEmitHereDoc`) and a `< file` (`TryEmitInputRedirect`).
+   A `< file` is a byte stream, so every input redirect — simple command,
+   subshell, brace group, `while read` loop source — reads the file with
+   `Invoke-BashCat FILE -RawStdinBytes` (no CRLF / BOM rewriting, the missing
+   final newline kept), not `Get-Content`; a file OPERAND of `cat` and the line
+   tools keep the "CRLF / BOM are transparent" policy. Known gap (the OUTPUT
+   side): PowerShell line-decodes a native program's stdout, so a CR before an LF
+   is dropped and a missing final newline added in a pipe, `>` or `$(…)`
+   (`NativeStdioBytesTests`, skipped cases) — byte-exact output needs ps-bash to
+   run the program itself.
    A simple pipe-target stage is emitted by `EmitSimplePipeStage`; with an env prefix it is wrapped in
    a save/set/restore script block that forwards `$input` (see "Env pairs"), and a stage that needs the
    RC-7 splat hoist forwards `$input` inside its block.

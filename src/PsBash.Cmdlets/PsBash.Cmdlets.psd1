@@ -151,7 +151,10 @@ CmdletsToExport = @(
     # A native program run with the shell's shared stdin as its real process stdin (an OS pipe a
     # background pump fills; the unread rest is put back). Emitted by the transpiler around natives.
     'Enter-BashNativeStdin',
-    'Exit-BashNativeStdin'
+    'Exit-BashNativeStdin',
+    # A pipe / `< file` / heredoc feeding a native program: each record as the exact bytes bash would write
+    # (PowerShell's native pipe appends \r\n per record). Emitted by the transpiler.
+    'ConvertTo-BashNativeStdin'
 )
 
 VariablesToExport = @()
