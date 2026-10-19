@@ -64,12 +64,8 @@ internal static class ProcessRunHelper
                 process.StandardInput.Close();
             }
 
-            using var cts = new CancellationTokenSource(effectiveTimeout);
-            try
-            {
-                await process.WaitForExitAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
+            // The timeout is a checkpoint: only a quiet machine makes it a failure.
+            if (!await PsBash.Testing.ContentionProbe.WaitForExitAsync(process, effectiveTimeout))
             {
                 // Timeout. Capture whatever partial output we have and fail loudly.
                 string partialStdout = string.Empty;

@@ -158,12 +158,9 @@ public static class ProcessSpawn
                 process.StandardInput.Close();
             }
 
-            using var cts = new CancellationTokenSource(timeout);
-            try
-            {
-                await process.WaitForExitAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
+            // `timeout` is a checkpoint, not a verdict: it only fails the run when the
+            // machine is quiet (ContentionProbe), so a starved runner is waited out.
+            if (!await ContentionProbe.WaitForExitAsync(process, timeout))
             {
                 // Kill first so the drain tasks can complete, then collect
                 // whatever partial output made it through (bounded so a wedged
