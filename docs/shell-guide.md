@@ -2,6 +2,19 @@
 
 Ps-bash has two modes: the **PsBash module** and the **ps-bash shell**. They share the same 77 bash commands and typed object pipeline, but serve different use cases.
 
+For complete workflows, failure/recovery paths, and acceptance criteria, see
+[Production User Journeys](planning/production-user-journeys.md). Proposed remote
+workspace behavior is labeled separately from the current shell.
+
+## Session lifetime
+
+An interactive shell keeps its state while its launcher and host are alive.
+Closing the launcher is not a supported detach-and-resume operation. The warm
+host reused by `ps-bash -c` gives each invocation a fresh runspace; variables,
+functions, and cwd from one invocation do not become a persistent workspace for
+the next. See the [host lifecycle contract](specs/host-lifecycle-contract.md) for
+ownership, cancellation, and idle shutdown.
+
 ## PsBash Module
 
 The PowerShell module (`Install-Module PsBash`) adds bash commands directly into your PowerShell session. Use this when you want bash commands available alongside `Get-ChildItem`, `ForEach-Object`, and everything else PowerShell offers.

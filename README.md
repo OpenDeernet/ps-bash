@@ -329,6 +329,8 @@ CI runs on Windows, Linux, and macOS via GitHub Actions.
 
 **[dev.standardbeagle.com/ps-bash](https://dev.standardbeagle.com/ps-bash/)** — full command reference, object type specs, pipeline cookbook, cross-platform guide.
 
+- **[Production Readiness Review](docs/production-readiness-review-2026-10-18.md)** — verified blockers, existing defenses, and release evidence
+- **[Production User Journeys](docs/planning/production-user-journeys.md)** — current shell use cases and proposed remote-session acceptance criteria
 - **[Interactive Shell Guide](docs/shell-guide.md)** — running ps-bash as a shell, .psbashrc config, mixing bash and PowerShell, command routing
 - **[Agent Setup Guide](docs/agent-setup.md)** — configure Claude Code, OpenCode, Copilot, and Gemini CLI to use ps-bash
 - **[Parser Grammar](docs/specs/parser-grammar.md)** — tokens, AST nodes, grammar productions

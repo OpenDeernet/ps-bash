@@ -1,5 +1,34 @@
 # Known Issues
 
+## Production blockers reviewed 2026-10-18
+
+The [production readiness review](production-readiness-review-2026-10-18.md)
+records evidence, affected journeys, and closure criteria. Status:
+
+- **Fixed — archive extraction (B01):** `tar -x` now refuses to write through an
+  existing symlink/junction ancestor or final component (nonzero exit, outside
+  content untouched). Residual: a link swapped in between the check and the open
+  by a concurrent attacker is narrowed, not eliminated; still extract untrusted
+  archives into a fresh directory with trusted ancestors.
+- **Fixed — installers (B02):** `install.sh` / `install.ps1` install the complete
+  package into a versioned directory, run a real command before switching, verify
+  the published digest, and keep the previous version. Unsupported platforms fail
+  with a named error.
+- **Fixed — release integrity (B03–B05):** binaries are staged as workflow
+  artifacts and only promoted after every gate passes; every job builds the tag's
+  single resolved SHA; Cmdlets and Host tests block (Shell and Differential block
+  on Linux and stay advisory elsewhere).
+- **Partly fixed — history privacy (B08):** a line starting with a space, or any
+  line while `PSBASH_HISTORY_PRIVATE=1`, is never recorded; an unopenable history
+  DB degrades to in-memory with a warning. `history`, `history -d ID` and
+  `history -c` list and delete (`-c` runs `secure_delete` + WAL truncate + VACUUM).
+  Still open: retention policy; bash-compatible `history` flags beyond these.
+
+- **Open — durable remote sessions and per-session concurrency (B06, B07):**
+  product-scope decisions, not shell bugs. The warm host is not a durable session
+  manager, and commands sharing one daemon run serially. The
+  [journey contract](planning/production-user-journeys.md) labels proposed remote
+  behavior separately from current capabilities.
 ## Architecture differences (not bugs — won't fix)
 
 These diverge from bash because of the PowerShell pipeline model, not missing
