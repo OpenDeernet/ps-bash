@@ -18,9 +18,7 @@ public static class IpcTransportFactory
 {
     /// <summary>
     /// Environment variable that overrides the canonical endpoint. Format is
-    /// <c>scheme:endpoint</c> with scheme = <c>unix</c> or <c>pipe</c>. The
-    /// endpoint is an absolute filesystem path for <c>unix</c> or a pipe name
-    /// for <c>pipe</c>. Set this to point a launcher and a host at the same
+    /// <c>unix:/absolute/socket/path</c>. Set this to point a launcher and a host at the same
     /// isolated address so test runs (or WSL bash drivers) do not collide
     /// with the user's canonical daemon.
     /// </summary>
@@ -91,17 +89,49 @@ public static class IpcTransportFactory
     public static (string Scheme, string Endpoint) ResolveNestedEndpoint(int depth)
     {
         var (scheme, endpoint) = ResolveEndpoint();
-        var nested = endpoint + NestedMarker + depth.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        if (scheme == "unix" && nested.Length > UnixSocketPathBudget())
+        var depthText = depth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var nested = endpoint + NestedMarker + depthText;
+        if (nested.Length > UnixSocketPathBudget())
         {
-            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(nested)))[..16];
-            return ("pipe", $"psbash-nested-{hash}{NestedMarker}{depth}");
+            var dir = Path.GetDirectoryName(endpoint) ?? SocketDirectory();
+            nested = Path.Combine(dir, $"psbash-nested-{ShortHash(nested)}{NestedMarker}{depthText}");
         }
-        return (scheme, nested);
+        return (scheme, RequireFits(nested));
     }
 
-    // Test seam: override platform detection without P/Invoke or env hacks.
-    internal static Func<bool>? UnixSocketSupportedOverride { get; set; }
+    private static string ShortHash(string s, int chars = 16)
+        => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(s)))[..chars];
+
+    /// <summary>
+    /// Returns <paramref name="path"/> when AF_UNIX can bind it. A path past sun_path is a
+    /// configuration fault (an over-long runtime directory), reported with the way out, because
+    /// there is no other transport to fall back to.
+    /// </summary>
+    private static string RequireFits(string path)
+    {
+        if (path.Length <= UnixSocketPathBudget()) return path;
+        throw new IOException(
+            $"ps-bash cannot place its control socket: '{path}' is {path.Length} characters and " +
+            $"AF_UNIX allows {UnixSocketPathBudget()}. Point TMPDIR (or XDG_RUNTIME_DIR) at a shorter " +
+            $"writable directory, or set {EndpointEnvVar}=unix:/short/path.sock.");
+    }
+
+    /// <summary>
+    /// Creates and validates the per-user runtime directory. A sandbox that cannot write the
+    /// filesystem (e.g. a read-only restricted-token sandbox) cannot host the control socket at
+    /// all, so the failure names the cause instead of surfacing a bare access-denied.
+    /// </summary>
+    private static void EnsureRuntimeDirectory()
+    {
+        try { PsBashRuntimeDirectory.EnsureDirectory(); }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new IOException(
+                "ps-bash needs a writable per-user runtime directory for its control socket and this " +
+                $"process cannot create it ({ex.Message}). Run outside a read-only sandbox, or point TMPDIR " +
+                "at a writable directory.", ex);
+        }
+    }
 
     // Test seam: override the automatic (ancestor-identity) session anchor without
     // P/Invoke. Null = use the real ProcessAncestry-derived anchor. A provider
@@ -115,24 +145,10 @@ public static class IpcTransportFactory
 
 
     /// <summary>
-    /// True when this process can bind and connect an AF_UNIX endpoint. False on pre-1803
-    /// Windows and under a restricted token (a read-only sandbox such as codex's denies
-    /// creating the socket file; see <see cref="RestrictedToken"/>), so every resolver picks
-    /// the pipe scheme.
-    /// </summary>
-    public static bool IsUnixSocketSupported()
-    {
-        if (UnixSocketSupportedOverride is { } fn) return fn();
-        if (!OperatingSystem.IsWindows()) return true;
-        return Environment.OSVersion.Version.Build >= 17063 && !RestrictedToken.IsCurrentProcessRestricted();
-    }
-
-    /// <summary>
     /// Resolve the endpoint a host should bind / a client should connect to.
     /// Precedence: <paramref name="cliOverride"/> &gt; <c>PSBASH_IPC_ENDPOINT</c>
-    /// env var &gt; canonical per-session endpoint. The canonical endpoint is a
-    /// filesystem path, or a named-pipe name when <see cref="IsUnixSocketSupported"/> is
-    /// false (pre-1803 Windows, restricted-token sandbox). One daemon per
+    /// env var &gt; canonical per-session endpoint. The canonical endpoint is an
+    /// AF_UNIX socket path (Windows 10 1803+ included). One daemon per
     /// <c>(user, session)</c> (session = <c>PSBASH_SESSION</c> or session anchor; see
     /// <see cref="ResolveSessionToken"/>), per-session not per-process so warm reuse
     /// within a session is preserved.
@@ -168,25 +184,18 @@ public static class IpcTransportFactory
         // Empty token → the historical per-user endpoint (back-compat).
         var session = ResolveSessionToken(out sessionAnchor);
         var suffix = session.Length > 0 ? $"-s{session}" : "";
-        if (IsUnixSocketSupported())
-        {
-            var sockDir = SocketDirectory();
-            var candidate = Path.Combine(sockDir, $"host-{user}{suffix}.sock");
-            // A long temp root / user / session token can overflow sun_path.
-            // Fall back to the named-pipe scheme, which has no path-length cap
-            // (NamedPipeTransport applies its own macOS budget on POSIX). The
-            // scheme is deterministic given the same inputs, so launcher and
-            // host agree.
-            if (candidate.Length <= UnixSocketPathBudget())
-            {
-                // Create AND validate the per-user 0700 socket directory before
-                // the host binds: a shared, attacker-writable socket directory
-                // would let another user pre-create or replace the socket file.
-                PsBashRuntimeDirectory.EnsureDirectory();
-                return ("unix", candidate);
-            }
-        }
-        return ("pipe", $"psbash-host-{user}{suffix}");
+        // Create AND validate the per-user 0700 socket directory before the host binds:
+        // a shared, attacker-writable socket directory would let another user pre-create
+        // or replace the socket file.
+        EnsureRuntimeDirectory();
+        var sockDir = SocketDirectory();
+        var candidate = Path.Combine(sockDir, $"host-{user}{suffix}.sock");
+        // A long user name can overflow sun_path; hash it (the session token stays
+        // readable so `ps-bash session list` still names the session). Deterministic
+        // for the same inputs, so launcher and host agree.
+        if (candidate.Length > UnixSocketPathBudget())
+            candidate = Path.Combine(sockDir, $"host-{ShortHash(user, 8)}{suffix}.sock");
+        return ("unix", RequireFits(candidate));
     }
 
     /// <summary>
@@ -227,35 +236,27 @@ public static class IpcTransportFactory
     /// just spawned.
     /// </summary>
     /// <remarks>
-    /// On POSIX the endpoint is a socket file inside the per-user
-    /// <see cref="PsBashRuntimeDirectory"/> (0700); on pre-1803 Windows, or when
-    /// the socket path would not fit the sun_path budget with at least
-    /// <see cref="MinInvocationSuffixHexChars"/> random hex chars, it is a
-    /// named pipe. Either way the launcher owns the host process and unlinks
-    /// the socket artifact when it disposes.
+    /// The endpoint is a socket file inside the per-user <see cref="PsBashRuntimeDirectory"/>
+    /// (0700). The launcher owns the host process and unlinks the socket when it disposes.
     /// </remarks>
+    /// <exception cref="IOException">
+    /// The runtime directory leaves fewer than <see cref="MinInvocationSuffixHexChars"/> random
+    /// hex chars under the sun_path budget, or cannot be created.
+    /// </exception>
     public static (string Scheme, string Endpoint) ResolvePerInvocationEndpoint()
     {
         var pid = ProcessIdOverride is { } pidSeam ? pidSeam() : Environment.ProcessId;
         var guid = Guid.NewGuid().ToString("N");
-        if (IsUnixSocketSupported())
-        {
-            var sockDir = SocketDirectory();
-            var prefix = Path.Combine(sockDir, $"host-pi-{pid}-");
-            const string ext = ".sock";
-            // sun_path caps the WHOLE path, so the random suffix gets whatever
-            // room the temp root + pid leave. 12 hex chars (48 bits) is ample
-            // to keep two concurrent launchers of the same pid distinct; below
-            // that the path is pathological, so use the pipe scheme instead.
-            var room = UnixSocketPathBudget() - prefix.Length - ext.Length;
-            if (room >= MinInvocationSuffixHexChars)
-            {
-                PsBashRuntimeDirectory.EnsureDirectory();
-                var unique = guid[..Math.Min(guid.Length, room)];
-                return ("unix", prefix + unique + ext);
-            }
-        }
-        return ("pipe", $"psbash-host-pi-{pid}-{guid}");
+        EnsureRuntimeDirectory();
+        var prefix = Path.Combine(SocketDirectory(), $"host-pi-{pid}-");
+        const string ext = ".sock";
+        // sun_path caps the WHOLE path, so the random suffix gets whatever room the
+        // runtime dir + pid leave. 12 hex chars (48 bits) is ample to keep two concurrent
+        // launchers of the same pid distinct; below that the path is pathological.
+        var room = UnixSocketPathBudget() - prefix.Length - ext.Length;
+        if (room < MinInvocationSuffixHexChars) RequireFits(prefix + new string('0', MinInvocationSuffixHexChars) + ext);
+        var unique = guid[..Math.Min(guid.Length, room)];
+        return ("unix", prefix + unique + ext);
     }
 
     /// <summary>
@@ -281,12 +282,7 @@ public static class IpcTransportFactory
     /// Optional explicit override forwarded to <see cref="ResolveEndpoint(string)"/>.
     /// </param>
     public static IIpcTransport CreateDefault(string? cliOverride = null)
-    {
-        var (scheme, endpoint) = ResolveEndpoint(cliOverride);
-        return scheme == "unix"
-            ? new UnixSocketTransport(endpoint)
-            : new NamedPipeTransport(endpoint);
-    }
+        => new UnixSocketTransport(ResolveEndpoint(cliOverride).Endpoint);
 
     /// <summary>
     /// Parse a <c>scheme:endpoint</c> string. Returns false (no parse, no
@@ -312,9 +308,11 @@ public static class IpcTransportFactory
 
         var scheme = spec[..idx];
         var endpoint = spec[(idx + 1)..];
-        if (scheme is not ("unix" or "pipe"))
+        if (scheme != "unix")
             throw new ArgumentException(
-                $"{sourceName} value '{spec}' has unknown scheme '{scheme}'. Expected unix or pipe.",
+                scheme == "pipe"
+                    ? $"{sourceName} value '{spec}': the named-pipe transport was removed; use 'unix:<socket path>'."
+                    : $"{sourceName} value '{spec}' has unknown scheme '{scheme}'. Expected unix.",
                 nameof(spec));
 
         result = (scheme, endpoint);

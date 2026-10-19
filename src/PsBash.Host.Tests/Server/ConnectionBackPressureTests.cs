@@ -360,7 +360,7 @@ public sealed class ConnectionBackPressureTests
         public int ReadingCount => Volatile.Read(ref _reading);
 
         public string Endpoint => "counting";
-        public string Scheme => "pipe";
+        public string Scheme => "unix";
 
         public void Enqueue(ProbeStream stream)
         {

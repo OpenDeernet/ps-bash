@@ -50,7 +50,7 @@ public sealed class LifecycleScaleAndFaultTests
     // ─── Endpoint isolation helpers ─────────────────────────────────────────
 
     /// <summary>
-    /// Generate a fresh isolated endpoint spec ("pipe:psbash-test-...") and the
+    /// Generate a fresh isolated endpoint spec ("unix:.../host-label-id.sock") and the
     /// scheme/endpoint pair the test will probe. Every caller MUST clean up
     /// any sidecar / socket file written under the resolved path in a finally
     /// block (see CleanupEndpoint).
@@ -59,18 +59,10 @@ public sealed class LifecycleScaleAndFaultTests
     {
         // Short: a macOS unix-socket path is capped at 104 chars and $TMPDIR is already ~49.
         var unique = $"{(label.Length > 12 ? label[..12] : label)}-{Guid.NewGuid().ToString("N")[..8]}";
-        if (OperatingSystem.IsWindows())
-        {
-            var name = $"psbash-{unique}";
-            return ($"pipe:{name}", "pipe", name);
-        }
-        else
-        {
-            var dir = Path.Combine(Path.GetTempPath(), "ps-bash");
-            Directory.CreateDirectory(dir);
-            var path = Path.Combine(dir, $"host-{unique}.sock");
-            return ($"unix:{path}", "unix", path);
-        }
+        var dir = Path.Combine(Path.GetTempPath(), "ps-bash");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, $"host-{unique}.sock");
+        return ($"unix:{path}", "unix", path);
     }
 
     private static void CleanupEndpoint(string scheme, string endpoint)
@@ -102,12 +94,9 @@ public sealed class LifecycleScaleAndFaultTests
         return matches.FirstOrDefault();
     }
 
-    private IIpcTransport NewTransport(string scheme, string endpoint) => scheme switch
-    {
-        "unix" => new UnixSocketTransport(endpoint),
-        "pipe" => new NamedPipeTransport(endpoint),
-        _ => throw new InvalidOperationException($"unknown scheme {scheme}"),
-    };
+    private IIpcTransport NewTransport(string scheme, string endpoint) => scheme == "unix"
+        ? new UnixSocketTransport(endpoint)
+        : throw new InvalidOperationException($"unknown scheme {scheme}");
 
     // ─── 2. Reuse healthy current-build host ────────────────────────────────
 
@@ -264,48 +253,6 @@ public sealed class LifecycleScaleAndFaultTests
         }
     }
 
-    /// <summary>
-    /// Acceptance variant for Windows named pipes: the metadata sidecar lives
-    /// under %TEMP%/ps-bash/ rather than next to a socket file, and there is
-    /// no kernel-namespace endpoint to unlink. RetireEndpoint must be a no-op
-    /// for pipe scheme; only the sidecar must come away.
-    /// </summary>
-    [SkippableFact]
-    public void StaleNamedPipeMetadata_RemovedWithoutTouchingPipeNamespace()
-    {
-        Skip.IfNot(OperatingSystem.IsWindows(), "Named-pipe path is Windows-only");
-
-        var pipeName = $"psbash-stale-pipe-{Guid.NewGuid():N}";
-        try
-        {
-            var meta = new HostMetadata(
-                Pid: -1,
-                ExecutablePath: "C:\\nonexistent\\ps-bash-host.exe",
-                ProtocolVersion: HostProtocol.ProtocolVersion,
-                BuildIdentity: HostProtocol.BuildIdentity,
-                TransportScheme: "pipe",
-                Endpoint: pipeName,
-                StartedAt: DateTimeOffset.UtcNow.AddHours(-1),
-                Owner: Environment.UserName);
-            meta.Write("pipe", pipeName);
-
-            var sidecarPath = HostMetadata.PathFor("pipe", pipeName);
-            Assert.True(File.Exists(sidecarPath));
-
-            // RetireEndpoint must NOT throw and must NOT touch the pipe
-            // namespace (no way to verify directly, but the call returning
-            // without exception is the contract).
-            IpcTransportFactory.RetireEndpoint("pipe", pipeName);
-            HostMetadata.Remove("pipe", pipeName);
-
-            Assert.False(File.Exists(sidecarPath), "sidecar must be removed");
-        }
-        finally
-        {
-            try { HostMetadata.Remove("pipe", pipeName); } catch { }
-        }
-    }
-
     // ─── 5. Wedged host bounded timeout ─────────────────────────────────────
 
     /// <summary>
@@ -313,7 +260,7 @@ public sealed class LifecycleScaleAndFaultTests
     /// the health handshake must NOT block startup forever. IpcWorker.StartAsync
     /// must surface HostUnavailableException within its startup timeout.
     ///
-    /// We model a wedged host with a server that accepts pipe connections and
+    /// We model a wedged host with a server that accepts socket connections and
     /// then sleeps. CheckHealthAsync uses a 750ms inner probe timeout, so the
     /// initial probe surfaces Unhealthy. With a non-existent binary, the
     /// SpawnAndWaitAsync step then surfaces "binary not found" — proving the

@@ -24,7 +24,7 @@ public sealed class HostServerListenFaultTests
         public FaultingListenTransport(Exception fault) => _fault = fault;
 
         public string Endpoint => "faulting-endpoint";
-        public string Scheme => "pipe";
+        public string Scheme => "unix";
 
         public Task ListenAsync(CancellationToken ct = default) => Task.FromException(_fault);
         public Task<Stream> AcceptAsync(CancellationToken ct = default) => Task.FromException<Stream>(_fault);
@@ -36,7 +36,7 @@ public sealed class HostServerListenFaultTests
     private sealed class BlockingListenTransport : IIpcTransport
     {
         public string Endpoint => "blocking-endpoint";
-        public string Scheme => "pipe";
+        public string Scheme => "unix";
 
         public async Task ListenAsync(CancellationToken ct = default)
         {

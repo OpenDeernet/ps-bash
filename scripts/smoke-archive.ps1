@@ -77,7 +77,9 @@ if (-not $IsWindows) {
 }
 
 # Randomized endpoint: never adopt a host left behind by another step or a developer shell.
-$env:PSBASH_IPC_ENDPOINT = 'pipe:psbash-smoke-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$smokeDir = Join-Path ([IO.Path]::GetTempPath()) 'ps-bash'
+[void](New-Item -ItemType Directory -Force $smokeDir)
+$env:PSBASH_IPC_ENDPOINT = 'unix:' + (Join-Path $smokeDir ('smoke-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.sock'))
 
 $output = & $exe -c 'echo smoke-ok; seq 1 3 | wc -l' 2>&1
 $code = $LASTEXITCODE

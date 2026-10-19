@@ -232,9 +232,6 @@ internal sealed class Program
         var socketPath = GetArg(args, "--socket");
         if (socketPath != null) return (new UnixSocketTransport(socketPath), "unix", socketPath);
 
-        var pipeName = GetArg(args, "--pipe");
-        if (pipeName != null) return (new NamedPipeTransport(pipeName), "pipe", pipeName);
-
         // --ipc-endpoint <scheme:endpoint> is the public/agent-facing override:
         // tests, WSL bash drivers, or anyone who needs an isolated host can
         // pass it on both the host and the launcher (via PSBASH_IPC_ENDPOINT)

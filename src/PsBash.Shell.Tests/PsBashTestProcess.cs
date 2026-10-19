@@ -81,7 +81,5 @@ internal static class PsBashTestProcess
     }
 
     public static string CreateEndpoint()
-        => OperatingSystem.IsWindows()
-            ? "pipe:psbash-test-" + Guid.NewGuid().ToString("N")
-            : "unix:" + Path.Combine(Path.GetTempPath(), "ps-bash", "test-" + Guid.NewGuid().ToString("N") + ".sock");
+        => "unix:" + Path.Combine(Path.GetTempPath(), "ps-bash", "test-" + Guid.NewGuid().ToString("N") + ".sock");
 }

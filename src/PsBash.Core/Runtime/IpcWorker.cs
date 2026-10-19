@@ -393,26 +393,13 @@ public sealed class IpcWorker : IWorker
         // (split env/cwd, stale build). A genuinely dead host makes this a no-op.
         if (weOwnIt)
         {
-            bool confirmedDead = TryKillRecordedHost(metadata!);
-            if (!confirmedDead && _scheme == "pipe")
-            {
-                // Windows named-pipe split-brain guard. A named pipe allows MULTIPLE
-                // server instances on the same name, so spawning a replacement while
-                // the old host is STILL listening (the kill failed — permission denied
-                // or a wedged handle) would leave two hosts accepting connections and
-                // clients round-robining between the stale and the fresh one (split
-                // env/cwd, stale build). Refuse rather than create that split-brain.
-                // (Unix unlinks+rebinds the socket path, so it is not affected.)
-                throw new HostUnavailableException(
-                    $"ps-bash-host (pid {metadata!.Pid}) is still listening and could not be " +
-                    "terminated; refusing to start a second host on the same named pipe. " +
-                    "Terminate it manually, or set PSBASH_PER_INVOCATION=1 for a private host.");
-            }
+            // Best effort: a host that survives is orphaned from the socket path we unlink
+            // and rebind below, so it cannot split clients between two servers.
+            TryKillRecordedHost(metadata!);
         }
 
-        // Endpoint and sidecar artifacts may now be cleaned. Unix unlinks the
-        // socket file; Windows named pipes have no kernel-namespace file to remove.
-        // The sidecar is removed so the next launcher does not see ghost ownership.
+        // Endpoint and sidecar artifacts may now be cleaned: unlink the socket file and
+        // remove the sidecar so the next launcher does not see ghost ownership.
         IpcTransportFactory.RetireEndpoint(_scheme, _endpoint);
         HostMetadata.Remove(_scheme, _endpoint);
 
@@ -1430,12 +1417,9 @@ public sealed class IpcWorker : IWorker
         }
     }
 
-    private IIpcTransport NewTransport() => _scheme switch
-    {
-        "unix" => new UnixSocketTransport(_endpoint),
-        "pipe" => new NamedPipeTransport(_endpoint),
-        _ => throw new InvalidOperationException($"Unknown transport scheme '{_scheme}'."),
-    };
+    private IIpcTransport NewTransport() => _scheme == "unix"
+        ? new UnixSocketTransport(_endpoint)
+        : throw new InvalidOperationException($"Unknown transport scheme '{_scheme}'.");
 
     private static TimeSpan GetStartupTimeout()
         => ParseStartupTimeout(

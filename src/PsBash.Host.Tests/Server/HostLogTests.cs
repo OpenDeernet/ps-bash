@@ -32,18 +32,18 @@ public class HostLogTests : IDisposable
     [Fact]
     public void FormatLine_CarriesPidEndpointAndVersion()
     {
-        var line = HostLog.FormatLine(new DateTime(2026, 10, 7, 1, 2, 3, DateTimeKind.Utc), 123, "pipe:psbash-x", "0.11.2", "connection error: boom");
-        Assert.Equal("2026-10-07T01:02:03.0000000Z pid=123 ep=pipe:psbash-x v=0.11.2 connection error: boom", line);
+        var line = HostLog.FormatLine(new DateTime(2026, 10, 7, 1, 2, 3, DateTimeKind.Utc), 123, "unix:/tmp/x.sock", "0.11.2", "connection error: boom");
+        Assert.Equal("2026-10-07T01:02:03.0000000Z pid=123 ep=unix:/tmp/x.sock v=0.11.2 connection error: boom", line);
         Assert.Contains(" ep=- ", HostLog.FormatLine(DateTime.UtcNow, 1, null, "v", "m"));
     }
 
     [Fact]
     public void Write_AppendsTaggedLine_ForThisProcess()
     {
-        HostLog.SetEndpoint("pipe", "psbash-hostlog-test");
+        HostLog.SetEndpoint("unix", "/tmp/hostlog-test.sock");
         HostLog.Write("hello");
         var last = File.ReadAllLines(LogPath)[^1];
-        Assert.Contains($" pid={Environment.ProcessId} ep=pipe:psbash-hostlog-test ", last);
+        Assert.Contains($" pid={Environment.ProcessId} ep=unix:/tmp/hostlog-test.sock ", last);
         Assert.EndsWith(" hello", last);
     }
 

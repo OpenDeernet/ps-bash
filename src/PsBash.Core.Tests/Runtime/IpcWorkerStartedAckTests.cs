@@ -83,9 +83,7 @@ public sealed class IpcWorkerStartedAckTests
             Scheme = scheme;
             Endpoint = endpoint;
             _resetPoint = resetPoint;
-            _transport = scheme == "unix"
-                ? new UnixSocketTransport(endpoint)
-                : new NamedPipeTransport(endpoint);
+            _transport = new UnixSocketTransport(endpoint);
         }
 
         public string Scheme { get; }
@@ -97,11 +95,8 @@ public sealed class IpcWorkerStartedAckTests
         public static async Task<ScriptedHost> StartAsync(ResetPoint resetPoint)
         {
             var unique = Guid.NewGuid().ToString("N");
-            var (scheme, endpoint) = OperatingSystem.IsWindows()
-                ? ("pipe", $"psbash-r05-test-{unique}")
-                : ("unix", Path.Combine(Path.GetTempPath(), "ps-bash", $"r05-{unique}.sock"));
-            if (scheme == "unix")
-                Directory.CreateDirectory(Path.GetDirectoryName(endpoint)!);
+            var (scheme, endpoint) = ("unix", Path.Combine(Path.GetTempPath(), "ps-bash", $"r05-{unique}.sock"));
+            Directory.CreateDirectory(Path.GetDirectoryName(endpoint)!);
 
             var host = new ScriptedHost(scheme, endpoint, resetPoint);
             await host._transport.ListenAsync(host._cts.Token);

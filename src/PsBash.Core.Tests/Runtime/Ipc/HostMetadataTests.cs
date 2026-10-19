@@ -45,15 +45,6 @@ public class HostMetadataTests : IDisposable
     }
 
     [Fact]
-    public void PathFor_Pipe_PlacesSidecarUnderPsBashTemp()
-    {
-        var path = HostMetadata.PathFor("pipe", "psbash-host-andy");
-        Assert.Equal(
-            Path.Combine(PsBashRuntimeDirectory.GetPath(), "psbash-host-andy.host.json"),
-            path);
-    }
-
-    [Fact]
     public void PathFor_UnknownScheme_Throws()
     {
         var ex = Assert.Throws<ArgumentException>(() => HostMetadata.PathFor("tcp", "x"));

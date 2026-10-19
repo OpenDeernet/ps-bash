@@ -125,11 +125,6 @@ public sealed class HostStartupStressTests
     {
         // Short: a macOS unix-socket path is capped at 104 chars and $TMPDIR is already ~49.
         var unique = $"{(label.Length > 12 ? label[..12] : label)}-{Guid.NewGuid().ToString("N")[..8]}";
-        if (OperatingSystem.IsWindows())
-        {
-            var name = $"psbash-{unique}";
-            return ($"pipe:{name}", "pipe", name);
-        }
         var dir = Path.Combine(Path.GetTempPath(), "ps-bash");
         Directory.CreateDirectory(dir);
         var path = Path.Combine(dir, $"host-{unique}.sock");

@@ -15,19 +15,19 @@ namespace PsBash.Host.Tests.Server;
 public sealed class HostServerTests : IAsyncLifetime
 {
     private WorkerPool<SdkWorker> _pool = null!;
-    private NamedPipeTransport _serverTransport = null!;
+    private UnixSocketTransport _serverTransport = null!;
     private HostServer _server = null!;
     private CancellationTokenSource _cts = null!;
     private Task _serverTask = null!;
-    private string _pipeName = null!;
+    private string _socketPath = null!;
 
     public Task InitializeAsync()
     {
         // warmTarget 0: create a runspace on demand (per command) to keep the
         // test's runspace count minimal, matching the old single-worker cost.
         _pool = new WorkerPool<SdkWorker>(warmTarget: 0, max: 2, SdkWorker.Create);
-        _pipeName = $"psbash-test-{Guid.NewGuid():N}";
-        _serverTransport = new NamedPipeTransport(_pipeName);
+        _socketPath = TestSockets.New("test");
+        _serverTransport = new UnixSocketTransport(_socketPath);
         _server = new HostServer(_serverTransport, _pool);
         _cts = new CancellationTokenSource();
         _serverTask = _server.RunAsync(_cts.Token);
@@ -45,7 +45,7 @@ public sealed class HostServerTests : IAsyncLifetime
 
     private async Task<(string output, int exitCode)> SendCommandAsync(string command, CancellationToken ct = default)
     {
-        var clientTransport = new NamedPipeTransport(_pipeName);
+        var clientTransport = new UnixSocketTransport(_socketPath);
         await using (clientTransport)
         {
             using var stream = await clientTransport.ConnectAsync(ct);
@@ -56,9 +56,9 @@ public sealed class HostServerTests : IAsyncLifetime
         }
     }
 
-    private async Task<(string output, int exitCode)> SendHealthAsync(string pipeName, CancellationToken ct = default)
+    private async Task<(string output, int exitCode)> SendHealthAsync(string socketPath, CancellationToken ct = default)
     {
-        var clientTransport = new NamedPipeTransport(pipeName);
+        var clientTransport = new UnixSocketTransport(socketPath);
         await using (clientTransport)
         {
             using var stream = await clientTransport.ConnectAsync(ct);
@@ -80,7 +80,7 @@ public sealed class HostServerTests : IAsyncLifetime
     [Fact]
     public async Task HealthConnection_DoesNotWaitForWorkerInitialization()
     {
-        var pipeName = $"psbash-health-{Guid.NewGuid():N}";
+        var socketPath = TestSockets.New("health");
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         // A pool whose factory blocks (until the test cancels) models a host whose
         // first runspace is still warming: IsReady stays false, so health must
@@ -89,13 +89,13 @@ public sealed class HostServerTests : IAsyncLifetime
         using var neverReady = new ManualResetEventSlim(false);
         SdkWorker BlockingFactory() { neverReady.Wait(cts.Token); return SdkWorker.Create(); }
         await using var pool = new WorkerPool<SdkWorker>(warmTarget: 1, max: 2, BlockingFactory);
-        await using var transport = new NamedPipeTransport(pipeName);
+        await using var transport = new UnixSocketTransport(socketPath);
         await using var server = new HostServer(transport, pool);
 
         var serverTask = server.RunAsync(cts.Token);
         await server.WhenListening.WaitAsync(cts.Token);
 
-        var (output, exitCode) = await SendHealthAsync(pipeName, cts.Token);
+        var (output, exitCode) = await SendHealthAsync(socketPath, cts.Token);
 
         cts.Cancel();
         try { await serverTask.WaitAsync(TimeSpan.FromSeconds(3)); } catch { }
@@ -127,7 +127,7 @@ public sealed class HostServerTests : IAsyncLifetime
 
         // Send bytes that don't start with "MODE:"; the server should drop the
         // malformed connection and keep accepting valid clients.
-        var garbledTransport = new NamedPipeTransport(_pipeName);
+        var garbledTransport = new UnixSocketTransport(_socketPath);
         try
         {
             await using (garbledTransport)
@@ -180,7 +180,7 @@ public sealed class HostServerTests : IAsyncLifetime
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
             cts.CancelAfter(TimeSpan.FromSeconds(15));
 
-            var clientTransport = new NamedPipeTransport(_pipeName);
+            var clientTransport = new UnixSocketTransport(_socketPath);
             int exitCode;
             bool promptReady;
             var lines = new List<string>();
@@ -225,7 +225,7 @@ public sealed class HostServerTests : IAsyncLifetime
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
         cts.CancelAfter(TimeSpan.FromSeconds(15));
 
-        var clientTransport = new NamedPipeTransport(_pipeName);
+        var clientTransport = new UnixSocketTransport(_socketPath);
         int exitCode;
         bool promptReady;
         var lines = new List<string>();
@@ -253,7 +253,7 @@ public sealed class HostServerTests : IAsyncLifetime
     private async Task<(List<string> Stdout, List<string> Stderr, int ExitCode)> SendCommandWithStreamsAsync(
         string command, CancellationToken ct = default)
     {
-        var clientTransport = new NamedPipeTransport(_pipeName);
+        var clientTransport = new UnixSocketTransport(_socketPath);
         await using (clientTransport)
         {
             using var stream = await clientTransport.ConnectAsync(ct);

@@ -79,9 +79,7 @@ public sealed class CanaryHostGcTests
         // sentinel watcher.
 
         var endpoint = Guid.NewGuid().ToString("N")[..8];
-        var endpointArg = OperatingSystem.IsWindows()
-            ? $"--ipc-endpoint=pipe:psbash-canary-orphan-{endpoint}"
-            : $"--ipc-endpoint=uds:{Path.Combine(Path.GetTempPath(), "ps-bash", $"canary-orphan-{endpoint}.sock")}";
+        var endpointArg = $"--ipc-endpoint=unix:{Path.Combine(Path.GetTempPath(), "ps-bash", $"canary-orphan-{endpoint}.sock")}";
 
         var hostPsi = new ProcessStartInfo
         {

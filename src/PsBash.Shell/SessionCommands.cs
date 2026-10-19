@@ -37,25 +37,18 @@ internal static partial class SessionCommands
     internal static bool IsAnchorToken(string token) => AnchorTokenRegex().IsMatch(token);
 
     /// <summary>
-    /// The session token inside a metadata sidecar file name, or null if the file belongs to
-    /// another user or is not a per-session endpoint. Handles both endpoint spellings:
-    /// <c>host-USER-sTOKEN.sock.host.json</c> and <c>psbash-host-USER-sTOKEN.host.json</c>.
+    /// The session token inside a metadata sidecar file name (<c>host-USER-sTOKEN.sock.host.json</c>),
+    /// or null if the file belongs to another user or is not a per-session endpoint.
     /// </summary>
     internal static string? TokenFromSidecarName(string fileName, string sanitizedUser)
     {
-        string head, tail;
-        if (fileName.StartsWith("host-", StringComparison.Ordinal)
-            && fileName.EndsWith(".sock.host.json", StringComparison.Ordinal))
-            (head, tail) = ("host-", ".sock.host.json");
-        else if (fileName.StartsWith("psbash-host-", StringComparison.Ordinal)
-                 && fileName.EndsWith(".host.json", StringComparison.Ordinal))
-            (head, tail) = ("psbash-host-", ".host.json");
-        else
+        const string head = "host-", tail = ".sock.host.json";
+        if (!fileName.StartsWith(head, StringComparison.Ordinal)
+            || !fileName.EndsWith(tail, StringComparison.Ordinal)
+            || fileName.Length < head.Length + tail.Length)
             return null;
 
-        if (fileName.Length < head.Length + tail.Length) return null;
         var stem = fileName[head.Length..^tail.Length];
-
         var prefix = sanitizedUser + "-s";
         return stem.StartsWith(prefix, StringComparison.Ordinal) && stem.Length > prefix.Length
             ? stem[prefix.Length..]
@@ -142,12 +135,7 @@ internal static partial class SessionCommands
 
     private static HostMetadata? TryReadSidecar(string file)
     {
-        var name = Path.GetFileName(file);
-        var scheme = name.EndsWith(".sock.host.json", StringComparison.Ordinal) ? "unix" : "pipe";
-        var endpoint = scheme == "unix"
-            ? file[..^".host.json".Length]
-            : name[..^".host.json".Length];
-        return HostMetadata.TryRead(scheme, endpoint);
+        return HostMetadata.TryRead("unix", file[..^".host.json".Length]);
     }
 
     private static void PrintUsage()

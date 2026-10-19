@@ -32,19 +32,13 @@ public sealed record HostMetadata(
     private const long MaxMetadataBytes = 64 * 1024;
 
     /// <summary>
-    /// Path of the metadata sidecar derived from a resolved endpoint. For
-    /// <c>unix</c>, the sidecar lives next to the socket so a single ownership
-    /// check covers both. For <c>pipe</c>, Windows named pipes are kernel
-    /// namespace objects with no filesystem location, so the sidecar is parked
-    /// under the per-user <see cref="PsBashRuntimeDirectory"/>
-    /// (<c>&lt;runtime-dir&gt;/&lt;pipe-name&gt;.host.json</c>).
+    /// Path of the metadata sidecar derived from a resolved endpoint: it lives next
+    /// to the socket so a single ownership check covers both.
     /// </summary>
     public static string PathFor(string scheme, string endpoint)
     {
         if (scheme == "unix") return endpoint + ".host.json";
-        if (scheme == "pipe")
-            return Path.Combine(PsBashRuntimeDirectory.GetPath(), endpoint + ".host.json");
-        throw new ArgumentException($"Unknown scheme '{scheme}' (expected unix or pipe).", nameof(scheme));
+        throw new ArgumentException($"Unknown scheme '{scheme}' (expected unix).", nameof(scheme));
     }
 
     /// <summary>
@@ -77,9 +71,6 @@ public sealed record HostMetadata(
         {
             try
             {
-                // Pipe sidecars live in the per-user runtime dir; validate it
-                // before writing so a hostile dir is refused (caught below).
-                if (scheme == "pipe") PsBashRuntimeDirectory.EnsureDirectory();
                 if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
                 File.WriteAllText(tmp, JsonSerializer.Serialize(this, HostMetadataJsonContext.Default.HostMetadata));
                 try { File.Move(tmp, path, overwrite: true); }

@@ -184,7 +184,8 @@ try {
     function Invoke-Chain {
         param([string]$Chain, [bool]$Fused)
         $env:PSBASH_SESSION      = "s0-$session"
-        $env:PSBASH_IPC_ENDPOINT = "pipe:psbash-s0-$session"
+        $sockDir = Join-Path ([IO.Path]::GetTempPath()) 'ps-bash'; [void](New-Item -ItemType Directory -Force $sockDir)
+        $env:PSBASH_IPC_ENDPOINT = "unix:" + (Join-Path $sockDir "s0-$session.sock")
         if ($Fused) { Remove-Item Env:PSBASH_FUSED -ErrorAction SilentlyContinue }
         else        { $env:PSBASH_FUSED = '0' }
 

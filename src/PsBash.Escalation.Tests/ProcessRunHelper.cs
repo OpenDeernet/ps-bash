@@ -99,9 +99,7 @@ internal sealed class IsolatedDaemon : IAsyncDisposable
     {
         var id = Guid.NewGuid().ToString("N")[..12];
         // Short on purpose: a unix socket path is capped at 108 bytes.
-        var spec = OperatingSystem.IsWindows()
-            ? $"pipe:psbash-esc-{id}"
-            : $"unix:{Path.Combine(Path.GetTempPath(), "ps-bash", $"esc-{id}.sock")}";
+        var spec = $"unix:{Path.Combine(Path.GetTempPath(), "ps-bash", $"esc-{id}.sock")}";
         Env = new Dictionary<string, string>
         {
             ["PSBASH_IPC_ENDPOINT"] = spec,

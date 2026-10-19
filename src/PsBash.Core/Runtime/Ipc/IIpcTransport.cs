@@ -7,20 +7,18 @@ namespace PsBash.Core.Runtime.Ipc;
 /// concurrent read+write for the wire protocol layer (T04).
 /// </summary>
 /// <remarks>
-/// Implementations: <see cref="UnixSocketTransport"/> (POSIX),
-/// <see cref="NamedPipeTransport"/> (Windows fallback).
+/// Implementation: <see cref="UnixSocketTransport"/> (AF_UNIX on every platform).
 /// </remarks>
 public interface IIpcTransport : IAsyncDisposable
 {
     /// <summary>
     /// Endpoint identifier used to advertise this transport in the host lock
-    /// file: an absolute filesystem path for <see cref="UnixSocketTransport"/>
-    /// or a pipe name (no <c>\\.\pipe\</c> prefix) for <see cref="NamedPipeTransport"/>.
+    /// file: an absolute filesystem path.
     /// </summary>
     string Endpoint { get; }
 
     /// <summary>
-    /// Lock-file scheme prefix: <c>"unix"</c> or <c>"pipe"</c>. Combined with
+    /// Lock-file scheme prefix: <c>"unix"</c>. Combined with
     /// <see cref="Endpoint"/> as <c>{Scheme}:{Endpoint}</c> for advertisement.
     /// </summary>
     string Scheme { get; }

@@ -56,16 +56,16 @@ public sealed class GracefulShutdownTests
     public async Task ShutdownRequest_AckThenStopsAcceptingNewConnections()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var pipeName = $"psbash-shutdown-{Guid.NewGuid():N}";
+        var socketPath = TestSockets.New("shutdown");
 
-        await using var serverTransport = new NamedPipeTransport(pipeName);
+        await using var serverTransport = new UnixSocketTransport(socketPath);
         await using var pool = new WorkerPool<SdkWorker>(0, 2, SdkWorker.Create);
         await using var server = new HostServer(serverTransport, pool);
         var serverTask = server.RunAsync(cts.Token);
         await server.WhenListening.WaitAsync(cts.Token);
 
         // Send shutdown
-        var (output, exitCode) = await SendShutdownAsync(pipeName, 100, cts.Token);
+        var (output, exitCode) = await SendShutdownAsync(socketPath, 100, cts.Token);
         Assert.Equal(0, exitCode);
         Assert.Equal(HostProtocol.ShutdownAcceptedPayload, output);
 
@@ -81,22 +81,22 @@ public sealed class GracefulShutdownTests
     public async Task ShutdownWithInflightRequest_DrainsBeforeExiting()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var pipeName = $"psbash-drain-{Guid.NewGuid():N}";
+        var socketPath = TestSockets.New("drain");
 
-        await using var serverTransport = new NamedPipeTransport(pipeName);
+        await using var serverTransport = new UnixSocketTransport(socketPath);
         await using var pool = new WorkerPool<SdkWorker>(0, 2, SdkWorker.Create);
         await using var server = new HostServer(serverTransport, pool);
         var serverTask = server.RunAsync(cts.Token);
         await server.WhenListening.WaitAsync(cts.Token);
 
         // Start a long-ish work request that takes ~500ms to complete.
-        var workTask = SendCommandAsync(pipeName, "Start-Sleep -Milliseconds 500; Invoke-BashEcho 'work-done'", cts.Token);
+        var workTask = SendCommandAsync(socketPath, "Start-Sleep -Milliseconds 500; Invoke-BashEcho 'work-done'", cts.Token);
 
         // Give the work request a moment to be accepted and start executing.
         await Task.Delay(100, cts.Token);
 
         // Send shutdown with a generous deadline (longer than the work duration).
-        var (sdOutput, sdExit) = await SendShutdownAsync(pipeName, 5000, cts.Token);
+        var (sdOutput, sdExit) = await SendShutdownAsync(socketPath, 5000, cts.Token);
         Assert.Equal(0, sdExit);
         Assert.Equal(HostProtocol.ShutdownAcceptedPayload, sdOutput);
 
@@ -113,16 +113,16 @@ public sealed class GracefulShutdownTests
     public async Task ShutdownAfterAck_RejectsNewConnections()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var pipeName = $"psbash-reject-{Guid.NewGuid():N}";
+        var socketPath = TestSockets.New("reject");
 
-        await using var serverTransport = new NamedPipeTransport(pipeName);
+        await using var serverTransport = new UnixSocketTransport(socketPath);
         await using var pool = new WorkerPool<SdkWorker>(0, 2, SdkWorker.Create);
         await using var server = new HostServer(serverTransport, pool);
         var serverTask = server.RunAsync(cts.Token);
         await server.WhenListening.WaitAsync(cts.Token);
 
         // Trigger graceful shutdown.
-        var (_, sdExit) = await SendShutdownAsync(pipeName, 50, cts.Token);
+        var (_, sdExit) = await SendShutdownAsync(socketPath, 50, cts.Token);
         Assert.Equal(0, sdExit);
 
         // Wait for the accept loop to exit. After this, no new connection can be served.
@@ -134,7 +134,7 @@ public sealed class GracefulShutdownTests
         attemptCts.CancelAfter(TimeSpan.FromSeconds(2));
         await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            var clientTransport = new NamedPipeTransport(pipeName);
+            var clientTransport = new UnixSocketTransport(socketPath);
             await using (clientTransport)
             {
                 using var stream = await clientTransport.ConnectAsync(attemptCts.Token);
@@ -150,17 +150,17 @@ public sealed class GracefulShutdownTests
     {
         // Acceptance criterion: tests prove a new host can bind after graceful retirement.
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var pipeName = $"psbash-rebind-{Guid.NewGuid():N}";
+        var socketPath = TestSockets.New("rebind");
 
         // First host: start, accept, shut down.
-        await using (var oldTransport = new NamedPipeTransport(pipeName))
+        await using (var oldTransport = new UnixSocketTransport(socketPath))
         await using (var oldPool = new WorkerPool<SdkWorker>(0, 2, SdkWorker.Create))
         await using (var oldServer = new HostServer(oldTransport, oldPool))
         {
             var oldServerTask = oldServer.RunAsync(cts.Token);
             await oldServer.WhenListening.WaitAsync(cts.Token);
 
-            var (output, exit) = await SendShutdownAsync(pipeName, 100, cts.Token);
+            var (output, exit) = await SendShutdownAsync(socketPath, 100, cts.Token);
             Assert.Equal(0, exit);
             Assert.Equal(HostProtocol.ShutdownAcceptedPayload, output);
 
@@ -168,14 +168,14 @@ public sealed class GracefulShutdownTests
         }
 
         // Second host: bind same name, must succeed and accept work.
-        await using var newTransport = new NamedPipeTransport(pipeName);
+        await using var newTransport = new UnixSocketTransport(socketPath);
         await using var newPool = new WorkerPool<SdkWorker>(0, 2, SdkWorker.Create);
         await using var newServer = new HostServer(newTransport, newPool);
         using var newCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
         var newServerTask = newServer.RunAsync(newCts.Token);
         await newServer.WhenListening.WaitAsync(cts.Token);
 
-        var (workOutput, workExit) = await SendCommandAsync(pipeName, "Invoke-BashEcho 'replacement'", cts.Token);
+        var (workOutput, workExit) = await SendCommandAsync(socketPath, "Invoke-BashEcho 'replacement'", cts.Token);
         Assert.Equal(0, workExit);
         Assert.Contains("replacement", workOutput);
 
@@ -197,7 +197,7 @@ public sealed class GracefulShutdownTests
 
         await using var pool = new WorkerPool<SdkWorker>(0, 2, SdkWorker.Create);
         await using var server = new HostServer(
-            new NamedPipeTransport($"psbash-deadline-{Guid.NewGuid():N}"),
+            new UnixSocketTransport(TestSockets.New("deadline")),
             pool);
 
         // No accept loop needed — call RequestShutdownAsync directly with no
@@ -214,9 +214,9 @@ public sealed class GracefulShutdownTests
     // -- Helpers --
 
     private static async Task<(string output, int exitCode)> SendShutdownAsync(
-        string pipeName, int deadlineMs, CancellationToken ct)
+        string socketPath, int deadlineMs, CancellationToken ct)
     {
-        var transport = new NamedPipeTransport(pipeName);
+        var transport = new UnixSocketTransport(socketPath);
         await using (transport)
         {
             using var stream = await transport.ConnectAsync(ct);
@@ -228,9 +228,9 @@ public sealed class GracefulShutdownTests
     }
 
     private static async Task<(string output, int exitCode)> SendCommandAsync(
-        string pipeName, string command, CancellationToken ct)
+        string socketPath, string command, CancellationToken ct)
     {
-        var transport = new NamedPipeTransport(pipeName);
+        var transport = new UnixSocketTransport(socketPath);
         await using (transport)
         {
             using var stream = await transport.ConnectAsync(ct);

@@ -47,15 +47,15 @@ public class IpcTransportFactoryTests : IDisposable
     [Fact]
     public void ResolveNestedEndpoint_DerivesPerDepthEndpoint_AndParsesBack()
     {
-        SetEnv("pipe:psb-nest-x");
+        SetEnv("unix:/tmp/psb-nest-x.sock");
         var (s1, e1) = IpcTransportFactory.ResolveNestedEndpoint(1);
         var (_, e2) = IpcTransportFactory.ResolveNestedEndpoint(2);
-        Assert.Equal("pipe", s1);
-        Assert.Equal("psb-nest-x-nested1", e1);
+        Assert.Equal("unix", s1);
+        Assert.Equal("/tmp/psb-nest-x.sock-nested1", e1);
         Assert.NotEqual(e1, e2);
         Assert.Equal(1, IpcTransportFactory.ParseNestDepth(e1));
         Assert.Equal(2, IpcTransportFactory.ParseNestDepth(e2));
-        Assert.Equal(0, IpcTransportFactory.ParseNestDepth("psb-nest-x"));
+        Assert.Equal(0, IpcTransportFactory.ParseNestDepth("/tmp/psb-nest-x.sock"));
     }
 
     [Fact]
@@ -89,11 +89,11 @@ public class IpcTransportFactoryTests : IDisposable
     }
 
     [Fact]
-    public void ResolveEndpoint_CliOverridePipe_ReturnsParsedPair()
+    public void ResolveEndpoint_CliOverridePipe_IsRejectedWithRemovalHint()
     {
-        var (scheme, endpoint) = IpcTransportFactory.ResolveEndpoint("pipe:psbash-test-xyz");
-        Assert.Equal("pipe", scheme);
-        Assert.Equal("psbash-test-xyz", endpoint);
+        var ex = Assert.Throws<ArgumentException>(() => IpcTransportFactory.ResolveEndpoint("pipe:psbash-test-xyz"));
+        Assert.Contains("named-pipe transport was removed", ex.Message);
+        Assert.Contains("unix:", ex.Message);
     }
 
     [Fact]
@@ -109,16 +109,16 @@ public class IpcTransportFactoryTests : IDisposable
     public void ResolveEndpoint_CliBeatsEnvVar()
     {
         SetEnv("unix:/env/path.sock");
-        var (scheme, endpoint) = IpcTransportFactory.ResolveEndpoint("pipe:cli-pipe");
-        Assert.Equal("pipe", scheme);
-        Assert.Equal("cli-pipe", endpoint);
+        var (scheme, endpoint) = IpcTransportFactory.ResolveEndpoint("unix:/cli/path.sock");
+        Assert.Equal("unix", scheme);
+        Assert.Equal("/cli/path.sock", endpoint);
     }
 
     [Fact]
     public void ResolveEndpoint_NoOverride_FallsBackToCanonical()
     {
         var (scheme, endpoint) = IpcTransportFactory.ResolveEndpoint();
-        Assert.True(scheme is "unix" or "pipe");
+        Assert.Equal("unix", scheme);
         Assert.False(string.IsNullOrEmpty(endpoint));
     }
 
@@ -225,9 +225,9 @@ public class IpcTransportFactoryTests : IDisposable
     public void ResolveEndpoint_EndpointOverride_ReportsNoAnchor()
     {
         IpcTransportFactory.SessionAnchorOverride = () => Anchor(9999, 111);
-        IpcTransportFactory.ResolveEndpoint("pipe:custom", out var fromCli);
+        IpcTransportFactory.ResolveEndpoint("unix:/custom.sock", out var fromCli);
         Assert.Null(fromCli);
-        Environment.SetEnvironmentVariable(IpcTransportFactory.EndpointEnvVar, "pipe:custom");
+        Environment.SetEnvironmentVariable(IpcTransportFactory.EndpointEnvVar, "unix:/custom.sock");
         IpcTransportFactory.ResolveEndpoint(null, out var fromEnv);
         Assert.Null(fromEnv);
     }
@@ -243,9 +243,9 @@ public class IpcTransportFactoryTests : IDisposable
     public void ResolveEndpoint_EndpointOverrideBeatsSession()
     {
         SetSession("ignored");
-        var (scheme, endpoint) = IpcTransportFactory.ResolveEndpoint("pipe:custom");
-        Assert.Equal("pipe", scheme);
-        Assert.Equal("custom", endpoint);
+        var (scheme, endpoint) = IpcTransportFactory.ResolveEndpoint("unix:/custom.sock");
+        Assert.Equal("unix", scheme);
+        Assert.Equal("/custom.sock", endpoint);
     }
 
     [Theory]
@@ -254,14 +254,13 @@ public class IpcTransportFactoryTests : IDisposable
     public void ResolveEndpoint_EmptyOrWhitespaceCli_TreatedAsAbsent(string spec)
     {
         var (scheme, _) = IpcTransportFactory.ResolveEndpoint(spec);
-        Assert.True(scheme is "unix" or "pipe");
+        Assert.Equal("unix", scheme);
     }
 
     [Theory]
     [InlineData("nocolon")]
     [InlineData(":nopath")]
     [InlineData("unix:")]
-    [InlineData("pipe:")]
     public void ResolveEndpoint_MalformedCli_Throws(string spec)
     {
         var ex = Assert.Throws<ArgumentException>(() => IpcTransportFactory.ResolveEndpoint(spec));
@@ -275,7 +274,7 @@ public class IpcTransportFactoryTests : IDisposable
         var ex = Assert.Throws<ArgumentException>(
             () => IpcTransportFactory.ResolveEndpoint("tcp:127.0.0.1:9000"));
         Assert.Contains("tcp", ex.Message);
-        Assert.Contains("Expected unix or pipe", ex.Message);
+        Assert.Contains("Expected unix", ex.Message);
     }
 
     [Fact]
@@ -310,18 +309,16 @@ public class IpcTransportFactoryTests : IDisposable
         // Reproduces the failed Differential gate: a 6-digit launcher pid under
         // the canonical long temp root produced a 108-char socket path and the
         // host died in UnixDomainSocketEndPoint construction.
-        IpcTransportFactory.UnixSocketSupportedOverride = () => true;
         IpcTransportFactory.ProcessIdOverride = () => 291088;
         PsBashRuntimeDirectory.TempPathOverride = LongTempRoot;
         try
         {
             var (scheme, endpoint) = IpcTransportFactory.ResolvePerInvocationEndpoint();
 
-            // Either the unix path was shortened to fit, or it fell back to the
-            // named-pipe scheme; both keep the launcher pid and never overflow.
-            Assert.True(scheme is "unix" or "pipe", $"unexpected scheme '{scheme}'");
+            // The random suffix is shortened to fit; the launcher pid is kept.
+            Assert.Equal("unix", scheme);
             Assert.True(
-                scheme != "unix" || endpoint.Length <= SunPathBudget,
+                endpoint.Length <= SunPathBudget,
                 $"endpoint is {endpoint.Length} chars, exceeds the {SunPathBudget}-char sun_path budget: {endpoint}");
             Assert.Contains("291088", endpoint);
         }
@@ -337,7 +334,6 @@ public class IpcTransportFactoryTests : IDisposable
         // Shortening the random suffix must not lose the per-invocation
         // uniqueness that lets two concurrent launchers of the same pid
         // (e.g. a forked -c fan-out) each bind their own private socket.
-        IpcTransportFactory.UnixSocketSupportedOverride = () => true;
         IpcTransportFactory.ProcessIdOverride = () => 291088;
         PsBashRuntimeDirectory.TempPathOverride = LongTempRoot;
         try
@@ -349,8 +345,8 @@ public class IpcTransportFactoryTests : IDisposable
             Assert.NotEqual(e1, e2);
             Assert.Contains("291088", e1);
             Assert.Contains("291088", e2);
-            Assert.True(s1 != "unix" || e1.Length <= SunPathBudget, $"e1 is {e1.Length} chars: {e1}");
-            Assert.True(s1 != "unix" || e2.Length <= SunPathBudget, $"e2 is {e2.Length} chars: {e2}");
+            Assert.True(e1.Length <= SunPathBudget, $"e1 is {e1.Length} chars: {e1}");
+            Assert.True(e2.Length <= SunPathBudget, $"e2 is {e2.Length} chars: {e2}");
         }
         finally
         {
@@ -359,21 +355,18 @@ public class IpcTransportFactoryTests : IDisposable
     }
 
     [Fact]
-    public void ResolveEndpoint_LongTempRoot_FallsBackToPipeWithinBudget()
+    public void ResolveEndpoint_OverlongRuntimeDirectory_FailsClearlyInsteadOfFallingBack()
     {
-        // The canonical per-session socket carries the user and session token;
-        // a long temp root (or user/session token) must not overflow sun_path.
-        // It falls back to the named-pipe scheme, which has no such limit.
-        IpcTransportFactory.UnixSocketSupportedOverride = () => true;
+        // There is no second transport: a runtime directory that leaves no room under sun_path is a
+        // configuration fault, reported with the way out.
         PsBashRuntimeDirectory.TempPathOverride =
             () => System.IO.Path.Combine(System.IO.Path.GetTempPath(), new string('x', 120));
         IpcTransportFactory.SessionAnchorOverride = () => Anchor(12345, 1);
         try
         {
-            var (scheme, endpoint) = IpcTransportFactory.ResolveEndpoint();
-
-            Assert.Equal("pipe", scheme);
-            Assert.False(string.IsNullOrEmpty(endpoint));
+            var ex = Assert.Throws<IOException>(() => IpcTransportFactory.ResolveEndpoint());
+            Assert.Contains("AF_UNIX", ex.Message);
+            Assert.Contains("TMPDIR", ex.Message);
         }
         finally
         {
@@ -383,7 +376,6 @@ public class IpcTransportFactoryTests : IDisposable
 
     private static void ResetSeams()
     {
-        IpcTransportFactory.UnixSocketSupportedOverride = null;
         IpcTransportFactory.ProcessIdOverride = null;
         PsBashRuntimeDirectory.TempPathOverride = null;
         IpcTransportFactory.SessionAnchorOverride = () => null;

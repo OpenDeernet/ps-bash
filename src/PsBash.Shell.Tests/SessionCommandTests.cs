@@ -23,7 +23,6 @@ public sealed class SessionCommandTests
 
     [Theory]
     [InlineData("host-andy-sbuild.sock.host.json", "andy", "build")]
-    [InlineData("psbash-host-andy-sbuild.host.json", "andy", "build")]
     [InlineData("host-andy-s123-456.sock.host.json", "andy", "123-456")]
     public void TokenFromSidecarName_ExtractsTheSessionToken(string file, string user, string expected)
         => Assert.Equal(expected, SessionCommands.TokenFromSidecarName(file, user));

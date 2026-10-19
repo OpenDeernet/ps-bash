@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-    Start a ps-bash-host on a private named pipe / unix socket and wire the
+    Start a ps-bash-host on a private unix socket and wire the
     current PowerShell session to it.
 
 .DESCRIPTION
-    Bypasses the canonical per-user endpoint (psbash-host-<user> on Windows,
-    /tmp/ps-bash/host-<user>.sock on POSIX) by generating a unique endpoint
+    Bypasses the canonical per-user endpoint (<runtime-dir>/host-<user>.sock)
+    by generating a unique endpoint
     name and pointing both the new host and this session at it via the
     PSBASH_IPC_ENDPOINT environment variable.
 
@@ -19,8 +19,7 @@
 
 .PARAMETER Name
     Endpoint suffix. Defaults to a random 8-char id. Final endpoint becomes
-    `psbash-host-alt-<Name>` (named pipe) or
-    `<temp>/ps-bash/host-alt-<Name>.sock` (unix socket).
+    `<temp>/ps-bash/host-alt-<Name>.sock`.
 
 .PARAMETER HostBinary
     Path to ps-bash-host.exe. Defaults to PSBASH_HOST env var, then
@@ -40,7 +39,7 @@
 
 .EXAMPLE
     pwsh ./scripts/start-host-alt.ps1 -Name debug-cd -Wait
-    # Foreground host on endpoint `psbash-host-alt-debug-cd`. Ctrl-C / Enter
+    # Foreground host on endpoint `host-alt-debug-cd.sock`. Ctrl-C / Enter
     # to terminate.
 #>
 [CmdletBinding()]
@@ -82,13 +81,6 @@ function Resolve-HostBinary {
 function Resolve-EndpointSpec {
     param([string]$Suffix)
 
-    $isWin = $IsWindows -or $env:OS -eq 'Windows_NT'
-    # Mirror IpcTransportFactory: unix sockets supported on Win build >= 17063,
-    # but we prefer named pipes on Windows because they're the canonical scheme.
-    if ($isWin) {
-        return @{ Scheme = 'pipe'; Endpoint = "psbash-host-alt-$Suffix" }
-    }
-
     $sockDir = Join-Path ([System.IO.Path]::GetTempPath()) 'ps-bash'
     New-Item -ItemType Directory -Path $sockDir -Force | Out-Null
     return @{ Scheme = 'unix'; Endpoint = (Join-Path $sockDir "host-alt-$Suffix.sock") }
@@ -98,29 +90,19 @@ function Test-HostHealthy {
     param([string]$Scheme, [string]$Endpoint, [int]$TimeoutMs = 250)
 
     try {
-        if ($Scheme -eq 'pipe') {
-            $client = [System.IO.Pipes.NamedPipeClientStream]::new(
-                '.', $Endpoint,
-                [System.IO.Pipes.PipeDirection]::InOut,
-                [System.IO.Pipes.PipeOptions]::Asynchronous)
-            try { $client.Connect($TimeoutMs); return $true }
-            finally { $client.Dispose() }
+        # AF_UNIX probe — try to connect via Socket
+        $sock = [System.Net.Sockets.Socket]::new(
+            [System.Net.Sockets.AddressFamily]::Unix,
+            [System.Net.Sockets.SocketType]::Stream,
+            [System.Net.Sockets.ProtocolType]::Unspecified)
+        try {
+            $ep = [System.Net.Sockets.UnixDomainSocketEndPoint]::new($Endpoint)
+            $task = $sock.ConnectAsync($ep)
+            if ($task.Wait($TimeoutMs)) { return $true }
+            return $false
         }
-        else {
-            # AF_UNIX probe — try to connect via Socket
-            $sock = [System.Net.Sockets.Socket]::new(
-                [System.Net.Sockets.AddressFamily]::Unix,
-                [System.Net.Sockets.SocketType]::Stream,
-                [System.Net.Sockets.ProtocolType]::Unspecified)
-            try {
-                $ep = [System.Net.Sockets.UnixDomainSocketEndPoint]::new($Endpoint)
-                $task = $sock.ConnectAsync($ep)
-                if ($task.Wait($TimeoutMs)) { return $true }
-                return $false
-            }
-            catch { return $false }
-            finally { $sock.Dispose() }
-        }
+        catch { return $false }
+        finally { $sock.Dispose() }
     }
     catch {
         return $false

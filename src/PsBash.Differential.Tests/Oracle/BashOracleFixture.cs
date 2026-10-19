@@ -77,9 +77,7 @@ public sealed class BashOracleFixture
     private readonly string _endpoint = CreateEndpoint();
 
     private static string CreateEndpoint()
-        => OperatingSystem.IsWindows()
-            ? "pipe:psbash-oracle-" + Guid.NewGuid().ToString("N")
-            : "unix:" + Path.Combine(Path.GetTempPath(), "ps-bash", "oracle-" + Guid.NewGuid().ToString("N") + ".sock");
+        => "unix:" + Path.Combine(Path.GetTempPath(), "ps-bash", "oracle-" + Guid.NewGuid().ToString("N") + ".sock");
 
     /// <summary>Idle window (seconds) for the fixture's warm daemon.</summary>
     private const int WarmHostIdleSecs = 20;

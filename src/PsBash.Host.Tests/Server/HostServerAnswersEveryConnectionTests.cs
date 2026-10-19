@@ -20,7 +20,7 @@ public sealed class HostServerAnswersEveryConnectionTests : IAsyncLifetime
     private HostServer _server = null!;
     private CancellationTokenSource _cts = null!;
     private Task _serverTask = null!;
-    private string _pipeName = null!;
+    private string _socketPath = null!;
     private readonly string _logDir = Path.Combine(Path.GetTempPath(), "ps-bash", "answer-" + Guid.NewGuid().ToString("N")[..8]);
 
     public Task InitializeAsync()
@@ -28,8 +28,8 @@ public sealed class HostServerAnswersEveryConnectionTests : IAsyncLifetime
         Directory.CreateDirectory(_logDir);
         HostLog.PathOverride = Path.Combine(_logDir, "host.log");
         _pool = new WorkerPool<SdkWorker>(warmTarget: 0, max: 2, SdkWorker.Create);
-        _pipeName = $"psbash-test-{Guid.NewGuid():N}";
-        _server = new HostServer(new NamedPipeTransport(_pipeName), _pool);
+        _socketPath = TestSockets.New("test");
+        _server = new HostServer(new UnixSocketTransport(_socketPath), _pool);
         _cts = new CancellationTokenSource();
         _serverTask = _server.RunAsync(_cts.Token);
         return _server.WhenListening;
@@ -60,7 +60,7 @@ public sealed class HostServerAnswersEveryConnectionTests : IAsyncLifetime
         };
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
 
-        await using var client = new NamedPipeTransport(_pipeName);
+        await using var client = new UnixSocketTransport(_socketPath);
         using var stream = await client.ConnectAsync(cts.Token);
         await HostProtocol.WriteRequestAsync(stream, new Mode.Command("Invoke-BashEcho 'ran'"), cts.Token);
         var lines = new List<string>();
@@ -77,7 +77,7 @@ public sealed class HostServerAnswersEveryConnectionTests : IAsyncLifetime
         Environment.SetEnvironmentVariable("PSBASH_REQUEST_READ_TIMEOUT_MS", "500");
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
-        await using var client = new NamedPipeTransport(_pipeName);
+        await using var client = new UnixSocketTransport(_socketPath);
         using var stream = await client.ConnectAsync(cts.Token);
         // Connected, request withheld: the host's read deadline elapses.
         var lines = new List<string>();

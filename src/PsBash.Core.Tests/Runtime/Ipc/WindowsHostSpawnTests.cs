@@ -16,7 +16,6 @@ namespace PsBash.Core.Tests.Runtime.Ipc;
 public class WindowsHostSpawnTests
 {
     [SkippableTheory]
-    [InlineData("--ipc-endpoint=pipe:psbash-abc")]
     [InlineData(@"--ipc-endpoint=unix:C:\Users\Jane Doe\AppData\Local\Temp\ps-bash\host.sock")]
     [InlineData(@"C:\dir with space\")]
     [InlineData(@"a\\b")]
