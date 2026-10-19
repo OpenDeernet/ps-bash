@@ -31,7 +31,16 @@ $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArch
 $rid = "${os}-${arch}"
 $ext = if ($IsWindows) { '.exe' } else { '' }
 
+# Release archives exist only for these RIDs (see the publish.yml build matrix).
+if ($rid -notin @('win-x64', 'linux-x64', 'osx-arm64')) {
+    Write-Error "Unsupported platform: no ps-bash release archive is built for $rid."
+    exit 1
+}
+
 # --- Install path ---
+# Windows: InstallDir IS the package directory (launcher + host + assets together).
+# Unix: InstallDir holds only an exec wrapper; the full package lives in a versioned
+# directory under $packageRoot so the launcher always runs beside ps-bash-host.
 if (-not $InstallDir) {
     $InstallDir = if ($IsWindows) {
         Join-Path $env:LOCALAPPDATA 'ps-bash'
@@ -39,8 +48,10 @@ if (-not $InstallDir) {
         Join-Path $env:HOME '.local/bin'
     }
 }
+$packageRoot = if ($env:INSTALL_ROOT) { $env:INSTALL_ROOT } else { Join-Path $env:HOME '.local/opt/ps-bash' }
 
 $binaryName = "ps-bash${ext}"
+$hostName = "ps-bash-host${ext}"
 $targetPath = Join-Path $InstallDir $binaryName
 
 # --- Resolve version ---
@@ -54,29 +65,84 @@ Write-Host "Installing ps-bash $Version for $rid..."
 
 # --- Download ---
 $assetName = "ps-bash-${Version}-${rid}.zip"
-$downloadUrl = "https://github.com/standardbeagle/ps-bash/releases/download/${Version}/${assetName}"
-$tempZip = Join-Path ([System.IO.Path]::GetTempPath()) $assetName
+$baseUrl = "https://github.com/standardbeagle/ps-bash/releases/download/${Version}"
+$downloadUrl = "$baseUrl/$assetName"
+$workDir = Join-Path ([System.IO.Path]::GetTempPath()) "ps-bash-install-$([guid]::NewGuid().ToString('N'))"
+New-Item -ItemType Directory -Force -Path $workDir | Out-Null
+$tempZip = Join-Path $workDir $assetName
 
 try {
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -UseBasicParsing
-} catch {
-    Write-Error "Failed to download ${downloadUrl}: $($_.Exception.Message)"
-    exit 1
-}
+    try {
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -UseBasicParsing
+    } catch {
+        throw "Failed to download ${downloadUrl}: $($_.Exception.Message)"
+    }
 
-# --- Extract ---
-New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-if ($IsWindows) {
-    Expand-Archive -Path $tempZip -DestinationPath $InstallDir -Force
-} else {
-    $unzipDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetFileNameWithoutExtension($assetName))
-    New-Item -ItemType Directory -Force -Path $unzipDir | Out-Null
-    unzip -o $tempZip -d $unzipDir
-    Copy-Item -Path (Join-Path $unzipDir $binaryName) -Destination $targetPath -Force
-    chmod +x $targetPath
-}
+    # Verify the published digest when the release has one.
+    try {
+        $digestText = (Invoke-WebRequest -Uri "$downloadUrl.sha256" -UseBasicParsing).Content
+        if ($digestText -is [byte[]]) { $digestText = [Text.Encoding]::ASCII.GetString($digestText) }
+        $expected = ($digestText.Trim() -split '\s+')[0].ToLowerInvariant()
+    } catch { $expected = $null }
+    if ($expected) {
+        $actual = (Get-FileHash $tempZip -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($actual -ne $expected) { throw "Checksum mismatch for $assetName; aborting." }
+    }
 
-Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue
+    # --- Extract to staging, never straight over a working install ---
+    $stage = Join-Path $workDir 'stage'
+    New-Item -ItemType Directory -Force -Path $stage | Out-Null
+    if ($IsWindows) {
+        Expand-Archive -Path $tempZip -DestinationPath $stage
+    } else {
+        unzip -q $tempZip -d $stage
+        if ($LASTEXITCODE -ne 0) { throw "Invalid archive: $assetName" }
+    }
+    foreach ($required in @($binaryName, $hostName)) {
+        if (-not (Test-Path -LiteralPath (Join-Path $stage $required))) {
+            throw "Archive is missing $required; aborting."
+        }
+    }
+    if (-not $IsWindows) {
+        chmod +x (Join-Path $stage $binaryName) (Join-Path $stage $hostName)
+    }
+
+    # --- Smoke: run a real command end to end (launcher -> host), not just --version ---
+    $smoke = & (Join-Path $stage $binaryName) -c 'echo ready; seq 1 3 | wc -l' 2>&1
+    if ($LASTEXITCODE -ne 0 -or ($smoke -join "`n") -notmatch 'ready') {
+        throw "Smoke test failed; nothing was installed:`n$($smoke -join "`n")"
+    }
+
+    # --- Install the verified package ---
+    if ($IsWindows) {
+        # Keep the previous install recoverable beside the new one.
+        $previous = "$InstallDir.previous"
+        if (Test-Path -LiteralPath $InstallDir) {
+            if (Test-Path -LiteralPath $previous) { Remove-Item -Recurse -Force -LiteralPath $previous }
+            Move-Item -LiteralPath $InstallDir -Destination $previous
+        }
+        try {
+            Move-Item -LiteralPath $stage -Destination $InstallDir
+        } catch {
+            if (Test-Path -LiteralPath $previous) { Move-Item -LiteralPath $previous -Destination $InstallDir }
+            throw
+        }
+    } else {
+        $packageDir = Join-Path $packageRoot ($Version -replace '^v', '')
+        New-Item -ItemType Directory -Force -Path $packageRoot, $InstallDir | Out-Null
+        if (Test-Path -LiteralPath $packageDir) { Remove-Item -Recurse -Force -LiteralPath $packageDir }
+        Move-Item -LiteralPath $stage -Destination $packageDir
+        $current = Join-Path $packageRoot 'current'
+        if (Test-Path -LiteralPath $current) { Remove-Item -Force -LiteralPath $current }
+        New-Item -ItemType SymbolicLink -Path $current -Target $packageDir | Out-Null
+        # Exec wrapper so the launcher always runs inside the package, beside its host.
+        $wrapper = "#!/bin/sh`nexec `"$current/$binaryName`" `"`$@`"`n"
+        [IO.File]::WriteAllText($targetPath, $wrapper)
+        chmod +x $targetPath
+    }
+} finally {
+    Remove-Item -Recurse -Force -LiteralPath $workDir -ErrorAction SilentlyContinue
+}
 
 Write-Host "Installed to: $targetPath"
 
@@ -118,11 +184,10 @@ if (-not $NoAddToPath) {
 }
 
 # --- Verify ---
-try {
-    $installedVersion = & $targetPath --version 2>$null
-    Write-Host "Installed version: $installedVersion"
-} catch {
-    Write-Warning "Installation succeeded but could not verify version."
-}
+$installedVersion = & $targetPath --version
+if ($LASTEXITCODE -ne 0) { Write-Error "Installed ps-bash failed to run."; exit 1 }
+Write-Host "Installed version: $installedVersion"
+$null = & $targetPath -c 'echo ok'
+if ($LASTEXITCODE -ne 0) { Write-Error "Installed ps-bash could not execute a command."; exit 1 }
 
 Write-Host "Done. Run '$binaryName --help' to get started."
