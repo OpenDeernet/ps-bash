@@ -240,6 +240,16 @@ public static class InteractiveShell
                 // Only the cheap, rc-independent paths above (exit / empty / history expansion) run
                 // during warmup; this is the single point where residual startup latency is paid, and
                 // only on the first command if the user submits before warmup finished.
+                // `history` is a shell-side builtin over the persistent store (list / -d ID / -c).
+                // It needs neither the runspace nor alias expansion, and is itself never recorded.
+                if (HistoryBuiltin.IsHistoryCommand(trimmed) && _historyStore is not null)
+                {
+                    await HistoryBuiltin.RunAsync(trimmed, _historyStore, _sessionHistory,
+                        Console.Out, Console.Error,
+                        afterMutation: () => _lineEditor?.ReloadHistoryAsync() ?? Task.CompletedTask);
+                    continue;
+                }
+
                 IWorker worker;
                 try
                 {

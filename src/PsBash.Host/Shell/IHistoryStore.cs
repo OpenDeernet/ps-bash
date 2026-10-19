@@ -56,4 +56,15 @@ public interface IHistoryStore
         string? lastCommand,
         string cwd,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Permanently removes every stored entry. Persistent stores must also reclaim the
+    /// space (WAL checkpoint, vacuum) so erased text is not left readable in free pages.
+    /// </summary>
+    /// <returns>The number of entries removed.</returns>
+    Task<int> ClearAsync();
+
+    /// <summary>Permanently removes the entry with the given <see cref="HistoryEntry.Id"/>.</summary>
+    /// <returns>True if an entry was removed.</returns>
+    Task<bool> DeleteAsync(long id);
 }

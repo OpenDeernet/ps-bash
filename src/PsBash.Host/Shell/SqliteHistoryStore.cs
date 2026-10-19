@@ -217,7 +217,8 @@ public sealed class SqliteHistoryStore : IHistoryStore, IDisposable
     private static void ApplyBusyTimeout(SqliteConnection connection)
     {
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "PRAGMA busy_timeout = 3000;";
+        // secure_delete: freed pages are zeroed, so a deleted command is not left readable.
+        cmd.CommandText = "PRAGMA busy_timeout = 3000; PRAGMA secure_delete = ON;";
         cmd.ExecuteNonQuery();
     }
 
@@ -459,6 +460,43 @@ public sealed class SqliteHistoryStore : IHistoryStore, IDisposable
                 return Array.Empty<SequenceSuggestion>();
             }
         }, ct);
+    }
+
+    public Task<int> ClearAsync()
+    {
+        return Task.Run(() =>
+        {
+            lock (_lock)
+            {
+                EnsureConnectionOpen();
+                int removed;
+                using (var del = _connection!.CreateCommand())
+                {
+                    del.CommandText = "DELETE FROM history;";
+                    removed = del.ExecuteNonQuery();
+                }
+                // Make the erasure real: overwrite freed pages, fold the WAL back, shrink the file.
+                using var reclaim = _connection.CreateCommand();
+                reclaim.CommandText = "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;";
+                reclaim.ExecuteNonQuery();
+                return removed;
+            }
+        });
+    }
+
+    public Task<bool> DeleteAsync(long id)
+    {
+        return Task.Run(() =>
+        {
+            lock (_lock)
+            {
+                EnsureConnectionOpen();
+                using var del = _connection!.CreateCommand();
+                del.CommandText = "DELETE FROM history WHERE id = @id;";
+                del.Parameters.AddWithValue("@id", id);
+                return del.ExecuteNonQuery() > 0;
+            }
+        });
     }
 
     public void Dispose()

@@ -188,6 +188,9 @@ internal sealed class LineEditor
         _historyIndex = _history.Count;
     }
 
+    /// <summary>Re-read the up-arrow/Ctrl-R cache from the store (after a clear or delete).</summary>
+    public Task ReloadHistoryAsync() => LoadHistoryAsync();
+
     private static readonly IReadOnlyDictionary<string, string> EmptyAliases =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -1714,6 +1717,23 @@ internal sealed class LegacyFileHistoryStore : IHistoryStore
     {
         return Task.FromResult<IReadOnlyList<SequenceSuggestion>>(Array.Empty<SequenceSuggestion>());
     }
+
+    public Task<int> ClearAsync()
+    {
+        _lock.Wait();
+        try
+        {
+            int n = _history.Count;
+            _history.Clear();
+            Save();
+            return Task.FromResult(n);
+        }
+        finally { _lock.Release(); }
+    }
+
+    // Ids here are 1-based positions (see SearchAsync); position-based ids shift after a
+    // delete, so per-entry deletion is not offered for the legacy file store.
+    public Task<bool> DeleteAsync(long id) => Task.FromResult(false);
 
     private void Save()
     {

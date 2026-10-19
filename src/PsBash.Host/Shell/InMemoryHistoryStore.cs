@@ -13,6 +13,21 @@ internal sealed class InMemoryHistoryStore : IHistoryStore
         return Task.CompletedTask;
     }
 
+    public Task<int> ClearAsync()
+    {
+        int n = _entries.Count;
+        _entries.Clear();
+        return Task.FromResult(n);
+    }
+
+    public Task<bool> DeleteAsync(long id)
+    {
+        int i = _entries.FindIndex(e => e.Id == id);
+        if (i < 0) return Task.FromResult(false);
+        _entries.RemoveAt(i);
+        return Task.FromResult(true);
+    }
+
     public Task<IReadOnlyList<HistoryEntry>> SearchAsync(HistoryQuery query)
     {
         var queryable = _entries.AsEnumerable();
