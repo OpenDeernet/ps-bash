@@ -51,8 +51,8 @@ invariants** (`ReleaseNotes_UnderPsGalleryLimit`, cap 10600 chars). Run Pester l
    `git tag vX.Y.Z && git push origin main && git push origin vX.Y.Z`.
    - NEVER `git push --tags`: it pushes every local tag, and `publish.yml` runs on ANY `v*` tag
      push — a stale local tag (v0.10.24, 2026-10-08) started a publish of an old commit.
-   - Do NOT `gh release create`: the workflow's `release-tag` job creates the release for the
-     pushed tag. A release created by hand fires the `release` event = a SECOND publish run of
+   - Do NOT `gh release create` first: the workflow's `release` job creates a DRAFT for the
+     pushed tag, uploads the digest-verified archives, and publishes it only after every gate. A public release made by hand makes it refuse. Rehearse with `gh workflow run publish.yml --ref <branch> -f version=X.Y.Z -f dry_run=true` (no publishing). Old note: a hand-made release used to fire a SECOND publish run of
      the same version (racing PSGallery / asset uploads). Set the notes AFTER the run creates
      the release: `gh release edit vX.Y.Z --repo standardbeagle/ps-bash --notes-file notes.md`
      (derived from `git log <last-tag>..HEAD --oneline`, grouped fix/feat/etc.).
