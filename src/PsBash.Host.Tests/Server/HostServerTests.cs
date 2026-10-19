@@ -128,15 +128,24 @@ public sealed class HostServerTests : IAsyncLifetime
         // Send bytes that don't start with "MODE:"; the server should drop the
         // malformed connection and keep accepting valid clients.
         var garbledTransport = new NamedPipeTransport(_pipeName);
-        await using (garbledTransport)
+        try
         {
-            using var stream = await garbledTransport.ConnectAsync(cts.Token);
-            var garbage = System.Text.Encoding.UTF8.GetBytes("NOT_A_VALID_HEADER\n<<<END>>>\n");
-            await stream.WriteAsync(garbage, cts.Token);
-            // No FlushAsync: on Windows named pipes, FlushFileBuffers blocks until the
-            // server reads ALL pending data. The server stops after the first bad line,
-            // so flushing here would deadlock. Dispose sends remaining buffer and signals
-            // EOF; the server's IOException handler catches it and moves on.
+            await using (garbledTransport)
+            {
+                using var stream = await garbledTransport.ConnectAsync(cts.Token);
+                var garbage = System.Text.Encoding.UTF8.GetBytes("NOT_A_VALID_HEADER\n<<<END>>>\n");
+                await stream.WriteAsync(garbage, cts.Token);
+                // No FlushAsync: on Windows named pipes, FlushFileBuffers blocks until the
+                // server reads ALL pending data. The server stops after the first bad line,
+                // so flushing here would deadlock. Dispose sends remaining buffer and signals
+                // EOF; the server's IOException handler catches it and moves on.
+            }
+        }
+        catch (IOException)
+        {
+            // Rejecting the garbage is the expected outcome; on macOS the server can close
+            // before this client's write/dispose lands, surfacing EPIPE. Only the server's
+            // survival, asserted below, is under test.
         }
 
         // Server must still be alive — accept a valid connection.
