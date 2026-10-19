@@ -31,6 +31,22 @@ namespace PsBash.Host.Tests.Server;
 [Trait("Category", "Lifecycle")]
 public sealed class LifecycleScaleAndFaultTests
 {
+    /// <summary>
+    /// Ceiling for SETUP steps whose success is signalled by an event (server listening, host
+    /// healthy) and which return the instant that happens. It is a hang backstop only, never a
+    /// speed assertion: starved runners start slowly, and the failure signal is the server task
+    /// ending, not elapsed time.
+    /// </summary>
+    private static readonly TimeSpan SetupBackstop = TimeSpan.FromMinutes(5);
+
+    /// <summary>Completes when the server is listening; throws the server's own failure if it dies first.</summary>
+    private static async Task WaitUntilListeningAsync(HostServer server, Task? serverTask)
+    {
+        var finished = await Task.WhenAny(server.WhenListening, serverTask ?? Task.Delay(SetupBackstop));
+        if (finished != server.WhenListening) await finished; // surfaces the server's exception
+        await server.WhenListening;
+    }
+
     // ─── Endpoint isolation helpers ─────────────────────────────────────────
 
     /// <summary>
@@ -41,7 +57,8 @@ public sealed class LifecycleScaleAndFaultTests
     /// </summary>
     private static (string Spec, string Scheme, string Endpoint) NewIsolatedEndpoint(string label)
     {
-        var unique = $"{label}-{Guid.NewGuid():N}";
+        // Short: a macOS unix-socket path is capped at 104 chars and $TMPDIR is already ~49.
+        var unique = $"{(label.Length > 12 ? label[..12] : label)}-{Guid.NewGuid().ToString("N")[..8]}";
         if (OperatingSystem.IsWindows())
         {
             var name = $"psbash-{unique}";
@@ -116,10 +133,10 @@ public sealed class LifecycleScaleAndFaultTests
         try
         {
             serverTask = server.RunAsync(serverCts.Token);
-            await server.WhenListening.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilListeningAsync(server, serverTask);
 
             var bogusBinary = Path.Combine(Path.GetTempPath(), $"does-not-exist-{Guid.NewGuid():N}");
-            using var startCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var startCts = new CancellationTokenSource(SetupBackstop);
             await using var ipc = await IpcWorker.StartAsync(
                 bogusBinary,
                 startupTimeout: TimeSpan.FromSeconds(5),
@@ -164,7 +181,7 @@ public sealed class LifecycleScaleAndFaultTests
         try
         {
             serverTask = server.RunAsync(serverCts.Token);
-            await server.WhenListening.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilListeningAsync(server, serverTask);
 
             var bogusBinary = Path.Combine(Path.GetTempPath(), $"does-not-exist-{Guid.NewGuid():N}");
             using var startCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -406,10 +423,10 @@ public sealed class LifecycleScaleAndFaultTests
         try
         {
             serverTask = server.RunAsync(serverCts.Token);
-            await server.WhenListening.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilListeningAsync(server, serverTask);
 
             var bogusBinary = Path.Combine(Path.GetTempPath(), $"does-not-exist-{Guid.NewGuid():N}");
-            using var startCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var startCts = new CancellationTokenSource(SetupBackstop);
             await using var ipc = await IpcWorker.StartAsync(
                 bogusBinary,
                 startupTimeout: TimeSpan.FromSeconds(5),
@@ -466,10 +483,10 @@ public sealed class LifecycleScaleAndFaultTests
         try
         {
             serverTask = server.RunAsync(serverCts.Token);
-            await server.WhenListening.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilListeningAsync(server, serverTask);
 
             var bogusBinary = Path.Combine(Path.GetTempPath(), $"does-not-exist-{Guid.NewGuid():N}");
-            using var startCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var startCts = new CancellationTokenSource(SetupBackstop);
             await using var ipc = await IpcWorker.StartAsync(
                 bogusBinary, startupTimeout: TimeSpan.FromSeconds(5),
                 lifetime: Lifetime.Daemon, ct: startCts.Token);
@@ -527,10 +544,10 @@ public sealed class LifecycleScaleAndFaultTests
         try
         {
             serverTask = server.RunAsync(serverCts.Token);
-            await server.WhenListening.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilListeningAsync(server, serverTask);
 
             var bogusBinary = Path.Combine(Path.GetTempPath(), $"does-not-exist-{Guid.NewGuid():N}");
-            using var startCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var startCts = new CancellationTokenSource(SetupBackstop);
             await using var ipc = await IpcWorker.StartAsync(
                 bogusBinary, startupTimeout: TimeSpan.FromSeconds(5),
                 lifetime: Lifetime.Daemon, ct: startCts.Token);
@@ -670,7 +687,7 @@ public sealed class LifecycleScaleAndFaultTests
         try
         {
             serverTask = server.RunAsync(serverCts.Token);
-            await server.WhenListening.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitUntilListeningAsync(server, serverTask);
 
             const int N = 8;
             var bogusBinary = Path.Combine(Path.GetTempPath(), $"does-not-exist-{Guid.NewGuid():N}");

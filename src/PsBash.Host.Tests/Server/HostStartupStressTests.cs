@@ -123,7 +123,8 @@ public sealed class HostStartupStressTests
 
     private static (string Spec, string Scheme, string Endpoint) NewIsolatedEndpoint(string label)
     {
-        var unique = $"{label}-{Guid.NewGuid():N}";
+        // Short: a macOS unix-socket path is capped at 104 chars and $TMPDIR is already ~49.
+        var unique = $"{(label.Length > 12 ? label[..12] : label)}-{Guid.NewGuid().ToString("N")[..8]}";
         if (OperatingSystem.IsWindows())
         {
             var name = $"psbash-{unique}";
