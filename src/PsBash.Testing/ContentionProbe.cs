@@ -61,11 +61,11 @@ public static class ContentionProbe
     /// going only while the machine is starved. Returns false when the child is still
     /// running on a quiet machine (genuinely stuck) or the extension cap is reached.
     /// </summary>
-    public static async Task<bool> WaitForExitAsync(Process process, TimeSpan checkpoint)
+    public static async Task<bool> WaitForExitAsync(Process process, TimeSpan checkpoint, bool extendWhenStarved = true)
     {
         // Sample before waiting so the baseline is taken as early (and as quiet) as possible.
         await MeasureAsync();
-        for (var round = 0; round <= MaxExtensions; round++)
+        for (var round = 0; round <= (extendWhenStarved ? MaxExtensions : 0); round++)
         {
             using var cts = new CancellationTokenSource(checkpoint);
             try
@@ -75,7 +75,7 @@ public static class ContentionProbe
             }
             catch (OperationCanceledException)
             {
-                if (await MeasureAsync() < StarvedRatio) return false;
+                if (!extendWhenStarved || await MeasureAsync() < StarvedRatio) return false;
             }
         }
         return false;

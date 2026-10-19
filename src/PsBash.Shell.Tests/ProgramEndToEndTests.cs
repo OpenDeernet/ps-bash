@@ -233,7 +233,7 @@ public class ProgramEndToEndTests
         {
             var psi = PsBashTestProcess.Create(["-c", "Start-Sleep 60"]);
             await ProcessRunHelper.RunAsync(
-                psi, stdinContent: null, timeout: timeout,
+                psi, stdinContent: null, timeout: timeout, strictTimeout: true, // measures the harness timeout itself
                 onStarted: p =>
                 {
                     launcherPid = p.Id;

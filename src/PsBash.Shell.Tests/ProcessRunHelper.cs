@@ -29,7 +29,8 @@ internal static class ProcessRunHelper
         ProcessStartInfo psi,
         string? stdinContent = null,
         TimeSpan? timeout = null,
-        Action<Process>? onStarted = null)
+        Action<Process>? onStarted = null,
+        bool strictTimeout = false)
     {
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
@@ -65,7 +66,7 @@ internal static class ProcessRunHelper
             }
 
             // The timeout is a checkpoint: only a quiet machine makes it a failure.
-            if (!await PsBash.Testing.ContentionProbe.WaitForExitAsync(process, effectiveTimeout))
+            if (!await PsBash.Testing.ContentionProbe.WaitForExitAsync(process, effectiveTimeout, extendWhenStarved: !strictTimeout))
             {
                 // Timeout. Capture whatever partial output we have and fail loudly.
                 string partialStdout = string.Empty;
