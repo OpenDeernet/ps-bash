@@ -37,6 +37,13 @@ public static class IpcTransportFactory
     public const string SessionEnvVar = "PSBASH_SESSION";
 
     /// <summary>
+    /// Set to <c>1</c> by <c>ps-bash session start</c> in the launcher that spawns a named session's
+    /// host; the host consumes and clears it. A stateful host runs every command in one pinned runspace
+    /// (see <c>HostServer.Stateful</c>) and advertises that in its metadata sidecar.
+    /// </summary>
+    public const string StatefulEnvVar = "PSBASH_SESSION_STATEFUL";
+
+    /// <summary>
     /// Marker the host sets in its process environment (value = host PID) for the duration of
     /// every launcher-framed command. A ps-bash started by that command inherits it and must
     /// not reuse the host that is executing its parent (the host serializes execution behind a

@@ -27,7 +27,8 @@ public sealed record HostMetadata(
     [property: JsonPropertyName("transportScheme")] string TransportScheme,
     [property: JsonPropertyName("endpoint")] string Endpoint,
     [property: JsonPropertyName("startedAt")] DateTimeOffset StartedAt,
-    [property: JsonPropertyName("owner")] string Owner)
+    [property: JsonPropertyName("owner")] string Owner,
+    [property: JsonPropertyName("stateful")] bool Stateful = false)
 {
     private const long MaxMetadataBytes = 64 * 1024;
 

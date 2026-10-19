@@ -226,11 +226,14 @@ internal sealed class Connection
         // serialized process-wide by SdkWorker's exec gate.
         WorkerPool<SdkWorker>.DiagLog("Connection: acquiring worker");
         SdkWorker? worker = null;
+        bool workerFaulted = false;
         int exitCode;
 
         try
         {
-            worker = await _pool.AcquireAsync(execCts.Token).ConfigureAwait(false);
+            worker = _server is null
+                ? await _pool.AcquireAsync(execCts.Token).ConfigureAwait(false)
+                : await _server.AcquireWorkerAsync(execCts.Token).ConfigureAwait(false);
             WorkerPool<SdkWorker>.DiagLog("Connection: acquired; executing command");
 
             // R05: acknowledge execution-start on the framed channel BEFORE the
@@ -261,6 +264,7 @@ internal sealed class Connection
         catch (Exception ex) when (ex is not IpcOutputException
                                    && !(ex is OperationCanceledException && ct.IsCancellationRequested))
         {
+            workerFaulted = true;
             // Worker construction (including assembly/module load) and failures
             // before command execution used to escape to HostServer, which could
             // only log and close the stream. Give the launcher a complete,
@@ -289,7 +293,8 @@ internal sealed class Connection
             stdinFeed?.Dispose();
             if (worker is not null)
             {
-                _pool.Release(worker);
+                if (_server is null) _pool.Release(worker);
+                else _server.ReleaseWorker(worker, discard: workerFaulted);
                 WorkerPool<SdkWorker>.DiagLog("Connection: released worker");
             }
             if (frameWriter is not null)

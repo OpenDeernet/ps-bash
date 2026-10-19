@@ -321,9 +321,9 @@ public static class WorkerPool
     /// (default 2); <c>PSBASH_POOL_MAX</c> the concurrency cap (default: CPU count
     /// clamped to [2, 8]). Invalid values fall back to the default.
     /// </summary>
-    public static WorkerPool<SdkWorker> FromEnvironment(Func<SdkWorker>? factory = null)
+    public static WorkerPool<SdkWorker> FromEnvironment(Func<SdkWorker>? factory = null, int? warmOverride = null)
     {
-        int warm = ReadIntEnv("PSBASH_POOL_WARM", 2, min: 0, max: 64);
+        int warm = warmOverride ?? ReadIntEnv("PSBASH_POOL_WARM", 2, min: 0, max: 64);
         int defaultMax = Math.Clamp(Environment.ProcessorCount, 2, 8);
         int max = ReadIntEnv("PSBASH_POOL_MAX", defaultMax, min: 1, max: 64);
         return new WorkerPool<SdkWorker>(warm, max, factory ?? SdkWorker.Create);

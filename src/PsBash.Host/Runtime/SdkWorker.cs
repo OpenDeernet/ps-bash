@@ -266,7 +266,11 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
         bool markedInsideHost = environment is not null;
         if (environment is not null)
         {
-            ResetEnvironment(environment);
+            // A stateful session owns its environment: the launcher's block only carries PSBASH_*
+            // control variables in (compact output, path mode, ...), never wipes `export`s made by an
+            // earlier call or replaces PATH.
+            if (StatefulSession) ApplyControlEnvironment(environment);
+            else ResetEnvironment(environment);
             Environment.SetEnvironmentVariable(
                 PsBash.Core.Runtime.Ipc.IpcTransportFactory.InsideHostEnvVar,
                 Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -799,6 +803,27 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
         if (item.BaseObject is System.Management.Automation.ErrorRecord) return true;
         if (item.Properties["BashText"] is not null) return true;
         return false;
+    }
+
+    /// <summary>
+    /// True for a durable named session's host (set once at startup): the environment and cwd persist
+    /// between commands instead of being reset to the launcher's. See <see cref="ApplyControlEnvironment"/>.
+    /// </summary>
+    internal static bool StatefulSession { get; set; }
+
+    /// <summary>
+    /// Stateful hosts take only the launcher's <c>PSBASH_*</c> control variables (set, never removed),
+    /// minus the host-nesting markers, which the host owns.
+    /// </summary>
+    private static void ApplyControlEnvironment(IReadOnlyList<KeyValuePair<string, string>> environment)
+    {
+        foreach (var entry in environment)
+        {
+            if (!entry.Key.StartsWith("PSBASH_", StringComparison.Ordinal)) continue;
+            if (entry.Key is PsBash.Core.Runtime.Ipc.IpcTransportFactory.InsideHostEnvVar
+                          or PsBash.Core.Runtime.Ipc.IpcTransportFactory.NestDepthEnvVar) continue;
+            Environment.SetEnvironmentVariable(entry.Key, entry.Value);
+        }
     }
 
     /// <summary>

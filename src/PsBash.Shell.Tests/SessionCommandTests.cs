@@ -43,4 +43,16 @@ public sealed class SessionCommandTests
     [InlineData("2024-release", false)]
     public void IsAnchorToken_SeparatesEphemeralFromNamedSessions(string token, bool anchored)
         => Assert.Equal(anchored, SessionCommands.IsAnchorToken(token));
+
+    [Fact]
+    public void IsStatefulSessionActive_WithoutANamedSession_IsFalse()
+    {
+        var saved = Environment.GetEnvironmentVariable("PSBASH_SESSION");
+        try
+        {
+            Environment.SetEnvironmentVariable("PSBASH_SESSION", null);
+            Assert.False(SessionCommands.IsStatefulSessionActive());
+        }
+        finally { Environment.SetEnvironmentVariable("PSBASH_SESSION", saved); }
+    }
 }

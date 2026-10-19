@@ -92,12 +92,39 @@ internal static partial class SessionCommands
                 if (idle > 0 || Environment.GetEnvironmentVariable("PSBASH_HOST_IDLE_SECS") is null)
                     Environment.SetEnvironmentVariable(
                         "PSBASH_HOST_IDLE_SECS", (idle > 0 ? idle : DefaultIdleSecs).ToString());
+                var stateless = args.AsSpan(3).Contains("--stateless");
+                var (sch, ep) = IpcTransportFactory.ResolveEndpoint();
+                var running = HostMetadata.TryRead(sch, ep);
+                if (running is not null && HostOwnership.ProbeProcess(running.Pid).Alive && running.Stateful == stateless)
+                {
+                    Console.Error.WriteLine(
+                        $"ps-bash session start: '{args[2]}' is already running {(running.Stateful ? "stateful" : "stateless")}; " +
+                        "run `ps-bash session stop " + args[2] + "` first to change that");
+                    return 1;
+                }
+                // The host consumes this switch at startup; it is only read when the host is spawned.
+                Environment.SetEnvironmentVariable(IpcTransportFactory.StatefulEnvVar, stateless ? null : "1");
                 return await HostCommands.RunAsync(["host", "start"], ct).ConfigureAwait(false);
             case "status":
                 return await HostCommands.RunAsync(["host", "status"], ct).ConfigureAwait(false);
             default:
                 return await HostCommands.RunAsync(["host", "shutdown"], ct).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// True when this launcher is attached to an explicitly named session whose host is stateful, so it
+    /// must not re-impose its own cwd (the host keeps the session's). Reads the host's sidecar.
+    /// </summary>
+    internal static bool IsStatefulSessionActive()
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(IpcTransportFactory.SessionEnvVar))) return false;
+        try
+        {
+            var (scheme, endpoint) = IpcTransportFactory.ResolveEndpoint();
+            return HostMetadata.TryRead(scheme, endpoint)?.Stateful == true;
+        }
+        catch (IOException) { return false; }
     }
 
     private static bool TryParseIdle(ReadOnlySpan<string> args, out int idle)
@@ -128,7 +155,7 @@ internal static partial class SessionCommands
             var alive = meta is not null && HostOwnership.ProbeProcess(meta.Pid).Alive;
             Console.WriteLine(meta is null
                 ? $"{token}\tunknown"
-                : $"{token}\t{(alive ? "running" : "stale")}\tpid={meta.Pid}\tstarted={meta.StartedAt:O}");
+                : $"{token}\t{(alive ? "running" : "stale")}\tpid={meta.Pid}\tstarted={meta.StartedAt:O}\t{(meta.Stateful ? "stateful" : "stateless")}");
         }
         return 0;
     }
@@ -140,7 +167,7 @@ internal static partial class SessionCommands
 
     private static void PrintUsage()
     {
-        Console.Error.WriteLine("usage: ps-bash session start NAME [--idle-secs N]   # create/warm a durable session (default idle: 24h)");
+        Console.Error.WriteLine("usage: ps-bash session start NAME [--idle-secs N] [--stateless]   # durable session (default idle: 24h); stateful keeps vars/cwd/exports between calls");
         Console.Error.WriteLine("       ps-bash session status NAME");
         Console.Error.WriteLine("       ps-bash session stop NAME");
         Console.Error.WriteLine("       ps-bash session list                         # named sessions only");

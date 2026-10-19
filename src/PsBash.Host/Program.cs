@@ -155,7 +155,14 @@ internal sealed class Program
         // The shared daemon: a cancelled command that cannot be stopped poisons the host (it would
         // hold the exec gate forever) — exit so launchers respawn, instead of hanging every session.
         StuckCommandWatchdog.Enabled = true;
-        await using var pool = WorkerPool.FromEnvironment();
+
+        // A durable named session (`ps-bash session start`) is stateful: one pinned runspace for the
+        // session's life. Consume the switch so the commands this host runs (and any ps-bash they start)
+        // do not inherit it. No spare runspaces are warmed — the pinned worker is the only one it uses.
+        var stateful = Environment.GetEnvironmentVariable(IpcTransportFactory.StatefulEnvVar) == "1";
+        Environment.SetEnvironmentVariable(IpcTransportFactory.StatefulEnvVar, null);
+        SdkWorker.StatefulSession = stateful;
+        await using var pool = WorkerPool.FromEnvironment(warmOverride: stateful ? 0 : null);
 
         // Janitor: reap endpoint sockets / sidecars / spawn locks left behind by
         // hosts and launchers that were killed before they could clean up. Only
@@ -176,7 +183,8 @@ internal sealed class Program
         // A daemon keyed by a session anchor exits soon after that session is gone (GH #7).
         await using var anchorWatcher = SessionAnchorWatcher.TryCreate(GetSessionAnchor(args), idle);
 
-        await using var server = new HostServer(transport, pool, idle);
+        await using var server = new HostServer(transport, pool, idle, stateful);
+        server.WarmSessionWorker();
 
         var serverTask = server.RunAsync(cts.Token);
         // Observe serverTask alongside WhenListening: if ListenAsync faults (a
@@ -197,7 +205,7 @@ internal sealed class Program
         // Defense in depth: HostMetadata.Write is already best-effort, but the
         // host has bound and is about to serve — nothing about advisory
         // ownership metadata is worth crashing a live host over.
-        try { WriteHostMetadata(scheme, endpoint); }
+        try { WriteHostMetadata(scheme, endpoint, stateful); }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"ps-bash-host: host metadata sidecar write failed (non-fatal): {ex.Message}");
@@ -208,7 +216,7 @@ internal sealed class Program
         return 0;
     }
 
-    private static void WriteHostMetadata(string scheme, string endpoint)
+    private static void WriteHostMetadata(string scheme, string endpoint, bool stateful)
     {
         var meta = new HostMetadata(
             Pid: Environment.ProcessId,
@@ -221,7 +229,8 @@ internal sealed class Program
             TransportScheme: scheme,
             Endpoint: endpoint,
             StartedAt: DateTimeOffset.UtcNow,
-            Owner: Environment.UserName);
+            Owner: Environment.UserName,
+            Stateful: stateful);
         meta.Write(scheme, endpoint);
     }
 

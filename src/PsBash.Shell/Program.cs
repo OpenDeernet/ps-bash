@@ -567,6 +567,9 @@ static IReadOnlyList<KeyValuePair<string, string>> CaptureLauncherEnvironment()
 
 static string BuildInvocationCwdPreamble()
 {
+    // A stateful named session keeps its own cwd between calls; resetting it to the launcher's
+    // would undo every `cd` the session made.
+    if (SessionCommands.IsStatefulSessionActive()) return string.Empty;
     var cwd = Environment.CurrentDirectory.Replace("'", "''");
     return
         "$__psbash_invocation_cwd = '" + cwd + "'; " +

@@ -34,12 +34,62 @@ public sealed class HostServer : IAsyncDisposable
     private TaskCompletionSource? _drained;
     private int _disposed;
 
-    public HostServer(IIpcTransport transport, WorkerPool<SdkWorker> pool, IdleShutdown? idle = null)
+    /// <summary>
+    /// A stateful host (a durable named session) runs every command in ONE pinned runspace, so shell
+    /// variables, functions, aliases, cwd and exports carry from one launcher call to the next. A
+    /// stateless host (the default daemon) gives each command a fresh pooled runspace.
+    /// </summary>
+    public bool Stateful { get; }
+
+    private Task<SdkWorker>? _sessionWorker; // guarded by _gate
+
+    public HostServer(IIpcTransport transport, WorkerPool<SdkWorker> pool, IdleShutdown? idle = null, bool stateful = false)
     {
         _transport = transport;
         _pool = pool;
         _idle = idle;
+        Stateful = stateful;
         _connectionSlots = new SemaphoreSlim(MaxConcurrentConnections());
+    }
+
+    /// <summary>
+    /// The worker a command runs on: a fresh pooled one, or — for a stateful host — the session's pinned
+    /// worker, built in the background from <see cref="WarmSessionWorker"/> so the first command does not
+    /// pay for it. Pair with <see cref="ReleaseWorker"/>.
+    /// </summary>
+    internal Task<SdkWorker> AcquireWorkerAsync(CancellationToken ct)
+    {
+        if (!Stateful) return _pool.AcquireAsync(ct);
+        lock (_gate)
+        {
+            // A build that failed must not wedge the session: retry on the next command.
+            if (_sessionWorker is { IsFaulted: true } or { IsCanceled: true }) _sessionWorker = null;
+            return (_sessionWorker ??= _pool.AcquireAsync(CancellationToken.None)).WaitAsync(ct);
+        }
+    }
+
+    /// <summary>
+    /// Return a worker from <see cref="AcquireWorkerAsync"/>. A pooled worker is always discarded; the
+    /// session worker stays pinned unless the command faulted (<paramref name="discard"/>), in which case
+    /// it is dropped and the next command builds a clean one — a session survives a bad command.
+    /// </summary>
+    internal void ReleaseWorker(SdkWorker worker, bool discard)
+    {
+        if (!Stateful) { _pool.Release(worker); return; }
+        if (!discard) return;
+        lock (_gate)
+        {
+            if (_sessionWorker is { IsCompletedSuccessfully: true } t && ReferenceEquals(t.Result, worker))
+                _sessionWorker = null;
+        }
+        _pool.Release(worker);
+    }
+
+    /// <summary>Begin building the session worker now (stateful hosts only).</summary>
+    internal void WarmSessionWorker()
+    {
+        if (!Stateful) return;
+        lock (_gate) _sessionWorker ??= _pool.AcquireAsync(CancellationToken.None);
     }
 
     private static int MaxConcurrentConnections()
@@ -274,9 +324,19 @@ public sealed class HostServer : IAsyncDisposable
         {
             try { _acceptStop.Cancel(); } catch { }
             try { _acceptStop.Dispose(); } catch { }
+            await ReleaseSessionWorkerAsync().ConfigureAwait(false);
             await _transport.DisposeAsync();
             try { _connectionSlots.Dispose(); } catch { }
         }
+    }
+
+    private async Task ReleaseSessionWorkerAsync()
+    {
+        Task<SdkWorker>? pinned;
+        lock (_gate) { pinned = _sessionWorker; _sessionWorker = null; }
+        if (pinned is null) return;
+        try { _pool.Release(await pinned.ConfigureAwait(false)); }
+        catch { /* never built, or the pool is already gone */ }
     }
 
     private static void Log(string message) => HostLog.Write(message);
