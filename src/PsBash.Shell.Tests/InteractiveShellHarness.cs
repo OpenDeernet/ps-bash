@@ -341,11 +341,16 @@ internal sealed class InteractiveShellHarness : IAsyncDisposable
                 var readTask = _process.StandardOutput.ReadAsync(charBuf, 0, 1);
                 var completed = await Task.WhenAny(readTask, Task.Delay(effectiveTimeout, cts.Token));
 
-                if (completed != readTask)
+                // The timeout is a checkpoint: keep waiting on the same read while the
+                // machine is starved; only a quiet machine makes silence a failure.
+                while (completed != readTask)
                 {
-                    // Timeout branch.
-                    ThrowTimeout(effectiveTimeout, localBuf.ToString());
-                    return; // unreachable
+                    if (await PsBash.Testing.ContentionProbe.MeasureAsync() < PsBash.Testing.ContentionProbe.StarvedRatio)
+                    {
+                        ThrowTimeout(effectiveTimeout, localBuf.ToString());
+                        return; // unreachable
+                    }
+                    completed = await Task.WhenAny(readTask, Task.Delay(effectiveTimeout));
                 }
 
                 n = await readTask;

@@ -23,7 +23,7 @@ public static class ContentionProbe
     private static long _bestTicks = long.MaxValue;
 
     /// <summary>Contention above this ratio over the uncontended probe counts as starved.</summary>
-    private const double StarvedRatio = 1.5;
+    public const double StarvedRatio = 1.5;
 
     /// <summary>Never extend past this many multiples of the base deadline (hang backstop).</summary>
     private const int MaxExtensions = 20;
