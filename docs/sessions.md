@@ -25,13 +25,29 @@ ps-bash session stop build
   socket/pipe path, so anything else is refused.
 - **Per-user.** Sessions are scoped to the OS user and live under the 0700 runtime directory.
 
+## Stateful by default
+
+`session start` pins ONE runspace for the session's life, so shell variables, functions,
+aliases, `export`s and the working directory carry from one `-c` call to the next:
+
+```bash
+PSBASH_SESSION=build ps-bash -c 'x=5; cd /src'
+PSBASH_SESSION=build ps-bash -c 'echo $x; pwd'     # 5, /src
+```
+
+- The launcher does not re-impose its own cwd or environment on a stateful session (it would
+  undo the session's `cd`/`export`); only `PSBASH_*` control variables are forwarded.
+- A command that faults does not end the session: the pinned runspace is dropped and the next
+  call builds a clean one.
+- `session start NAME --stateless` gives the older model: a fresh pooled runspace per command.
+  `start` refuses to switch a running session between modes; `session stop` it first.
+  `session list` shows each session's mode.
+
 ## What this is not (yet)
 
-Each command still gets a fresh pooled runspace, so shell variables do not carry between
-`-c` calls; the guarantee is the durable *host*, its warm pool, and its lifetime. A session
-that owns long-lived PTYs and a reattachable screen is the next step, and is deliberately a
-protocol on top of this host so other front ends (BeagleTerm) attach as clients rather than
-re-implementing a PTY layer.
+A reattachable terminal (a session that owns a PTY and its scrollback so a dropped ssh
+connection can resume) is the next step, and is deliberately a protocol on top of this host so
+other front ends (BeagleTerm) attach as clients rather than re-implementing a PTY layer.
 
 ## Client contract for front ends (BeagleTerm)
 
