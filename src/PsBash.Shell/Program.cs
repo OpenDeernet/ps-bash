@@ -56,6 +56,11 @@ if (HostCommands.IsHostCommand(args))
     return await HostCommands.RunAsync(args);
 }
 
+if (SessionCommands.IsSessionCommand(args))
+{
+    return await SessionCommands.RunAsync(args);
+}
+
 var shellArgs = ShellArgs.Parse(args);
 
 // Informational flags short-circuit before any host/IPC work. Without this,
