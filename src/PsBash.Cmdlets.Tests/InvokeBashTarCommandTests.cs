@@ -298,6 +298,74 @@ public class InvokeBashTarCommandTests : IDisposable, IClassFixture<SharedPwshFi
             "tar extracted an absolute-path entry outside the destination directory");
     }
 
+    // ===================== pre-existing links on disk (B01) =====================
+
+    /// <summary>Directory link: symlink when permitted, else a Windows junction. Null if neither works.</summary>
+    private static bool TryCreateDirLink(string link, string target)
+    {
+        try { Directory.CreateSymbolicLink(link, target); if (new DirectoryInfo(link).LinkTarget is not null) return true; }
+        catch { /* fall through to junction */ }
+        if (!OperatingSystem.IsWindows()) return false;
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{target}\"")
+            { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+            using var p = System.Diagnostics.Process.Start(psi)!;
+            p.WaitForExit(10000);
+            return p.ExitCode == 0 && Directory.Exists(link);
+        }
+        catch { return false; }
+    }
+
+    [SkippableFact]
+    public void Tar_Extract_ThroughExistingDirectoryLink_IsRefusedAndWritesNothingOutside()
+    {
+        string root = Path.Combine(_tmpDir, "pivot-root");
+        string extract = Path.Combine(root, "extract");
+        string outside = Path.Combine(root, "outside");
+        Directory.CreateDirectory(extract);
+        Directory.CreateDirectory(outside);
+        Skip.IfNot(TryCreateDirLink(Path.Combine(extract, "pivot"), outside), "cannot create a directory link on this machine");
+
+        string archive = WriteMaliciousTar("pivot.tar", "pivot/marker.txt", "audit-marker");
+        int exit = ExitOf($"Invoke-BashTar -xf '{PsQuote(archive)}' --directory='{PsQuote(extract)}'");
+
+        Assert.False(File.Exists(Path.Combine(outside, "marker.txt")),
+            "tar wrote through an existing directory link out of the extraction directory");
+        Assert.NotEqual(0, exit);
+    }
+
+    [SkippableFact]
+    public void Tar_Extract_OverExistingFileLink_DoesNotWriteThroughIt()
+    {
+        Skip.IfNot(CanCreateSymlinks(), "symlink creation not permitted on this machine");
+        string root = Path.Combine(_tmpDir, "filelink-root");
+        string extract = Path.Combine(root, "extract");
+        Directory.CreateDirectory(extract);
+        string victim = Path.Combine(root, "victim.txt");
+        File.WriteAllText(victim, "original");
+        File.CreateSymbolicLink(Path.Combine(extract, "f.txt"), victim);
+
+        string archive = WriteMaliciousTar("filelink.tar", "f.txt", "overwritten");
+        int exit = ExitOf($"Invoke-BashTar -xf '{PsQuote(archive)}' --directory='{PsQuote(extract)}'");
+
+        Assert.Equal("original", File.ReadAllText(victim));
+        Assert.NotEqual(0, exit);
+    }
+
+    [Fact]
+    public void Tar_Extract_NestedEntryWithoutLinks_StillExtracts()
+    {
+        string archive = WriteMaliciousTar("nested.tar", "a/b/c.txt", "ok");
+        string dest = Path.Combine(_tmpDir, "nested-dest");
+        Directory.CreateDirectory(dest);
+
+        int exit = ExitOf($"Invoke-BashTar -xf '{PsQuote(archive)}' --directory='{PsQuote(dest)}'");
+
+        Assert.Equal(0, exit);
+        Assert.Equal("ok", File.ReadAllText(Path.Combine(dest, "a", "b", "c.txt")));
+    }
+
     // ===================== Empty --exclude must match nothing =====================
 
     [Fact]

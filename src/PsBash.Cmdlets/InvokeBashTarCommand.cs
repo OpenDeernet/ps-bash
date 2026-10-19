@@ -760,6 +760,16 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                 if (verbose)
                     WriteObject(BashRuntime.NewBashObject(entry.EntryType == TarEntryType.Directory ? name.TrimEnd('/') + "/" : name));
 
+                // Existing links on disk (pre-planted junction/symlink ancestors, or a
+                // link standing where the file goes) redirect writes outside destDir
+                // even though the path text is contained. Links being created replace
+                // their own final component, so only their ancestors are checked.
+                bool isLinkEntry = entry.EntryType is TarEntryType.SymbolicLink or TarEntryType.HardLink;
+                if (RefuseLinkTraversal(destDir, targetPath, name, includeSelf: !isLinkEntry))
+                {
+                    continue;
+                }
+
                 switch (entry.EntryType)
                 {
                     case TarEntryType.Directory:
@@ -787,6 +797,8 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 {
                     Directory.CreateDirectory(dir);
+                    // Re-check after creating: narrows the swap-in window for a racing link.
+                    if (RefuseLinkTraversal(destDir, targetPath, name, includeSelf: true)) { continue; }
                 }
                 using var fs = File.Create(targetPath);
                 entry.DataStream.CopyTo(fs);
@@ -830,6 +842,52 @@ public sealed class InvokeBashTarCommand : PSCmdlet
         string candidate = Path.GetFullPath(Path.Combine(destFull, rel));
         if (!PathIsWithin(destFull, candidate)) { return false; }
         targetPath = candidate;
+        return true;
+    }
+
+    /// <summary>
+    /// True if any existing component of <paramref name="targetFull"/> below
+    /// <paramref name="destDir"/> is a symlink/junction (reparse point). The lexical
+    /// containment check cannot see these: <c>dest/pivot</c> is "inside" dest yet
+    /// writes through to wherever the link points. <paramref name="includeSelf"/>
+    /// also tests the final component (needed before opening it for write; links
+    /// being replaced pass false). <paramref name="linkPath"/> is the offender.
+    /// </summary>
+    private static bool TryFindLinkBelowDest(string destDir, string targetFull, bool includeSelf, out string linkPath)
+    {
+        linkPath = string.Empty;
+        string destFull = Path.GetFullPath(destDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (targetFull.Length <= destFull.Length) { return false; }
+        string rel = targetFull.Substring(destFull.Length).Trim(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (rel.Length == 0) { return false; }
+
+        string[] parts = rel.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string current = destFull;
+        int last = includeSelf ? parts.Length : parts.Length - 1;
+        for (int i = 0; i < last; i++)
+        {
+            current = Path.Combine(current, parts[i]);
+            FileAttributes attrs;
+            try { attrs = File.GetAttributes(current); }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                return false; // nothing deeper exists yet; created components are real directories
+            }
+            if ((attrs & FileAttributes.ReparsePoint) != 0)
+            {
+                linkPath = current;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool RefuseLinkTraversal(string destDir, string targetFull, string name, bool includeSelf)
+    {
+        if (!TryFindLinkBelowDest(destDir, targetFull, includeSelf, out string via)) { return false; }
+        FileSystemHelpers.WriteBashError(this,
+            $"tar: {name}: Cannot open: path traverses a symbolic link or junction ({via})");
+        FileSystemHelpers.SetLastExitCode(this, 2);
         return true;
     }
 
@@ -880,9 +938,17 @@ public sealed class InvokeBashTarCommand : PSCmdlet
             return;
         }
 
+        // A hard link copies bytes from its target; that source must not be reached
+        // through a link either (it would read/clone content from outside destDir).
+        if (!symbolic && RefuseLinkTraversal(destDir, resolvedTarget, name, includeSelf: true))
+        {
+            return;
+        }
+
         if (!string.IsNullOrEmpty(linkDir) && !Directory.Exists(linkDir))
         {
             Directory.CreateDirectory(linkDir);
+            if (RefuseLinkTraversal(destDir, linkPath, name, includeSelf: false)) { return; }
         }
         if (File.Exists(linkPath) || Directory.Exists(linkPath))
         {
