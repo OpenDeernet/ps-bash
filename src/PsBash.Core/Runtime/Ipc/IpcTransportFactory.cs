@@ -276,7 +276,7 @@ public static class IpcTransportFactory
     /// <summary>Minimum random hex chars kept for per-invocation uniqueness.</summary>
     internal const int MinInvocationSuffixHexChars = 12;
 
-    private static int UnixSocketPathBudget()
+    internal static int UnixSocketPathBudget()
         => OperatingSystem.IsMacOS() ? 103 : UnixSocketPathMaxChars;
 
     private static string SocketDirectory() => PsBashRuntimeDirectory.GetPath();

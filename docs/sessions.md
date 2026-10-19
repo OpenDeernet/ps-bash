@@ -43,14 +43,40 @@ PSBASH_SESSION=build ps-bash -c 'echo $x; pwd'     # 5, /src
   `start` refuses to switch a running session between modes; `session stop` it first.
   `session list` shows each session's mode.
 
-## What this is not (yet)
+## Reattachable terminal (Linux, macOS)
 
-A reattachable terminal (a session that owns a PTY and its scrollback so a dropped ssh
-connection can resume) is the next step, and is deliberately a protocol on top of this host so
-other front ends (BeagleTerm) attach as clients rather than re-implementing a PTY layer.
+```bash
+ps-bash session attach build            # start (or rejoin) the session's shell; Ctrl-] d detaches
+ps-bash session attach build --read-only
+ssh -t devbox ps-bash session attach build      # remote: a dropped connection loses nothing
+```
+
+`attach` starts a detached **terminal broker** (`ps-bash session serve build`, hidden) the first time.
+The broker owns a PTY and the interactive shell on it, so the shell, its running programs and its
+screen outlive every client. A new client gets the last 1 MiB of output replayed and the shell is nudged
+to redraw (a one-row resize and back), so a full-screen program repaints. Several clients may attach at
+once; `--read-only` ones watch but cannot type or resize. The broker ends when the shell exits, when
+`session stop` is run, or after the idle window with nobody attached (`PSBASH_HOST_IDLE_SECS`, default 24 h).
+It ignores SIGHUP, so closing the terminal that started it does not end the session. Diagnostics go to
+`terminal-broker.log` in the runtime directory.
+
+The terminal broker is independent of the command host above: `-c` calls run in the stateful runspace,
+the terminal runs an interactive shell. They share a name and a lifetime (`session stop` ends both),
+not a runspace.
+
+Not yet supported on Windows: the interactive host is unverified under ConPTY, so `attach`/`serve`
+refuse there with a clear message.
 
 ## Client contract for front ends (BeagleTerm)
 
 A client needs only: resolve the endpoint (`PSBASH_SESSION=NAME`, same rule as the launcher,
 see `IpcTransportFactory.ResolveEndpoint`), speak `HostProtocol` (Health, Shutdown, command
 requests), and honour the host's metadata sidecar (`<endpoint>.host.json`) for liveness.
+
+### Terminal protocol
+
+`<endpoint minus .sock>-t.sock`, one AF_UNIX stream, frames `[type:1][length:4 big-endian][payload]`,
+payload at most 1 MiB. Client to broker: `H` hello (flags byte, bit 0 = read-only; must be first),
+`I` input bytes, `R` resize (cols:2, rows:2), `Q` end the shell. Broker to client: `O` output bytes
+(the first frames after hello replay the scrollback), `X` shell exited (exit code:4). Detach = close the
+socket. Reference implementation: `src/PsBash.Shell/Sessions/`.

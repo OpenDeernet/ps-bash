@@ -65,7 +65,7 @@ internal static partial class SessionCommands
 
         if (args[1] == "list") return List();
 
-        if (args[1] is not ("start" or "status" or "stop"))
+        if (args[1] is not ("start" or "status" or "stop" or "attach" or "serve"))
         {
             Console.Error.WriteLine($"ps-bash: unknown session command '{args[1]}'");
             PrintUsage();
@@ -107,7 +107,12 @@ internal static partial class SessionCommands
                 return await HostCommands.RunAsync(["host", "start"], ct).ConfigureAwait(false);
             case "status":
                 return await HostCommands.RunAsync(["host", "status"], ct).ConfigureAwait(false);
+            case "attach":
+                return await Sessions.TerminalClient.AttachAsync(args[2], args.AsSpan(3).Contains("--read-only"), ct).ConfigureAwait(false);
+            case "serve":
+                return await Sessions.TerminalClient.ServeAsync(ct).ConfigureAwait(false);
             default:
+                await Sessions.TerminalClient.QuitAsync(ct).ConfigureAwait(false);
                 return await HostCommands.RunAsync(["host", "shutdown"], ct).ConfigureAwait(false);
         }
     }
@@ -170,6 +175,8 @@ internal static partial class SessionCommands
         Console.Error.WriteLine("usage: ps-bash session start NAME [--idle-secs N] [--stateless]   # durable session (default idle: 24h); stateful keeps vars/cwd/exports between calls");
         Console.Error.WriteLine("       ps-bash session status NAME");
         Console.Error.WriteLine("       ps-bash session stop NAME");
+        Console.Error.WriteLine("       ps-bash session attach NAME [--read-only]   # reattachable terminal; detach with Ctrl-] d");
+        Console.Error.WriteLine("remote: ssh -t HOST ps-bash session attach NAME");
         Console.Error.WriteLine("       ps-bash session list                         # named sessions only");
         Console.Error.WriteLine("attach: PSBASH_SESSION=NAME ps-bash -c '...'");
     }
