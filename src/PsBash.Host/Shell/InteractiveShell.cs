@@ -69,7 +69,17 @@ public static class InteractiveShell
         Directory.CreateDirectory(psbashDir);
 
         var dbPath = Path.Combine(psbashDir, "history.db");
-        _historyStore = new SqliteHistoryStore(dbPath);
+        try
+        {
+            _historyStore = new SqliteHistoryStore(dbPath);
+        }
+        catch (Exception ex)
+        {
+            // A broken/locked history DB must not take the shell down; say so, since
+            // history will not persist this session.
+            _historyStore = new InMemoryHistoryStore();
+            Console.Error.WriteLine($"ps-bash: warning: history database unavailable ({ex.Message}); history will not be saved this session");
+        }
 
         // zoxide-style directory frecency DB, alongside history. Powers the `z`/`zi`
         // jump commands and cd-aware completion / ghost text. Seed the startup dir
@@ -397,8 +407,18 @@ public static class InteractiveShell
         }
     }
 
+    /// <summary>
+    /// Private-input contract: a line starting with a space (bash <c>HISTCONTROL=ignorespace</c>)
+    /// or any line while <c>PSBASH_HISTORY_PRIVATE</c> is truthy is never captured, neither in the
+    /// persistent store nor the in-session list. Decided BEFORE anything is written.
+    /// </summary>
+    internal static bool IsPrivateInput(string command) =>
+        command.Length > 0 && (command[0] == ' ' || PsBash.Core.Runtime.EnvFlags.IsTruthy("PSBASH_HISTORY_PRIVATE"));
+
     private static async Task RecordCommandAsync(string command, int? exitCode, long durationMs)
     {
+        if (IsPrivateInput(command)) return;
+
         // Feed the in-session list backing history expansion (!!, !$, ...). Done unconditionally
         // (not gated on the store) and capped to bound growth on a long-lived REPL.
         if (!string.IsNullOrEmpty(command))
