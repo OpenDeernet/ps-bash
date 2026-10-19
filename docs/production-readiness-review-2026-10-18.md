@@ -149,5 +149,5 @@ No issue tracker tasks, commits, releases, or pushes were created by this review
 | B03 | Fixed in workflow, unexercised | Assets upload only in the final `release` job after build and test gates; digest re-verified there. |
 | B04 | Fixed in workflow, unexercised | `release-tag` resolves the tag to one SHA that every job checks out; missing tag fails first; the hand-published `release` trigger was removed. |
 | B05 | Mostly fixed | Cmdlets and a new Host.Tests step block; Shell and Differential block on Linux, advisory elsewhere. |
-| B06, B07 | Open | Product scope decisions. |
+| B06, B07 | Partly fixed | Named durable sessions (`ps-bash session`, [sessions](sessions.md)): host outlives launchers, sessions run concurrently as separate processes. Open: reattachable PTY/screen owned by the session; in-host parallel execution. |
 | B08 | Fixed (retention open) | Leading-space / `PSBASH_HISTORY_PRIVATE` capture filter, degraded-history warning, `history` listing, `history -d ID`, `history -c` with real erasure. Retention policy remains open. |

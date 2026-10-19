@@ -24,7 +24,7 @@ records evidence, affected journeys, and closure criteria. Status:
   `history -c` list and delete (`-c` runs `secure_delete` + WAL truncate + VACUUM).
   Still open: retention policy; bash-compatible `history` flags beyond these.
 
-- **Open — durable remote sessions and per-session concurrency (B06, B07):**
+- **Partly fixed — durable sessions and per-session concurrency (B06, B07):** `ps-bash session start/list/status/stop NAME` + `PSBASH_SESSION=NAME` give a host that outlives its launchers and runs concurrently with other sessions ([sessions](sessions.md)). Still open: a reattachable PTY/screen owned by the session. Original note:
   product-scope decisions, not shell bugs. The warm host is not a durable session
   manager, and commands sharing one daemon run serially. The
   [journey contract](planning/production-user-journeys.md) labels proposed remote
