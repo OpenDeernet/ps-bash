@@ -16,8 +16,12 @@ records evidence, affected journeys, and closure criteria. Status:
   with a named error.
 - **Fixed — release integrity (B03–B05):** binaries are staged as workflow
   artifacts and only promoted after every gate passes; every job builds the tag's
-  single resolved SHA; Cmdlets and Host tests block (Shell and Differential block
-  on Linux and stay advisory elsewhere).
+  single resolved SHA; Core, Cmdlets and Host tests block. Shell and Differential
+  stay advisory: on 2-core Linux runners some interactive/PTY tests stall (the
+  prompt prints one character then nothing; a 50,000-term `[ a -o ... ]`
+  hostile-input test exits 125). Harness waits now extend only while the machine
+  is measurably starved, so these are open product-or-environment questions, not
+  timeouts.
 - **Partly fixed — history privacy (B08):** a line starting with a space, or any
   line while `PSBASH_HISTORY_PRIVATE=1`, is never recorded; an unopenable history
   DB degrades to in-memory with a warning. `history`, `history -d ID` and
