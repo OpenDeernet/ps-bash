@@ -603,7 +603,7 @@ stdio and the PTY **master**. No translation, no record assembly — see §7.6.
 ```
 
 No PTY is allocated. The launcher and host exchange length-framed messages over
-a Unix domain socket (POSIX) or named pipe (Windows) — `IpcWorker` +
+a Unix domain socket — `IpcWorker` +
 `HostProtocol` in `src/PsBash.Core/Runtime/`. This is the legacy path and the
 universal fallback.
 

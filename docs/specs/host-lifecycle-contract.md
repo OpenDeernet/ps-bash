@@ -13,7 +13,7 @@ implementation lands.
 - Make host reuse decisions from explicit metadata plus a health handshake, not
   from endpoint presence alone.
 - Distinguish endpoint cleanup from process cleanup.
-- Treat Windows named pipes as kernel objects, not filesystem paths.
+- There is one transport: an AF_UNIX socket (Windows 10 1803+ included). The named-pipe transport was removed.
 
 ## Scope: this contract governs the shared `Daemon` host only
 
@@ -207,7 +207,7 @@ Each host owns a JSON metadata record beside the endpoint identity:
 - `protocolVersion`: `HostProtocol.ProtocolVersion`.
 - `buildIdentity`: the same build identity advertised by the health payload.
 - `endpoint`: canonical endpoint string returned by `IpcTransportFactory`.
-- `transportScheme`: `unix` or `pipe`.
+- `transportScheme`: `unix`.
 - `startedAt`: UTC instant when this host began startup.
 - `lastSeen`: UTC instant written after successful health checks and updated by
   the host while serving.
@@ -217,10 +217,7 @@ Each host owns a JSON metadata record beside the endpoint identity:
 
 The record path is derived from the canonical endpoint:
 
-- `unix`: `<endpoint>.host.json`, next to the socket path.
-- `pipe`: `<runtime-dir>/<pipe-name>.host.json`, because a Windows named pipe
-  endpoint is a kernel name under `\\.\pipe\`, not a removable filesystem
-  object.
+- `<endpoint>.host.json`, next to the socket path.
 
 A separate lifecycle lock may be stored beside the metadata record. The lock is
 for writers racing to start or replace a host; it is not proof that a host is
@@ -259,11 +256,8 @@ under it.
 Endpoint cleanup means removing bind artifacts so a replacement can claim the
 canonical address:
 
-- For `unix`, cleanup may unlink the socket path and remove the metadata record
+- Cleanup may unlink the socket path and remove the metadata record
   only after ownership validation says the artifacts are stale or obsolete.
-- For `pipe`, there is no endpoint file to unlink. Cleanup is limited to the
-  metadata and lock sidecars. The named pipe disappears when its server handles
-  close; clients cannot delete it the way they delete a Unix socket path.
 
 Process cleanup means terminating a running host process. It is a separate,
 higher-risk action and is allowed only when all of these are true:
@@ -449,8 +443,7 @@ Steps 1-6 are implemented by `IpcWorker.EnsureHostReachableAsync` (the
 
 Without this, concurrent cold-start launchers each reached the spawn path and left
 N-1 orphan runspaces — `UnixSocketTransport.ListenAsync` unlinks-before-bind (each
-racer steals the socket path) and the Windows named pipe allows 16 server instances
-(N hosts split the shared session state). Regression coverage:
+racer steals the socket path, so the last binder wins and the earlier hosts are orphaned). Regression coverage:
 `PsBash.Host.Tests/Server/HostStartupStressTests.ColdStartHerd_ConcurrentDaemonLaunchers_SpawnExactlyOneHost`
 (a `Category=Stress` test; see `scripts/test.sh --stress`).
 
@@ -467,18 +460,15 @@ because that would defeat warm-pool reuse (every command would cold-start its ow
 daemon). `Lifetime.PerInvocation` is the dedicated path for process-local
 endpoints (`ResolvePerInvocationEndpoint`).
 
-Scheme choice: `unix` unless `IsUnixSocketSupported()` is false — pre-1803 Windows, a
-socket path over the `sun_path` budget, or a **restricted token** (a sandbox such as
-codex's). A read-only sandbox denies creating the socket file, so `bind` fails with
-WSAEACCES; a pipe needs no filesystem write. A restricted client must also pass a check
-against its restricting SIDs, so the pipe DACL grants the user SID plus the token's
-restricting **logon** SIDs, never Everyone or a capability SID (`RestrictedToken`,
-`NamedPipeTransport.BuildPipeSecurity`).
+Transport: always `unix`. A canonical path over the `sun_path` budget gets the user part hashed,
+then fails with an `IOException` that names `TMPDIR` and `PSBASH_IPC_ENDPOINT`; there is no
+fallback transport. A process that cannot create the runtime directory (for example a read-only
+restricted-token sandbox) fails the same way, with the cause named. The named-pipe transport and
+its restricted-token ACL handling were removed in 0.14.
 
 `IpcTransportFactory.RetireEndpoint()` remains endpoint cleanup only. For `unix`
 it may unlink the socket path after lifecycle validation has decided cleanup is
-allowed. For `pipe` it must remain a no-op for the endpoint, because Windows
-named pipes are kernel namespace objects and have no path to delete.
+allowed.
 
 ## A script that does not parse is never silent
 
@@ -518,7 +508,7 @@ process, and a command that could not be stopped held the gate forever. The rule
   with type and top frame); a request that never arrives or is malformed gets EXIT 2. Only a client
   that is already gone gets no frame. (A late catch here was "Response stream closed before EXIT
   sentinel" under load.)
-- **Pipe instances never cap below connections.** `NamedPipeTransport` allows the OS maximum; the
+- **Accept never caps below connections.** The
   accept loop backs off exponentially and logs once per failure streak.- **The launcher never dumps a stack trace.** Every execute path (`-c`, `.sh`, `.ps1`) goes through
   `HostFailureGuard`: timeout → 124, host failure → one `ps-bash:` line + 125.
 - **Every failure is attributable.** `~/.psbash/host.log` (`HostLog`; `PSBASH_HOST_LOG` overrides;

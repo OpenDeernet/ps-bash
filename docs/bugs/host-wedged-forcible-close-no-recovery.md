@@ -106,7 +106,7 @@ Kill the wedged host(s) so the next launcher spawns fresh:
 Get-Process ps-bash-host -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 
-Or isolate this session's endpoint: set `PSBASH_IPC_ENDPOINT=pipe:psbash-<guid>` (or
+Or isolate this session's endpoint: set `PSBASH_IPC_ENDPOINT=unix:<short path>.sock` (or
 `PSBASH_SESSION=<unique>`) for the Bash tool's environment.
 
 ## Resolution (2026-06-17 redesign)
