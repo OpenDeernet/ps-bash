@@ -90,7 +90,10 @@ internal sealed class TerminalBroker
         else
         {
             code = 0;
-            await shell.DisposeAsync().ConfigureAwait(false); // idle: take the shell down with us
+            // Idle, `session stop` or SIGTERM: take the shell (and whatever it is running) down with us.
+            // Disposing the spawner only releases handles; it does not end the process.
+            try { System.Diagnostics.Process.GetProcessById(shell.Pid).Kill(entireProcessTree: true); }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
         }
 
         // Let the last output reach the clients before announcing the exit.
