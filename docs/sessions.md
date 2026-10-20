@@ -65,8 +65,7 @@ the terminal runs an interactive shell. They share a name and a lifetime (`sessi
 not a runspace.
 
 On Windows the broker runs the shell under ConPTY and is covered by the same end-to-end tests as on
-Linux. The `attach` client's raw console input (the `Ctrl-] d` chord) has not been exercised by hand on a
-Windows console, so treat that side as experimental.
+Linux; the `attach` client was checked by hand on a Windows console.
 
 ## Client contract for front ends (BeagleTerm)
 
