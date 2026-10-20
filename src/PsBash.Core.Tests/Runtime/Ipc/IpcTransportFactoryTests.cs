@@ -315,7 +315,13 @@ public class IpcTransportFactoryTests : IDisposable
         // prefix = <dir>\host-pi-<pid>-   then   <20 hex> + ".sock"
         const int fixedTail = 8 + 6 + 1 /* "host-pi-", pid, '-' */ + 1 /* separator */ + 20 + 5 /* ".sock" */;
         int rootLength = SunPathBudget - overhead - fixedTail;
-        return seed + new string('x', Math.Max(0, rootLength - seed.Length));
+
+        // The root is a real directory the factory will create, so it must be writable: the machine's temp
+        // dir when that is short enough (Linux, Windows), else /tmp (macOS's per-user temp is already long).
+        var sep = System.IO.Path.DirectorySeparatorChar;
+        var baseDir = System.IO.Path.GetTempPath().TrimEnd(sep);
+        if (baseDir.Length + 2 > rootLength && sep == '/') baseDir = "/tmp";
+        return baseDir + sep + new string('x', Math.Max(1, rootLength - baseDir.Length - 1));
     }
 
     [Fact]
