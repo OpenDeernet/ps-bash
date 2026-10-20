@@ -295,13 +295,28 @@ public class IpcTransportFactoryTests : IDisposable
         Assert.Equal(@"C:\Users\x\sock", endpoint);
     }
 
-    // Longest path allowed by AF_UNIX sun_path. .NET rejects any Unix
-    // domain-socket path longer than 107 chars (108 bytes incl. the NUL).
-    private const int SunPathBudget = 107;
+    // Longest path allowed by AF_UNIX sun_path on this platform (107 on Linux/Windows, 103 on macOS).
+    private static int SunPathBudget => IpcTransportFactory.UnixSocketPathBudget();
 
+    /// <summary>
+    /// A temp root sized so the per-invocation socket path leaves exactly 20 hex chars of room under the
+    /// budget: enough (>= 12) to stay valid, too little for the 32-char guid, so the shortening is
+    /// exercised. Independent of the machine's real temp dir, which is long on macOS and Windows runners.
+    /// </summary>
     private static string LongTempRoot()
-        => System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(), "psb-g12345678-0123456789abcdef");
+    {
+        var seed = System.IO.Path.DirectorySeparatorChar == '\\' ? @"C:\t" : "/t";
+        var saved = PsBashRuntimeDirectory.TempPathOverride;
+        PsBashRuntimeDirectory.TempPathOverride = () => seed;
+        int overhead;
+        try { overhead = PsBashRuntimeDirectory.GetPath().Length - seed.Length; }
+        finally { PsBashRuntimeDirectory.TempPathOverride = saved; }
+
+        // prefix = <dir>\host-pi-<pid>-   then   <20 hex> + ".sock"
+        const int fixedTail = 8 + 6 + 1 /* "host-pi-", pid, '-' */ + 1 /* separator */ + 20 + 5 /* ".sock" */;
+        int rootLength = SunPathBudget - overhead - fixedTail;
+        return seed + new string('x', Math.Max(0, rootLength - seed.Length));
+    }
 
     [Fact]
     public void ResolvePerInvocationEndpoint_SixDigitPidAndLongTempRoot_FitsSunPathBudget()
