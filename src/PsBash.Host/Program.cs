@@ -66,14 +66,10 @@ internal sealed class Program
         if (args.Contains("--pty-probe") || Environment.GetEnvironmentVariable("PSBASH_PTY_PROBE") == "1")
         {
             var ptyEnv = Environment.GetEnvironmentVariable("PSBASH_PTY_ATTACHED") ?? "<unset>";
-            // On Windows ConPTY, querying Console.IsInputRedirected can trigger
-            // terminal initialization sequences before the probe writes its
-            // marker. The probe's contract is the spawn hand-off: when the
-            // launcher set PSBASH_PTY_ATTACHED=1 and the process is under
-            // ConPTY, report the terminal state without blocking on Console.
-            bool attachedPty = OperatingSystem.IsWindows() && ptyEnv == "1";
-            var inRedir = !attachedPty && Console.IsInputRedirected;
-            var outRedir = !attachedPty && Console.IsOutputRedirected;
+            // Report the real state. (This used to assume "terminal" under ConPTY, which hid a spawner bug:
+            // the child inherited the parent's redirected std handles and the REPL read EOF at once.)
+            var inRedir = Console.IsInputRedirected;
+            var outRedir = Console.IsOutputRedirected;
             Console.Out.WriteLine(
                 $"PSBASH-PTY-PROBE: IsInputRedirected={inRedir} IsOutputRedirected={outRedir} PSBASH_PTY_ATTACHED={ptyEnv}");
             Console.Out.Flush();

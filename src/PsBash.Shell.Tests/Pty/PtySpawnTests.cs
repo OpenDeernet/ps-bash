@@ -101,18 +101,22 @@ public class PtySpawnTests
     {
         Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows),
             "Windows-only test — POSIX uses posix_spawn + SETSID + slave re-open");
-        Skip.If(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")),
-            "Windows ConPTY runtime verification is CI-gated");
         Skip.If(Environment.OSVersion.Version.Build < 17763,
             $"ConPTY requires Win10 1809 / build 17763+; current build is {Environment.OSVersion.Version.Build}");
 
-        var hostBinary = TryLocateHostBinary();
+        // The host copied next to the test binary is the one this build produced.
+        var sideBySide = Path.Combine(AppContext.BaseDirectory, "ps-bash-host.exe");
+        var hostBinary = File.Exists(sideBySide) ? sideBySide : TryLocateHostBinary();
         Skip.If(hostBinary is null,
             "ps-bash-host.exe binary not found — build src/PsBash.Host first");
 
         await using var pty = await PtyAllocator.AllocateAsync(cols: 80, rows: 24);
         Assert.NotEqual(IntPtr.Zero, pty.SlaveHandle);
 
+        // Regression: this test process usually has redirected stdio (a test host, a CI step). A child
+        // spawned without STARTF_USESTDHANDLES=INVALID_HANDLE_VALUE inherited those pipes instead of the
+        // pseudoconsole, so the probe reported IsInputRedirected/IsOutputRedirected = True (the interactive
+        // shell then read EOF and exited at once).
         var spawner = PtySpawner.Spawn(
             executablePath: hostBinary!,
             arguments: new[] { "--pty-probe" },

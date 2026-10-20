@@ -43,7 +43,7 @@ PSBASH_SESSION=build ps-bash -c 'echo $x; pwd'     # 5, /src
   `start` refuses to switch a running session between modes; `session stop` it first.
   `session list` shows each session's mode.
 
-## Reattachable terminal (Linux, macOS)
+## Reattachable terminal
 
 ```bash
 ps-bash session attach build            # start (or rejoin) the session's shell; Ctrl-] d detaches
@@ -64,8 +64,9 @@ The terminal broker is independent of the command host above: `-c` calls run in 
 the terminal runs an interactive shell. They share a name and a lifetime (`session stop` ends both),
 not a runspace.
 
-Not yet supported on Windows: the interactive host is unverified under ConPTY, so `attach`/`serve`
-refuse there with a clear message.
+On Windows the broker runs the shell under ConPTY and is covered by the same end-to-end tests as on
+Linux. The `attach` client's raw console input (the `Ctrl-] d` chord) has not been exercised by hand on a
+Windows console, so treat that side as experimental.
 
 ## Client contract for front ends (BeagleTerm)
 

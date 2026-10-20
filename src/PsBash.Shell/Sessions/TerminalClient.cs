@@ -14,21 +14,8 @@ internal static class TerminalClient
 {
     internal static readonly TimeSpan BrokerStartTimeout = TimeSpan.FromSeconds(30);
 
-    /// <summary>
-    /// The interactive host has not been verified under ConPTY (the PTY end-to-end tests are POSIX-only), and
-    /// a broker whose shell exits at once is worse than a clear refusal.
-    /// </summary>
-    internal static bool Unsupported(out string message)
-    {
-        message = OperatingSystem.IsWindows()
-            ? "ps-bash session attach/serve: reattachable terminals are supported on Linux and macOS only (the interactive host is not yet verified under ConPTY)"
-            : "";
-        return OperatingSystem.IsWindows();
-    }
-
     public static async Task<int> AttachAsync(string name, bool readOnly, CancellationToken ct)
     {
-        if (Unsupported(out var why)) { Console.Error.WriteLine(why); return 2; }
         if (Console.IsInputRedirected && !readOnly)
         {
             Console.Error.WriteLine("ps-bash session attach: stdin is not a terminal (use ssh -t, or --read-only)");
@@ -95,7 +82,6 @@ internal static class TerminalClient
     /// <summary>The hidden <c>session serve NAME</c> entry point: run the broker in this (detached) process.</summary>
     public static async Task<int> ServeAsync(CancellationToken ct)
     {
-        if (Unsupported(out var why)) { Console.Error.WriteLine(why); return 2; }
         var host = Environment.GetEnvironmentVariable("PSBASH_HOST");
         if (string.IsNullOrEmpty(host))
         {

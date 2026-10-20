@@ -56,7 +56,6 @@ public sealed class TerminalBrokerEndToEndTests
     {
         var host = Path.Combine(AppContext.BaseDirectory, IpcWorker.GetHostBinaryName());
         Skip.IfNot(File.Exists(host), "ps-bash-host is not next to the test binary");
-        Skip.If(OperatingSystem.IsWindows(), "POSIX-only: the interactive host is not yet verified under ConPTY");
 
         var socket = Path.Combine(PsBashRuntimeDirectory.GetPath(), $"t-{Guid.NewGuid():N}"[..12] + ".sock");
         Directory.CreateDirectory(Path.GetDirectoryName(socket)!);
@@ -93,7 +92,6 @@ public sealed class TerminalBrokerEndToEndTests
     {
         var host = Path.Combine(AppContext.BaseDirectory, IpcWorker.GetHostBinaryName());
         Skip.IfNot(File.Exists(host), "ps-bash-host is not next to the test binary");
-        Skip.If(OperatingSystem.IsWindows(), "POSIX-only: the interactive host is not yet verified under ConPTY");
 
         var socket = Path.Combine(PsBashRuntimeDirectory.GetPath(), $"t-{Guid.NewGuid():N}"[..12] + ".sock");
         Directory.CreateDirectory(Path.GetDirectoryName(socket)!);

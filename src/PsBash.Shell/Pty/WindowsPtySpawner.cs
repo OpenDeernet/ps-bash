@@ -76,11 +76,18 @@ internal sealed partial class WindowsPtySpawner : PtySpawner
                     "UpdateProcThreadAttribute(PSEUDOCONSOLE_HANDLE) failed");
             }
 
-            // 3) Build STARTUPINFOEX. Do NOT set hStdInput/hStdOutput/hStdError
-            //    or STARTF_USESTDHANDLES — ConPTY wires the child's stdio
-            //    through the HPCON.
+            // 3) Build STARTUPINFOEX. ConPTY wires the child's stdio through the HPCON, but only if the
+            //    child does not also inherit the parent's std handles: when this process's stdio is
+            //    redirected (a service, a test host, a pipe-driven launcher), a child created without
+            //    STARTF_USESTDHANDLES ends up with those pipes as stdin/stdout/stderr, and .NET then
+            //    reports IsInputRedirected/IsOutputRedirected = true, so an interactive shell reads EOF
+            //    and exits. Naming INVALID_HANDLE_VALUE for all three forces the console handles.
             var siEx = new NativeMethods.STARTUPINFOEX();
             siEx.StartupInfo.cb = (uint)Marshal.SizeOf<NativeMethods.STARTUPINFOEX>();
+            siEx.StartupInfo.dwFlags = NativeMethods.STARTF_USESTDHANDLES;
+            siEx.StartupInfo.hStdInput = NativeMethods.InvalidHandle;
+            siEx.StartupInfo.hStdOutput = NativeMethods.InvalidHandle;
+            siEx.StartupInfo.hStdError = NativeMethods.InvalidHandle;
             siEx.lpAttributeList = attrList;
 
             // 4) Build a merged environment block: current env + overrides.
@@ -236,6 +243,8 @@ internal sealed partial class WindowsPtySpawner : PtySpawner
         public const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
         public const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
         public const uint INFINITE = 0xFFFFFFFF;
+        public const uint STARTF_USESTDHANDLES = 0x00000100;
+        public static readonly IntPtr InvalidHandle = new(-1);
 
         // From processthreadsapi.h:
         //   #define ProcThreadAttributeValue(Number, Thread, Input, Additive) \
