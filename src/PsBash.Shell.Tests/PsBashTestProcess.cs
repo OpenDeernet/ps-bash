@@ -21,6 +21,7 @@ internal static class PsBashTestProcess
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden,
         };
+        ClearAmbientSettings(psi);
         if (workingDirectory is not null)
             psi.WorkingDirectory = workingDirectory;
 
@@ -66,6 +67,25 @@ internal static class PsBashTestProcess
     {
         if (env is null || !env.ContainsKey(key))
             psi.Environment[key] = value;
+    }
+
+    // Harness knobs (timeouts, oracle mode, tman slots) are inputs to the run, not ambient shell state.
+    private static readonly string[] HarnessPrefixes = ["PSBASH_TEST_", "PSBASH_ORACLE_", "PSBASH_TMAN_"];
+
+    /// <summary>
+    /// The launcher under test must not inherit the launching shell's ps-bash settings. A suite run from a
+    /// shell with compact output on, a named session, or a pinned endpoint otherwise changes every result
+    /// (115 end-to-end tests failed with <c>PSBASH_COMPACT_OUTPUT=1</c>). A test that needs a setting passes
+    /// it through <c>env</c>, which is applied after this.
+    /// </summary>
+    public static void ClearAmbientSettings(ProcessStartInfo psi)
+    {
+        foreach (var name in psi.Environment.Keys.ToArray())
+        {
+            if (!name.StartsWith("PSBASH_", StringComparison.OrdinalIgnoreCase)) continue;
+            if (HarnessPrefixes.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
+            psi.Environment.Remove(name);
+        }
     }
 
     /// <summary>

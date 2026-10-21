@@ -1,21 +1,30 @@
+using System.Collections;
 using System.Runtime.CompilerServices;
-using PsBash.Core.Runtime.Ipc;
 
 namespace PsBash.Host.Tests;
 
 /// <summary>
-/// Makes the suite runnable from inside ps-bash itself (the agent's Bash tool, a nested shell).
-/// A launcher run by a host-executed command inherits <c>PSBASH_INSIDE_HOST</c>/<c>PSBASH_NEST_DEPTH</c>;
-/// <see cref="PsBash.Core.Runtime.IpcWorker"/> then treats every in-process test as a nested call and
-/// spawns a private host, so the lifecycle tests that expect to reuse their own daemon never reach it.
-/// The tests that need the nested state set it themselves inside a try/finally.
+/// Makes the suite independent of the shell that launches it, including ps-bash itself (the agent's Bash
+/// tool, a nested shell, a developer shell with a named session or compact output on).
+/// These tests drive a real host in-process, so any inherited <c>PSBASH_*</c> setting changes what they
+/// observe: <c>PSBASH_INSIDE_HOST</c>/<c>PSBASH_NEST_DEPTH</c> make <see cref="PsBash.Core.Runtime.IpcWorker"/>
+/// treat every call as nested (private host, "binary not found"), <c>PSBASH_COMPACT_OUTPUT</c> prepends a
+/// summary line to every result, <c>PSBASH_SESSION</c> moves the endpoint. Everything is cleared except what
+/// the test harness itself passes in; a test that needs a setting sets it inside a try/finally.
 /// </summary>
 internal static class CanonicalTestEnvironment
 {
+    // Harness knobs (timeouts, oracle mode, tman slots) are inputs to the run, not ambient shell state.
+    private static readonly string[] Preserved = ["PSBASH_TEST_", "PSBASH_ORACLE_", "PSBASH_TMAN_"];
+
     [ModuleInitializer]
     internal static void Initialize()
     {
-        Environment.SetEnvironmentVariable(IpcTransportFactory.InsideHostEnvVar, null);
-        Environment.SetEnvironmentVariable(IpcTransportFactory.NestDepthEnvVar, null);
+        foreach (DictionaryEntry e in Environment.GetEnvironmentVariables())
+        {
+            if (e.Key is not string name || !name.StartsWith("PSBASH_", StringComparison.OrdinalIgnoreCase)) continue;
+            if (Preserved.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
+            Environment.SetEnvironmentVariable(name, null);
+        }
     }
 }

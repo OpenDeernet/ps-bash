@@ -29,6 +29,17 @@ internal static class CanonicalTestEnvironment
     [ModuleInitializer]
     internal static void Initialize()
     {
+        // Nested ps-bash children (awk/sed spawning commands) inherit these: a launching shell's compact
+        // output, named session or pinned endpoint changes every result. Harness knobs are kept.
+        foreach (System.Collections.DictionaryEntry e in Environment.GetEnvironmentVariables())
+        {
+            if (e.Key is not string name || !name.StartsWith("PSBASH_", StringComparison.OrdinalIgnoreCase)) continue;
+            if (name.StartsWith("PSBASH_TEST_", StringComparison.OrdinalIgnoreCase)
+                || name.StartsWith("PSBASH_ORACLE_", StringComparison.OrdinalIgnoreCase)
+                || name.StartsWith("PSBASH_TMAN_", StringComparison.OrdinalIgnoreCase)) continue;
+            Environment.SetEnvironmentVariable(name, null);
+        }
+
         // Unset, not "0": the cmdlets treat any non-empty value as opt-out.
         Environment.SetEnvironmentVariable("NO_COLOR", null);
 
