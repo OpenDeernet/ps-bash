@@ -1,5 +1,6 @@
 using PsBash.Core.Runtime.Compaction;
 using PsBash.Core.Runtime.Ipc;
+using PsBash.Core.Tests.Compaction;
 using Xunit;
 
 namespace PsBash.Core.Tests.Runtime;
@@ -13,9 +14,10 @@ public class OutputCompactorTests
 
         var compacted = OutputCompactor.CompactCommandOutput("dotnet build", 0, false, frames);
 
-        Assert.Contains("exit=0", compacted);
-        Assert.Contains("stdout_lines=25", compacted);
-        Assert.Contains("repeated 24 more times", compacted);
+        // Collapsing drops lines, so the header must say how many there were.
+        Digest.Parse(compacted)
+            .AssertHeader(exit: 0, stdoutLines: 25, stderrLines: 0, command: "dotnet build")
+            .AssertBody("[out] restore ok", "[out] ... repeated 24 more times: restore ok");
         Assert.True(compacted.Length < string.Concat(frames.Select(f => f.Text)).Length);
     }
 
@@ -31,9 +33,9 @@ public class OutputCompactorTests
 
         var compacted = OutputCompactor.CompactCommandOutput("dotnet test", 1, false, frames, maxLines: 4);
 
-        Assert.Contains("exit=1", compacted);
-        Assert.Contains("[err] src/App.cs:42: error CS1002: ; expected", compacted);
-        Assert.Contains("[out] tail context", compacted);
+        var digest = Digest.Parse(compacted).AssertHeader(exit: 1, stdoutLines: 4, stderrLines: 1);
+        Assert.Contains(digest.Body, l => l.IsStderr && l.Text == "src/App.cs:42: error CS1002: ; expected");
+        Assert.Contains(digest.Body, l => !l.IsStderr && l.Text == "tail context");
     }
 
     [Fact]
@@ -47,9 +49,10 @@ public class OutputCompactorTests
 
         var compacted = OutputCompactor.CompactCommandOutput("tool", 0, false, frames);
 
-        Assert.Contains("[out] normal output", compacted);
-        Assert.Contains("[err] warning: noisy stderr", compacted);
-        Assert.Contains("stderr_lines=1", compacted);
+        // Nothing dropped and exit 0: the prefixes carry the stream split, no header needed.
+        Digest.Parse(compacted)
+            .AssertNoHeader()
+            .AssertBody("[out] normal output", "[err] warning: noisy stderr");
     }
 
     [Fact]
@@ -57,8 +60,86 @@ public class OutputCompactorTests
     {
         var compacted = OutputCompactor.CompactCommandOutput("sleep 99", 124, true, []);
 
-        Assert.Contains("exit=124", compacted);
-        Assert.Contains("timeout=true", compacted);
+        Digest.Parse(compacted).AssertHeader(exit: 124, stdoutLines: 0, stderrLines: 0, "sleep 99", timeout: true);
+    }
+
+    // ---- Header only when the body leaves something out ----
+
+    [Fact]
+    public void CompactCommandOutput_CleanShortOutput_HasNoHeader()
+    {
+        var compacted = OutputCompactor.CompactCommandOutput(
+            "echo hi", 0, false, [new OutputFrame(StreamTag.Stdout, "hi\n")]);
+
+        Digest.Parse(compacted).AssertNoHeader().AssertBody("[out] hi");
+    }
+
+    [Fact]
+    public void CompactCommandOutput_CleanEmptyOutput_IsEmpty()
+    {
+        Assert.Equal("", OutputCompactor.CompactCommandOutput("true", 0, false, []));
+    }
+
+    [Fact]
+    public void CompactCommandOutput_CleanOutputExactlyAtCap_HasNoHeader()
+    {
+        var frames = Enumerable.Range(0, 5).Select(i => new OutputFrame(StreamTag.Stdout, $"row {i}\n")).ToArray();
+
+        var compacted = OutputCompactor.CompactCommandOutput("ls", 0, false, frames, maxLines: 5);
+
+        Digest.Parse(compacted).AssertNoHeader();
+    }
+
+    [Fact]
+    public void CompactCommandOutput_CleanOutputOverCap_KeepsHeaderAndOmissionMarker()
+    {
+        var frames = Enumerable.Range(0, 40).Select(i => new OutputFrame(StreamTag.Stdout, $"row {i}\n")).ToArray();
+
+        var compacted = OutputCompactor.CompactCommandOutput("ls", 0, false, frames, maxLines: 20);
+
+        var digest = Digest.Parse(compacted).AssertHeader(exit: 0, stdoutLines: 40, stderrLines: 0);
+        Assert.Contains(digest.Body, l => l.Text.StartsWith("... omitted ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void CompactCommandOutput_NonZeroExit_KeepsHeaderEvenWhenNothingDropped()
+    {
+        var compacted = OutputCompactor.CompactCommandOutput(
+            "grep x f", 1, false, [new OutputFrame(StreamTag.Stdout, "only line\n")]);
+
+        // The exit status is information the body alone does not carry.
+        Digest.Parse(compacted)
+            .AssertHeader(exit: 1, stdoutLines: 1, stderrLines: 0)
+            .AssertBody("[out] only line");
+    }
+
+    [Fact]
+    public void CompactCommandOutput_TwoDistinctRepeatsAreNotCollapsedAcrossStreams()
+    {
+        var frames = new[]
+        {
+            new OutputFrame(StreamTag.Stdout, "same\n"),
+            new OutputFrame(StreamTag.Stderr, "same\n"),
+        };
+
+        // Identical text on different streams is not a run: still lossless, still headerless.
+        Digest.Parse(OutputCompactor.CompactCommandOutput("t", 0, false, frames))
+            .AssertNoHeader()
+            .AssertBody("[out] same", "[err] same");
+    }
+
+    // ---- The format helper itself must reject malformed digests ----
+
+    [Theory]
+    [InlineData("plain line without prefix\n")]
+    [InlineData("[out] ok\nstray\n")]
+    [InlineData("[out] missing trailing newline")]
+    [InlineData("[out] a\nps-bash compact-output: exit=0 stdout_lines=1 stderr_lines=0 command=\"x\"\n")]
+    [InlineData("ps-bash compact-output: exit=zero stdout_lines=1 stderr_lines=0 command=\"x\"\n")]
+    [InlineData("ps-bash compact-output: exit=0 stdout_lines=1 stderr_lines=0 command=\"x\"\r\n[out] a\n")]
+    public void DigestParse_RejectsMalformedDigests(string text)
+    {
+        Assert.ThrowsAny<Exception>(() => Digest.Parse(text));
     }
 
     [Fact]
@@ -77,11 +158,11 @@ public class OutputCompactorTests
 
         Assert.True(compacted.Length < raw.Length / 2);
         Assert.True(EstimateTokens(compacted) < EstimateTokens(raw) / 2);
-        Assert.Contains("exit=1", compacted);
-        Assert.Contains("[err] src/App.cs:99: error CS1002: ; expected", compacted);
-        Assert.Contains("[out] src/App.cs:42: warning CS0168: unused variable", compacted);
-        Assert.Contains("[out] Build FAILED.", compacted);
-        Assert.Contains("repeated 79 more times", compacted);
+        var digest = Digest.Parse(compacted).AssertHeader(exit: 1, stdoutLines: 83, stderrLines: 1);
+        Assert.Contains(digest.Body, l => l.IsStderr && l.Text == "src/App.cs:99: error CS1002: ; expected");
+        Assert.Contains(digest.Body, l => !l.IsStderr && l.Text == "src/App.cs:42: warning CS0168: unused variable");
+        Assert.Contains(digest.Body, l => !l.IsStderr && l.Text == "Build FAILED.");
+        Assert.Contains(digest.Body, l => l.Text.StartsWith("... repeated 79 more times", StringComparison.Ordinal));
     }
 
     private static int EstimateTokens(string value)

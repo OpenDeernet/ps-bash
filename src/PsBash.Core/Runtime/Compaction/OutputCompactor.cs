@@ -31,7 +31,13 @@ public static class OutputCompactor
         var selected = SelectLines(compacted, exitCode != 0 || timedOut, maxLines);
 
         var sb = new StringBuilder();
-        CompactionText.AppendHeader(sb, command, exitCode, timedOut, stdoutCount, stderrCount);
+        // The header exists to say what the body leaves out (counts, exit status). A clean run
+        // that dropped and collapsed nothing has nothing to say, and the header would cost more
+        // tokens than a short result.
+        var lossless = exitCode == 0 && !timedOut
+            && compacted.Count == lines.Count && selected.Count == compacted.Count;
+        if (!lossless)
+            CompactionText.AppendHeader(sb, command, exitCode, timedOut, stdoutCount, stderrCount);
 
         foreach (var line in selected)
         {

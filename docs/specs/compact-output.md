@@ -48,6 +48,14 @@ ps-bash compact-output: exit=1 stdout_lines=12 stderr_lines=3 command="dotnet bu
 
 (`timeout=true` is inserted into the header when `timedOut`.)
 
+**The header is omitted when the body is lossless**: `exit == 0`, not timed out, no run
+collapsed, and nothing omitted (`maxLines` not exceeded). The header's job is to say what
+the body leaves out (pre-collapse counts, exit status); with nothing left out it would cost
+more tokens than a short result (`echo hi` → `[out] hi`). Empty clean output is the empty
+string. Any non-zero exit, timeout, collapse or omission keeps the header. This applies to
+the generic digest only; command-aware filters (`FilterStage`) always emit it because their
+`keep`/`skip`/`replace` stages drop lines.
+
 ### Pipeline
 1. **SplitFrames** — each frame's text is normalized (`\r\n`/`\r` → `\n`) and split into
    lines; a trailing empty line is dropped. stdout/stderr line counts are taken here (the
