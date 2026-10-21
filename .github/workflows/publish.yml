@@ -316,10 +316,20 @@ jobs:
         shell: bash
         run: bash scripts/skip-report.sh TestResults/cmdlets "Cmdlets.Tests (${{ matrix.os }})"
 
+      # Short safety/recovery scenarios block every platform. The broader PTY/timing
+      # suite below stays advisory while its recorded failures are triaged.
+      - name: Run blocking shell safety and recovery tests
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          dotnet test src/PsBash.Shell.Tests/PsBash.Shell.Tests.csproj \
+            --configuration Release \
+            --filter 'FullyQualifiedName~ShellArgsTests|FullyQualifiedName~UnsupportedLauncherOption|FullyQualifiedName~MissingCommandArgument|FullyQualifiedName~UnsupportedSafetyOption_DoesNotFallBack|FullyQualifiedName~HistoryDirectoryOccupiedByFile|FullyQualifiedName~TerminalBrokerBackpressureTests|FullyQualifiedName~QuotedErrexitOption|FullyQualifiedName~TruncatedGzipInput|FullyQualifiedName~CompleteConcatenatedGzipMembers' \
+            --blame-hang-timeout 180s \
+            --logger "trx;LogFileName=shell-safety.trx" \
+            --results-directory TestResults/shell-safety
+
       # ── PsBash.Shell.Tests (requires binary built above) ────────────────────
-      # Blocking on Linux, where PTY/setsid primitives exist. Advisory on the other
-      # runners, where those primitives are missing or unreliable; the failure signal
-      # is still reported there, it just does not gate the release.
       - name: Run PsBash.Shell.Tests
         # Advisory until the Linux interactive/PTY failures (prompt stalls after 1 char, host exit
         # 125 on a 50k-term test chain) are root-caused; see docs/known-issues.md.
@@ -341,32 +351,14 @@ jobs:
         run: bash scripts/skip-report.sh TestResults/shell "Shell.Tests (${{ matrix.os }})"
 
       # ── PsBash.Differential.Tests ────────────────────────────────────────────
-      # Linux: differential mode (bash oracle available).
-      # macOS: golden mode if bash < 4 (macOS ships bash 3.x due to GPLv3).
-      # Windows: golden mode (no native bash; WSL checked at runtime by BashLocator).
-      # Blocking on Linux, the only runner with a real bash 4+ oracle. Windows/macOS run
-      # golden mode or lack an oracle, so they stay advisory (results still reported).
+      # Blocking cassette replay on every OS: recorded Bash results vs this build.
+      # Live-only cases remain the separate cassette-audit workflow's job.
       - name: Run PsBash.Differential.Tests
-        continue-on-error: true
         timeout-minutes: 12
         shell: bash
         run: |
-          # Determine mode: Linux always runs differential; other platforms use
-          # golden mode unless bash 4+ is natively available.
-          UPDATE_GOLDENS=0
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            echo "Platform: Linux — running in differential mode (bash oracle)"
-          else
-            bash_ver=$(bash --version 2>/dev/null | head -1 || true)
-            major=$(echo "$bash_ver" | grep -oP 'version \K[0-9]+' || echo "0")
-            if [[ "$major" -ge 4 ]]; then
-              echo "Platform: $RUNNER_OS — bash $major found, running differential mode"
-            else
-              echo "Platform: $RUNNER_OS — bash < 4 or unavailable, running golden mode (UPDATE_GOLDENS=0)"
-              UPDATE_GOLDENS=0
-            fi
-          fi
-          export UPDATE_GOLDENS
+          export UPDATE_GOLDENS=0 PSBASH_ORACLE_LIVE=0 PSBASH_ORACLE_RECORD=0
+          echo "Platform: $RUNNER_OS — replaying recorded Bash oracle against this build"
           dotnet test src/PsBash.Differential.Tests/PsBash.Differential.Tests.csproj \
             --configuration Release \
             --blame-hang-timeout 180s \

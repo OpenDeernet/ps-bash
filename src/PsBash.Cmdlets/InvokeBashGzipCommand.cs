@@ -15,7 +15,7 @@ namespace PsBash.Cmdlets;
 /// writes the (de)compressed bytes to stdout under <c>-c</c> /
 /// <c>--stdout</c> (EXACT bytes: the stream is carried as escaped-byte markers, see RawBytes, so
 /// <c>gzip -c f | gzip -dc</c> round-trips; with no operand the pipeline is the input, like stdin), preserves the original file under <c>-k</c> /
-/// <c>--keep</c>, accepts <c>-f</c> / <c>--force</c> for arg-compat, emits
+/// <c>--keep</c>, requires <c>-f</c> / <c>--force</c> to replace existing output, emits
 /// a per-file ratio line under <c>-v</c> / <c>--verbose</c>, and emits a
 /// fixed-width listing under <c>-l</c> / <c>--list</c>. Compression level
 /// follows the <c>-1</c>..<c>-9</c> flags (1 = Fastest, 9 = SmallestSize,
@@ -29,8 +29,8 @@ namespace PsBash.Cmdlets;
 /// <see cref="FileSystemHelpers.WriteBashError"/> and the cmdlet continues
 /// with subsequent operands. The <c>-l</c> path computes a percentage
 /// ratio using <see cref="GZipStream"/> in <see cref="CompressionMode.Decompress"/>
-/// mode over the operand's bytes. Decompress and compress both write back to
-/// disk via <see cref="File.WriteAllBytes"/>; under <c>-c</c> they emit the exact output
+/// mode over the operand's bytes. Decompress and compress stream into a sibling
+/// staging file and promote only after completion; under <c>-c</c> they emit the exact output
 /// bytes as text records (the old base64 form for compress is gone: the escaped-byte model
 /// carries raw bytes through the string pipeline). Under verbose mode, the cmdlet emits
 /// one extra <c>PsBash.TextOutput</c> line per file with the ratio.
@@ -320,11 +320,6 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
             return;
         }
 
-        // Suppress unused warnings — `force` and `keep` are read above through
-        // the manual scan into the same variables; touch both so the build
-        // doesn't strip the local under nullability/clean analyzers.
-        _ = force;
-
         // Flatten operands into the concrete file list. A directory operand is
         // expanded into its contained files under -r/--recursive; without -r it
         // is skipped with the GNU "is a directory -- ignored" warning (suppressed
@@ -396,12 +391,17 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
 
                 // -t / --test: decompress and discard to verify integrity. Silent
                 // on success (exit 0); a corrupt stream errors and sets exit 1.
+                if (inputSize == 0 && (decompress || test || list))
+                {
+                    FileSystemHelpers.WriteBashError(this, $"gzip: {filePath.Replace('\\', '/')}: unexpected end of file");
+                    continue;
+                }
                 if (test)
                 {
                     try
                     {
                         using var input = BashFileSystem.OpenRead(filePath);
-                        using var gs = new GZipStream(input, CompressionMode.Decompress);
+                        using var gs = GzipIntegrity.OpenDecoder(input);
                         var tbuf = new byte[81920];
                         while (gs.Read(tbuf, 0, tbuf.Length) > 0) { }
                         if (verbose) WriteObject(BashRuntime.NewBashObject($"{filePath}: OK"));
@@ -425,7 +425,7 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
                         // Keep it 64-bit: a >2 GB member overflows an int cast and
                         // prints a negative/wrapped size and bogus ratio.
                         using var input = BashFileSystem.OpenRead(filePath);
-                        using var gs = new GZipStream(input, CompressionMode.Decompress);
+                        using var gs = GzipIntegrity.OpenDecoder(input);
                         var cbuf = new byte[81920];
                         long total = 0; int cn;
                         while ((cn = gs.Read(cbuf, 0, cbuf.Length)) > 0) total += cn;
@@ -464,7 +464,7 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
                         try
                         {
                             using var input = BashFileSystem.OpenRead(filePath);
-                            using var gs = new GZipStream(input, CompressionMode.Decompress);
+                            using var gs = GzipIntegrity.OpenDecoder(input);
                             var records = new ByteRecordEmitter(WriteObject);
                             var chunk = new byte[81920];
                             int got;
@@ -497,18 +497,16 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
                             continue;
                         }
                         string outPath = filePath.Substring(0, filePath.Length - suffix.Length);
+                        if (RefuseExistingOutput(outPath, force)) continue;
                         long outSize;
                         try
                         {
-                            // Stream decompress straight into the output file — the
-                            // decompressed content is never held in memory.
-                            using (var input = BashFileSystem.OpenRead(filePath))
-                            using (var gs = new GZipStream(input, CompressionMode.Decompress))
-                            using (var outFs = File.Create(outPath))
+                            outSize = WriteFileOutput(outPath, force, outFs =>
                             {
+                                using var input = BashFileSystem.OpenRead(filePath);
+                                using var gs = GzipIntegrity.OpenDecoder(input);
                                 gs.CopyTo(outFs);
-                            }
-                            outSize = new FileInfo(outPath).Length;
+                            });
                         }
                         catch (Exception ex)
                         {
@@ -569,11 +567,8 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
                             var records = new ByteRecordEmitter(WriteObject);
                             try
                             {
-                                using (var gs = new GZipStream(new ByteRecordStream(records), compLevel, leaveOpen: false))
-                                using (var input = BashFileSystem.OpenRead(filePath))
-                                {
-                                    input.CopyTo(gs);
-                                }
+                                using var sink = new ByteRecordStream(records);
+                                CompressFile(filePath, sink, compLevel);
                             }
                             finally { records.Finish(); }
                         }
@@ -588,19 +583,12 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
                     else
                     {
                         string outPath = filePath + suffix;
+                        if (RefuseExistingOutput(outPath, force)) continue;
                         long compSize;
                         try
                         {
-                            // Stream the input straight through the compressor to
-                            // disk — neither the raw nor the compressed bytes are
-                            // ever fully held in memory.
-                            using (var input = BashFileSystem.OpenRead(filePath))
-                            using (var outFs = File.Create(outPath))
-                            using (var gs = new GZipStream(outFs, compLevel))
-                            {
-                                input.CopyTo(gs);
-                            }
-                            compSize = new FileInfo(outPath).Length;
+                            compSize = WriteFileOutput(outPath, force,
+                                outFs => CompressFile(filePath, outFs, compLevel));
                         }
                         catch (Exception ex)
                         {
@@ -647,7 +635,7 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
 
             _recordBytes!.Finish(_stdinSink!);
             _compressedInput!.Position = 0;
-            using var gs = new GZipStream(_compressedInput, CompressionMode.Decompress);
+            using var gs = GzipIntegrity.OpenDecoder(_compressedInput);
             if (_stdinTest)
             {
                 gs.CopyTo(Stream.Null);
@@ -666,25 +654,55 @@ public sealed class InvokeBashGzipCommand : PSCmdlet
             FileSystemHelpers.WriteBashError(this, "gzip: stdin: not in gzip format");
         }
     }
-    /// <summary>
-    /// File.WriteAllBytes with the oracle's bash-style error contract:
-    /// emit "gzip: PATH: MESSAGE" via FileSystemHelpers.WriteBashError on
-    /// failure and signal the caller (return false) so the per-operand loop
-    /// continues with subsequent operands.
-    /// </summary>
-    private bool TryWriteAllBytes(string path, byte[] data)
+    // RFC 1952 member: header, an empty final deflate block, CRC32=0, ISIZE=0.
+    // On .NET 8/10 GZipStream can emit no bytes at all when no input is written.
+    private static readonly byte[] EmptyMember =
+        [0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 0, 255, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+    private static void CompressFile(string path, Stream output, CompressionLevel level)
     {
+        using var input = BashFileSystem.OpenRead(path);
+        int first = input.ReadByte();
+        if (first < 0)
+        {
+            output.Write(EmptyMember);
+            return;
+        }
+        using var gzip = new GZipStream(output, level, leaveOpen: true);
+        gzip.WriteByte((byte)first);
+        input.CopyTo(gzip);
+    }
+
+    private bool RefuseExistingOutput(string path, bool force)
+    {
+        if (force || !File.Exists(path)) return false;
+        FileSystemHelpers.WriteBashError(this, $"gzip: {path.Replace('\\', '/')} already exists; not overwritten");
+        FileSystemHelpers.SetLastExitCode(this, 2);
+        return true;
+    }
+
+    // Complete and close the stream before replacing any destination. A corrupt input,
+    // full disk or failed promotion must leave both the input and any old output intact.
+    private static long WriteFileOutput(string path, bool force, Action<FileStream> write)
+    {
+        string staging = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!,
+            ".psbash-gzip-" + Guid.NewGuid().ToString("N"));
         try
         {
-            File.WriteAllBytes(path, data);
-            return true;
+            long length;
+            using (var output = new FileStream(staging, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                write(output);
+                length = output.Length;
+            }
+            // overwrite:false also protects outputs created after the existence check.
+            File.Move(staging, path, overwrite: force);
+            return length;
         }
-        catch (Exception ex)
+        finally
         {
-            if (FileSystemHelpers.IsPipelineStop(ex)) throw;
-            string normalized = path.Replace('\\', '/');
-            FileSystemHelpers.WriteBashError(this, $"gzip: {normalized}: {ex.Message}");
-            return false;
+            try { FileSystemHelpers.DeleteFileForce(staging); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
     }
 }

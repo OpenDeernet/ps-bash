@@ -60,9 +60,21 @@ once; `--read-only` ones watch but cannot type or resize. The broker ends when t
 It ignores SIGHUP, so closing the terminal that started it does not end the session. Diagnostics go to
 `terminal-broker.log` in the runtime directory.
 
+One broker holds an exclusive lease for each terminal endpoint through listener shutdown;
+concurrent cold attachments cannot replace its shell or socket. Initial replay and live
+writes drop a client that cannot receive within five seconds, so it cannot hold up other
+clients indefinitely. All writable clients share input; use `--read-only` for observers.
+
 The terminal broker is independent of the command host above: `-c` calls run in the stateful runspace,
 the terminal runs an interactive shell. They share a name and a lifetime (`session stop` ends both),
 not a runspace.
+
+`session list` shows both halves of each name. Each line ends in `terminal=running`, `terminal=stale`
+(a leftover socket nobody answers on) or `terminal=none`; a terminal created solely by `session attach`
+is listed as `NAME<TAB>no-host<TAB>terminal=running`. `session status NAME` prints the command-host
+status, then `terminal: running|stale|none`, and exits 0 if either half is up.
+`session start --idle-secs` configures the command host. Set `PSBASH_HOST_IDLE_SECS` when
+first attaching if the terminal broker should use a different idle window.
 
 On Windows the broker runs the shell under ConPTY and is covered by the same end-to-end tests as on
 Linux; the `attach` client was checked by hand on a Windows console.

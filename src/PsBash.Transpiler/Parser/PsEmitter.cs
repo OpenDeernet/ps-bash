@@ -161,7 +161,11 @@ public static class PsEmitter
 
     /// <summary>True when <paramref name="bash"/> can turn errexit on (a <c>set -e</c>-style word).</summary>
     internal static bool EnablesErrexit(string bash) =>
-        bash.Contains("set", StringComparison.Ordinal) && SetErrexitPattern.IsMatch(bash);
+        // This is a conservative emission prefilter, not a parser. Quote/escape
+        // spelling must not hide static flags such as set '-e' or set -o 'errexit'.
+        // Extra checks are inert until the parsed set command enables the runtime flag.
+        bash.Contains("set", StringComparison.Ordinal) &&
+        SetErrexitPattern.IsMatch(bash.Replace("'", "").Replace("\"", "").Replace("\\", ""));
 
     private static T WithErrexitExempt<T>(Func<T> emit)
     {
@@ -3117,8 +3121,36 @@ public static class PsEmitter
     private static string? EmitSet(Command.Simple cmd)
     {
         string? specialResult = null;
-        var literalArgs = cmd.Words.Skip(1).Select(w => GetLiteralValue(w)).ToList();
+        var literalArgs = cmd.Words.Skip(1).Select(TryGetStaticArgValue).ToList();
         int dashDashIdx = literalArgs.IndexOf("--");
+        var optionWords = literalArgs.TakeWhile(a => a != "--" &&
+            (a is null || a.StartsWith('-') || a.StartsWith('+'))).ToList();
+        // These combined forms used to silently drop one of their requested effects.
+        // Keep the supported standalone forms explicit until option composition is implemented.
+        if (dashDashIdx > 0 ||
+            (optionWords.Any(a => a is "-o" or "+o") && literalArgs.Count != 2) ||
+            (optionWords.Any(a => a?.StartsWith('+') == true) && optionWords.Count > 1))
+            throw new ParseException("set: combined shell option forms are not supported; use separate set commands", 1, 1, "shell-option");
+        // StrictMode does not police $env: reads, and redirects do not implement
+        // noclobber. Refuse every unsupported option before any part of the script runs.
+        for (int i = 0; i < literalArgs.Count && literalArgs[i] != "--"; i++)
+        {
+            var arg = literalArgs[i];
+            if (arg is null)
+                throw new ParseException("set: dynamic shell options are not supported by ps-bash; use set -- for positional parameters", 1, 1, "shell-option");
+            if (!arg.StartsWith('-') && !arg.StartsWith('+')) break;
+            if (arg is "-o" or "+o")
+            {
+                var name = literalArgs[++i];
+                if (name is not ("errexit" or "xtrace" or "pipefail"))
+                    throw new ParseException($"set: option '{name ?? "dynamic name"}' is not supported by ps-bash", 1, 1, "shell-option");
+                continue;
+            }
+            if (arg is "+e" or "+x") continue;
+            if (arg.StartsWith('-') && arg.Length > 1 && arg.Skip(1).All(c => c is 'e' or 'x')) continue;
+            string unsupported = arg.Contains('u') ? "nounset" : arg.Contains('C') ? "noclobber" : arg;
+            throw new ParseException($"set: option '{unsupported}' is not supported by ps-bash", 1, 1, "shell-option");
+        }
         if (dashDashIdx >= 0)
         {
             var positionalWords = cmd.Words.Skip(1 + dashDashIdx + 1).ToList();
@@ -3154,6 +3186,8 @@ public static class PsEmitter
                 || args.SkipWhile(a => a != "+o").Skip(1).FirstOrDefault() == "errexit";
             if (errexitOff && !longOpt && !args.Any(a => a is not null && a.StartsWith('-')))
                 specialResult = "$ErrorActionPreference = 'Continue'; $global:__BashErrexit = $false";
+            else if (args.Contains("+x"))
+                specialResult = "Set-PSDebug -Off; $global:__BashXtrace = $false";
             // `set +o NAME` (other than errexit, above): xtrace off, anything else a no-op — never the
             // bare `set` fallthrough (PowerShell's Set-Variable alias).
             else if (!longOpt && args.Contains("+o"))
@@ -3165,10 +3199,7 @@ public static class PsEmitter
                 var optVal = args.SkipWhile(a => a != "-o").Skip(1).FirstOrDefault();
                 if (optVal == "errexit") specialResult = "$ErrorActionPreference = 'Stop'; " + SetErrexitOn;
                 else if (optVal == "xtrace") specialResult = SetXtraceOn;
-                else if (optVal == "nounset") specialResult = "Set-StrictMode -Version Latest";
-                // Any other `-o NAME` (pipefail — a recorded won't-fix — noclobber, …) is accepted as a
-                // no-op. Falling through emitted a bare `set -o pipefail`, and `set` is PowerShell's
-                // Set-Variable alias: "Cannot bind parameter 'Option'" on every such script.
+                // pipefail is the explicit, documented architecture exclusion.
                 else specialResult = PsBuild.SetStatus(0);
             }
             else
@@ -3176,10 +3207,8 @@ public static class PsEmitter
                 var flags = args.Where(a => a is not null && a.StartsWith('-') && !a.StartsWith("--")).ToList();
                 bool e = flags.Any(f => f!.Contains('e'));
                 bool x = flags.Any(f => f!.Contains('x'));
-                bool u = flags.Any(f => f!.Contains('u'));
                 var parts = new List<string>();
                 if (e) parts.AddRange(new[]{"$ErrorActionPreference = 'Stop'", SetErrexitOn});
-                if (u) parts.Add("Set-StrictMode -Version Latest");
                 if (x) parts.Add(SetXtraceOn);
                 if (parts.Count > 0) specialResult = string.Join("; ", parts);
             }

@@ -1,12 +1,17 @@
-# Production user journeys and remote-session requirements
+# Local production user journeys and historical remote-product proposals
 
 Status: working product contract, reviewed 2026-10-18. Current behavior is supported by source references; acceptance criteria describe the intended outcome and are not a statement that tests passed. Findings: [production readiness review](../production-readiness-review-2026-10-18.md).
 
+Scope correction, 2026-10-20: the user confirmed PsBash is entirely a local product.
+J01–J11 describe the current review scope. R01–R12 below are retained as historical
+proposals for a separate remote product; their missing features are not PsBash release
+blockers. Current findings and corrections: [local production review](../production-readiness-review-2026-10-20.md).
+
 ## Product intent and scope
 
-Let a person manage work across machines without remembering terminal windows, guessing where a command runs, or losing context when a client disappears. The workspace should answer: **what is running, where, what needs me, and what can I safely do next?** A terminal remains an available interaction surface; typed results, focused task views, and recovery controls make it more useful.
+Let a person use Bash-like commands locally while retaining PowerShell objects, run scripts and agent commands predictably, and recover from ordinary installation, file and terminal failures. Local execution, exact output and exit status, data preservation and usable diagnostics are the production criteria.
 
-PsBash currently supplies Bash-like syntax, PowerShell objects, a local interactive shell, and agent command execution. It can be an execution component of a terminal product. This document does not assign session-server responsibilities to PsBash implicitly. The nearby BeagleTerm checkout appears to be such a product, but its relationship to this request remains unconfirmed. R journeys are proposed requirements wherever that product is owned.
+PsBash supplies Bash-like syntax, PowerShell objects, a local interactive shell and agent command execution. Named local sessions and detached terminals are implemented features. Optional SSH use delegates transport and trust to SSH; it does not create a remote workspace-product commitment. This review does not infer requirements from nearby projects.
 
 ### Actors
 

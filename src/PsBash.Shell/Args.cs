@@ -14,12 +14,13 @@ public record ShellArgs(
     bool ShowHelp = false,
     string? Timeout = null,
     bool? CompactOutput = null,
-    bool Verbose = false)
+    bool Verbose = false,
+    string? Error = null)
 {
     // Bash-compatible short flags ps-bash recognizes. Used to expand bundled
     // forms like `-lc` and to let `-c` skip past intervening flags when callers
     // (e.g. Claude Code) pass `-c -l "cmd"` instead of the canonical
-    // `-l -c "cmd"`. Unknown short letters in a bundle are dropped silently.
+    // `-l -c "cmd"`. Unsupported flags are reported before executing anything.
     private static readonly HashSet<char> KnownShortFlags = new() { 'l', 'i', 's', 'c' };
 
     // Long flags that take no value and must not be mistaken for the `-c`
@@ -48,6 +49,7 @@ public record ShellArgs(
         string? scriptPath = null;
         string[] scriptArgs = [];
         string? timeout = null;
+        string? error = null;
 
         for (int i = 0; i < expanded.Count; i++)
         {
@@ -68,6 +70,7 @@ public record ShellArgs(
             if (expanded[i] == "--timeout")
             {
                 if (i + 1 < expanded.Count) timeout = expanded[++i];
+                else error ??= "--timeout requires an argument";
                 continue;
             }
             if (expanded[i].StartsWith("--timeout=", StringComparison.Ordinal))
@@ -104,6 +107,7 @@ public record ShellArgs(
                     }
                     else
                     {
+                        error ??= "-c requires an argument";
                         i = j;
                     }
                     break;
@@ -166,6 +170,12 @@ public record ShellArgs(
                     endOfOptions = true;
                     break;
                 default:
+                    if (expanded[i].StartsWith('-'))
+                    {
+                        error ??= $"unsupported option '{expanded[i]}'" +
+                            (expanded[i] == "-e" ? "; use 'set -e' in the script to enable errexit" : "");
+                        break;
+                    }
                     // Non-flag positional argument: first becomes ScriptPath,
                     // subsequent become ScriptArgs (only when no -c command given)
                     if (command is null && !expanded[i].StartsWith('-'))
@@ -184,7 +194,7 @@ public record ShellArgs(
             }
         }
 
-        return new ShellArgs(command, interactive, login, stdin, noprofile, unixPaths, scriptPath, scriptArgs, rawPs, showVersion, showHelp, timeout, compactOutput, verbose);
+        return new ShellArgs(command, interactive, login, stdin, noprofile, unixPaths, scriptPath, scriptArgs, rawPs, showVersion, showHelp, timeout, compactOutput, verbose, error);
     }
 
     // Expands `-lc` -> `-l`, `-c`. Single-char flags (`-c`, `-l`) and long

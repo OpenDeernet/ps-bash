@@ -1,3 +1,5 @@
+using BrokerState = PsBash.Shell.Sessions.TerminalClient.BrokerState;
+using TerminalClient = PsBash.Shell.Sessions.TerminalClient;
 using Xunit;
 
 namespace PsBash.Shell.Tests;
@@ -43,6 +45,46 @@ public sealed class SessionCommandTests
     [InlineData("2024-release", false)]
     public void IsAnchorToken_SeparatesEphemeralFromNamedSessions(string token, bool anchored)
         => Assert.Equal(anchored, SessionCommands.IsAnchorToken(token));
+
+    [Theory]
+    [InlineData("host-andy-sbuild-t.sock", "andy", "build")]
+    [InlineData("host-andy-sa_b-t.sock", "andy", "a_b")]
+    public void TokenFromTerminalSocketName_ExtractsTheSessionToken(string file, string user, string expected)
+        => Assert.Equal(expected, SessionCommands.TokenFromTerminalSocketName(file, user));
+
+    [Theory]
+    [InlineData("host-other-sbuild-t.sock")]         // another user's broker
+    [InlineData("host-andy-sbuild.sock")]            // a command-host socket
+    [InlineData("host-andy-s-t.sock")]               // empty token
+    [InlineData("host-andy-t.sock")]                 // per-user endpoint, no session
+    [InlineData("host-andy-sbuild-t.sock.host.json")]
+    public void TokenFromTerminalSocketName_IgnoresEverythingElse(string file)
+        => Assert.Null(SessionCommands.TokenFromTerminalSocketName(file, "andy"));
+
+    [Fact]
+    public void FormatListLine_TerminalOnlySession_IsListedWithNoHost()
+        => Assert.Equal("build\tno-host\tterminal=running",
+            SessionCommands.FormatListLine("build", null, false, sidecarPresent: false,
+                BrokerState.Running));
+
+    [Fact]
+    public void FormatListLine_HostOnlySession_ReportsNoTerminal()
+        => Assert.Equal("build\tunknown\tterminal=none",
+            SessionCommands.FormatListLine("build", null, false, sidecarPresent: true,
+                BrokerState.None));
+
+    [Fact]
+    public void FormatListLine_LeftoverBrokerSocket_IsStale()
+        => Assert.EndsWith("terminal=stale",
+            SessionCommands.FormatListLine("build", null, false, sidecarPresent: false,
+                BrokerState.Stale));
+
+    [Fact]
+    public async Task Probe_MissingSocket_IsNone()
+        => Assert.Equal(BrokerState.None,
+            await TerminalClient.ProbeAsync(
+                Path.Combine(Path.GetTempPath(), "psb-no-such-" + Guid.NewGuid().ToString("N")[..8] + "-t.sock"),
+                CancellationToken.None));
 
     [Fact]
     public void IsStatefulSessionActive_WithoutANamedSession_IsFalse()

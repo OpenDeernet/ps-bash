@@ -62,6 +62,11 @@ if (SessionCommands.IsSessionCommand(args))
 }
 
 var shellArgs = ShellArgs.Parse(args);
+if (shellArgs.Error is not null)
+{
+    Console.Error.WriteLine($"ps-bash: {shellArgs.Error}");
+    return 2;
+}
 
 // Informational flags short-circuit before any host/IPC work. Without this,
 // `ps-bash --version` parsed to an empty ShellArgs and fell through to the
@@ -401,7 +406,7 @@ else
         // valid bash always transpiles, so only un-transpilable input reaches
         // here. Opt out with PSBASH_NO_PS_FALLBACK=1 to always surface the bash
         // parse error.
-        if (!EnvFlags.IsTruthy("PSBASH_NO_PS_FALLBACK") && LooksLikePowerShell(bashCommand))
+        if (ex.Rule != "shell-option" && !EnvFlags.IsTruthy("PSBASH_NO_PS_FALLBACK") && LooksLikePowerShell(bashCommand))
         {
             pwshCommand = bashCommand;
             if (debug)

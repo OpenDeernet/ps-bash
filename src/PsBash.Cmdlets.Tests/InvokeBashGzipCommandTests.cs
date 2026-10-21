@@ -57,6 +57,84 @@ public class InvokeBashGzipCommandTests : IDisposable, IClassFixture<SharedPwshF
 
     private static string PsQuote(string p) => p.Replace("'", "''");
 
+    // GNU gzip refuses existing outputs without -f and leaves them intact on decode failure.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Gzip_ExistingOutputWithoutForce_PreservesBothFiles(bool decompress)
+    {
+        string plain = Path.Combine(_tmpDir, "existing.txt");
+        File.WriteAllText(plain, "valuable original");
+        using (var output = File.Create(plain + ".gz"))
+        using (var gzip = new GZipStream(output, CompressionLevel.Optimal))
+            gzip.Write(Encoding.UTF8.GetBytes("archive content"));
+        var archive = File.ReadAllBytes(plain + ".gz");
+
+        CmdResult.Run(_fixture.AcquireFresh(),
+            $"Invoke-BashGzip {(decompress ? "-d " : "")}'{PsQuote(decompress ? plain + ".gz" : plain)}'")
+            .AssertFailed(2, "already exists");
+
+        Assert.Equal("valuable original", File.ReadAllText(plain));
+        Assert.Equal(archive, File.ReadAllBytes(plain + ".gz"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Gzip_CorruptInput_PreservesDestinationAndSource(bool force)
+    {
+        string plain = Path.Combine(_tmpDir, "corrupt.txt");
+        if (force) File.WriteAllText(plain, "valuable original");
+        File.WriteAllText(plain + ".gz", "invalid gzip data");
+
+        CmdResult.Run(_fixture.AcquireFresh(),
+            $"Invoke-BashGzip -d {(force ? "-f " : "")}'{PsQuote(plain + ".gz")}'")
+            .AssertFailed(1);
+
+        if (force) Assert.Equal("valuable original", File.ReadAllText(plain));
+        else Assert.False(File.Exists(plain));
+        Assert.Equal("invalid gzip data", File.ReadAllText(plain + ".gz"));
+        Assert.Equal(new[] { Path.GetFileName(plain + ".gz") }.Concat(force ? new[] { Path.GetFileName(plain) } : Array.Empty<string>()).Order(),
+            Directory.GetFiles(_tmpDir).Select(Path.GetFileName).Order());
+    }
+
+    [Fact]
+    public void Gzip_Force_ReplacesExistingOutputAndRoundTrips()
+    {
+        string plain = Path.Combine(_tmpDir, "forced.txt");
+        File.WriteAllText(plain, "new payload");
+        File.WriteAllText(plain + ".gz", "old archive");
+        CmdResult.Run(_fixture.AcquireFresh(), $"Invoke-BashGzip -f '{PsQuote(plain)}'").AssertSuccess();
+        Assert.False(File.Exists(plain));
+        File.WriteAllText(plain, "old plain file");
+        CmdResult.Run(_fixture.AcquireFresh(), $"Invoke-BashGzip -d -f '{PsQuote(plain + ".gz")}'").AssertSuccess();
+        Assert.Equal("new payload", File.ReadAllText(plain));
+        Assert.False(File.Exists(plain + ".gz"));
+    }
+
+    [Fact]
+    public void Gzip_EmptyArchive_DoesNotReplaceOutputEvenWithForce()
+    {
+        string plain = Path.Combine(_tmpDir, "empty-archive.txt");
+        File.WriteAllText(plain, "valuable original");
+        File.WriteAllBytes(plain + ".gz", Array.Empty<byte>());
+        CmdResult.Run(_fixture.AcquireFresh(), $"Invoke-BashGzip -d -f '{PsQuote(plain + ".gz")}'").AssertFailed(1);
+        Assert.Equal("valuable original", File.ReadAllText(plain));
+        Assert.True(File.Exists(plain + ".gz"));
+    }
+
+    [Fact]
+    public void Gzip_EmptyFile_ProducesACompleteMemberAndRoundTrips()
+    {
+        string plain = Path.Combine(_tmpDir, "empty.txt");
+        File.WriteAllBytes(plain, Array.Empty<byte>());
+        CmdResult.Run(_fixture.AcquireFresh(), $"Invoke-BashGzip '{PsQuote(plain)}'").AssertSuccess();
+        Assert.True(new FileInfo(plain + ".gz").Length >= 20, "Even an empty gzip member needs its header, deflate block and trailer");
+        CmdResult.Run(_fixture.AcquireFresh(), $"Invoke-BashGzip -d '{PsQuote(plain + ".gz")}'").AssertSuccess();
+        Assert.Empty(File.ReadAllBytes(plain));
+        Assert.False(File.Exists(plain + ".gz"));
+    }
+
     private (string[] outLines, string[] errors) RunWithErrors(string script)
     {
         var pwsh = _fixture.AcquireFresh();

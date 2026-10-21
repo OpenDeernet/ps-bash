@@ -115,4 +115,32 @@ public sealed class TerminalBrokerEndToEndTests
             try { File.Delete(socket); } catch { }
         }
     }
+
+    [SkippableFact]
+    public async Task ConcurrentServe_DoesNotReplaceTheRunningBrokersEndpointOrShell()
+    {
+        var host = Path.Combine(AppContext.BaseDirectory, IpcWorker.GetHostBinaryName());
+        Skip.IfNot(File.Exists(host), "ps-bash-host is not next to the test binary");
+        var socket = Path.Combine(PsBashRuntimeDirectory.GetPath(), $"t-{Guid.NewGuid():N}"[..12] + ".sock");
+        using var cts = new CancellationTokenSource(Limit);
+        var original = TerminalBroker.ServeAsync(host, socket, idleSecs: 600, cts.Token);
+        try
+        {
+            await using var first = await ConnectAsync(socket, 0, cts.Token);
+            Assert.Equal(0, await TerminalBroker.ServeAsync(host, socket, idleSecs: 600, cts.Token)
+                .WaitAsync(TimeSpan.FromSeconds(5)));
+            // Discovery must still reach the original shell after the losing serve returns.
+            await using var second = await ConnectAsync(socket, 0, cts.Token);
+            await TerminalProtocol.WriteAsync(first, TerminalProtocol.Input, "echo sole-owner-$((6*7))\r"u8.ToArray(), cts.Token);
+            var (text, _) = await ReadUntilAsync(second, "sole-owner-42", cts.Token);
+            Assert.Contains("sole-owner-42", text);
+            await TerminalProtocol.WriteAsync(first, TerminalProtocol.Input, "exit 0\r"u8.ToArray(), cts.Token);
+            Assert.Equal(0, await original.WaitAsync(TimeSpan.FromSeconds(30)));
+        }
+        finally
+        {
+            cts.Cancel();
+            try { await original.WaitAsync(TimeSpan.FromSeconds(10)); } catch { }
+        }
+    }
 }

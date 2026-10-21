@@ -328,7 +328,9 @@ public class ProcessLifecycleTests
         // ancestor of every child, so all children resolve the same session anchor
         // (<pid>-<startTicks>) and the same endpoint. No PSBASH_SESSION and no
         // PSBASH_IPC_ENDPOINT are set — this exercises the automatic fallback.
-        var tempRoot = Path.Combine(Path.GetTempPath(), "psb-reuse-" + Guid.NewGuid().ToString("N"));
+        // Leave room for the automatic pid/start-time endpoint under the 107-char
+        // AF_UNIX budget; the old 42-char leaf failed before reaching host reuse.
+        var tempRoot = Path.Combine(Path.GetTempPath(), "r-" + Guid.NewGuid().ToString("N")[..8]);
         var runtimeDir = Path.Combine(tempRoot, "ps-bash");
         Directory.CreateDirectory(runtimeDir);
         try

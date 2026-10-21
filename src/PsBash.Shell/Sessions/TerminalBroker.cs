@@ -14,7 +14,7 @@ internal sealed class TerminalBroker
 {
     internal const int ScrollbackBytes = 1 << 20;
 
-    private readonly ScrollbackBuffer _scrollback = new(ScrollbackBytes);
+    private readonly ScrollbackBuffer _scrollback;
     private readonly SemaphoreSlim _fanout = new(1, 1);
     private readonly List<Client> _clients = new();
     private readonly IPty _pty;
@@ -22,8 +22,9 @@ internal sealed class TerminalBroker
     private short _cols, _rows;
     private readonly TaskCompletionSource _quit = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    private TerminalBroker(IPty pty, short cols, short rows)
+    internal TerminalBroker(IPty pty, short cols, short rows, ScrollbackBuffer? scrollback = null)
     {
+        _scrollback = scrollback ?? new(ScrollbackBytes);
         _pty = pty;
         _ptyInput = OpenWriteStream(pty);
         _cols = cols;
@@ -67,6 +68,14 @@ internal sealed class TerminalBroker
     /// <summary>Run the broker until the shell exits or the idle window passes. Returns the shell's exit code.</summary>
     public static async Task<int> ServeAsync(string hostBinary, string terminalSocket, int idleSecs, CancellationToken ct)
     {
+        // Hold ownership for the listener's entire lifetime, including disposal. Two cold
+        // attach clients may spawn us concurrently; only one may spawn a shell or unlink/bind.
+        using var lease = HostSpawnLock.TryAcquire("terminal-serve", terminalSocket, out var unavailable);
+        if (lease is null)
+        {
+            if (unavailable) throw new IOException("Cannot establish terminal broker ownership");
+            return 0; // Another broker owns startup or the running endpoint.
+        }
         short cols = 80, rows = 24;
         await using var pty = await PtyAllocator.AllocateAsync(cols, rows).ConfigureAwait(false);
         var env = new Dictionary<string, string>(StringComparer.Ordinal) { ["PSBASH_PTY_ATTACHED"] = "1" };
@@ -141,7 +150,7 @@ internal sealed class TerminalBroker
         }
     }
 
-    private async Task HandleClientAsync(Stream stream, CancellationToken ct)
+    internal async Task HandleClientAsync(Stream stream, CancellationToken ct)
     {
         Client? client = null;
         try
@@ -161,7 +170,11 @@ internal sealed class TerminalBroker
             {
                 var replay = _scrollback.Snapshot();
                 if (replay.Length > 0)
-                    await TerminalProtocol.WriteAsync(stream, TerminalProtocol.Output, replay, ct).ConfigureAwait(false);
+                {
+                    using var replayTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    replayTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+                    await TerminalProtocol.WriteAsync(stream, TerminalProtocol.Output, replay, replayTimeout.Token).ConfigureAwait(false);
+                }
                 lock (_clients) _clients.Add(client);
             }
             finally { _fanout.Release(); }

@@ -10,6 +10,12 @@
     <NoWarn>$(NoWarn);IL2026</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Must be set before DeflateStream's cached static initialization. The
+         shell owns this process; complete gzip files must not silently accept EOF
+         mid-member and then delete their compressed input as if decoding succeeded. -->
+    <RuntimeHostConfigurationOption Include="System.IO.Compression.UseStrictValidation" Value="true" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="PsBash.Host.Tests" />
     <InternalsVisibleTo Include="PsBash.Shell.Tests" />
     <InternalsVisibleTo Include="PsBash.Escalation.Tests" />

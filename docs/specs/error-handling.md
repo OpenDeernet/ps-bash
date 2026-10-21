@@ -193,7 +193,7 @@ The emitter translates `set` flags to PowerShell equivalents:
 | Bash | PowerShell | Effect |
 |------|-----------|--------|
 | `set -e` / `set -o errexit` | `$ErrorActionPreference = 'Stop'` + per-statement status checks (emitter-strategy.md `set`) | Terminate on first failing command, with bash's exemptions |
-| `set -u` / `set -o nounset` | `Set-StrictMode -Version Latest` | Error on undefined variables |
+| `set -u` / `set -o nounset`, `set -C` / `set -o noclobber` | Clean unsupported-option rejection | Exit 2 before script execution; these Bash protections are not implemented |
 | `set -x` / `set -o xtrace` | `Set-PSDebug -Trace 1` | Print commands before execution |
 
 Combined flags are decomposed: `set -euo pipefail` extracts `-e`, `-u`, and

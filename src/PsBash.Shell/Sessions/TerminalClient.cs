@@ -58,6 +58,26 @@ internal static class TerminalClient
         }
     }
 
+    /// <summary>What <c>session list/status</c> can tell about a terminal broker's socket without attaching.</summary>
+    internal enum BrokerState { None, Running, Stale }
+
+    /// <summary>Connect-and-drop probe of a broker socket; the broker treats a hello-less hangup as a no-op.</summary>
+    internal static async Task<BrokerState> ProbeAsync(string socket, CancellationToken ct)
+    {
+        if (!File.Exists(socket)) return BrokerState.None;
+        var stream = await TryConnectAsync(socket, ct).ConfigureAwait(false);
+        if (stream is null) return BrokerState.Stale;
+        await stream.DisposeAsync().ConfigureAwait(false);
+        return BrokerState.Running;
+    }
+
+    /// <summary>Probe the broker for the session selected by the environment (<c>PSBASH_SESSION</c>).</summary>
+    internal static Task<BrokerState> ProbeCurrentAsync(CancellationToken ct)
+    {
+        var (_, hostEndpoint) = IpcTransportFactory.ResolveEndpoint();
+        return ProbeAsync(TerminalBroker.TerminalEndpointFor(hostEndpoint), ct);
+    }
+
     /// <summary>Tell a running broker to end its shell (<c>session stop</c>). Silent when there is none.</summary>
     public static async Task QuitAsync(CancellationToken ct)
     {
@@ -105,8 +125,14 @@ internal static class TerminalClient
             System.Runtime.InteropServices.PosixSignal.SIGHUP, c => c.Cancel = true);
         using var term = System.Runtime.InteropServices.PosixSignalRegistration.Create(
             System.Runtime.InteropServices.PosixSignal.SIGTERM, c => { c.Cancel = true; stop.Cancel(); });
+        // The owning listener cleans up while still holding its broker lease. A losing
+        // concurrent serve process must never unlink the winner's endpoint.
         try { return await TerminalBroker.ServeAsync(host, socket, idle, stop.Token).ConfigureAwait(false); }
-        finally { try { File.Delete(socket); } catch { } }
+        catch (IOException ex)
+        {
+            Console.Error.WriteLine($"ps-bash session serve: {ex.Message}");
+            return 1;
+        }
     }
     private const int DetachedCode = int.MinValue;
 

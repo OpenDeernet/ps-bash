@@ -27,6 +27,25 @@ public sealed class HistoryPersistenceCollection;
 [Collection("HistoryPersistence")]
 public class HistoryPersistenceTests
 {
+    [SkippableFact]
+    public async Task HistoryDirectoryOccupiedByFile_StillStartsAndExecutesCommands()
+    {
+        var binary = InteractiveShellHarness.FindPsBashBinary();
+        Skip.If(binary is null, "ps-bash binary not found");
+        var home = Path.Combine(Path.GetTempPath(), "psb-history-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(home);
+        File.WriteAllText(Path.Combine(home, ".psbash"), "preserve this file");
+        try
+        {
+            await using var shell = await InteractiveShellHarness.StartAsync(binary!, psBashHome: home);
+            await shell.SendLineAsync("echo history-fallback-$((6*7))");
+            await shell.WaitForPromptAsync();
+            Assert.Contains("history-fallback-42", shell.ReadSinceLastPrompt());
+            Assert.Equal("preserve this file", File.ReadAllText(Path.Combine(home, ".psbash")));
+        }
+        finally { Directory.Delete(home, recursive: true); }
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>

@@ -1,5 +1,27 @@
 # Known Issues
 
+## Local production review 2026-10-20
+
+The [current review](production-readiness-review-2026-10-20.md) records reproduced
+local failures and working-tree corrections. Gzip now preserves existing output unless
+forced and stages writes before replacement; locked-file replacement no longer sweeps
+unrelated sibling names. Windows installation rejects unowned directories, preserves
+upgrade backups and works without HOME. Unavailable history storage permits a working
+prompt. Terminal brokers hold one endpoint lease and bound client replay writes.
+
+`set -u`/`nounset` and `set -C`/`noclobber` are explicitly unsupported and rejected
+before execution. PowerShell StrictMode did not provide the advertised Bash protection.
+Unsupported launcher flags also exit 2; use `set -e` inside the script for errexit.
+
+Still open: Windows environment-backed variables are case-insensitive (see
+`docs/specs/intentional-differences.md`); broad interactive/PTY suite flakes and clean release
+artifacts need platform validation. `session list`/`status` now report terminal-only brokers.
+Gzip/tar decoding rejects a stream with a missing footer in every mode: the standalone host
+enables strict validation at startup, and imported module mode checks the trailer itself
+(a multi-member archive is rejected there rather than risk accepting a truncated one).
+Process-substitution temp permissions are conditional hardening on
+shared-user Unix machines. Proposed remote-product stories are outside this local product.
+
 ## Production blockers reviewed 2026-10-18
 
 The [production readiness review](production-readiness-review-2026-10-18.md)
@@ -16,8 +38,9 @@ records evidence, affected journeys, and closure criteria. Status:
   with a named error.
 - **Fixed — release integrity (B03–B05):** binaries are staged as workflow
   artifacts and only promoted after every gate passes; every job builds the tag's
-  single resolved SHA; Core, Cmdlets and Host tests block. Shell and Differential
-  stay advisory: on 2-core Linux runners some interactive/PTY tests stall (the
+  single resolved SHA; Core, Cmdlets and Host tests block. Differential cassette
+  replay and a short shell safety/recovery subset now also block. The broad shell
+  suite remains advisory: on 2-core Linux runners some interactive/PTY tests stall (the
   prompt prints one character then nothing; a 50,000-term `[ a -o ... ]`
   hostile-input test exits 125). Harness waits now extend only while the machine
   is measurably starved, so these are open product-or-environment questions, not
@@ -28,7 +51,7 @@ records evidence, affected journeys, and closure criteria. Status:
   `history -c` list and delete (`-c` runs `secure_delete` + WAL truncate + VACUUM).
   Still open: retention policy; bash-compatible `history` flags beyond these.
 
-- **Partly fixed — durable sessions and per-session concurrency (B06, B07):** `ps-bash session start/list/status/stop NAME` + `PSBASH_SESSION=NAME` give a host that outlives its launchers and runs concurrently with other sessions ([sessions](sessions.md)). Still open: a reattachable PTY/screen owned by the session. Original note:
+- **Partly fixed — durable sessions and per-session concurrency (B06, B07):** `ps-bash session start/list/status/stop NAME` + `PSBASH_SESSION=NAME` give a host that outlives its launchers and runs concurrently with other sessions ([sessions](sessions.md)). Reattachable broker-owned PTY/screen is implemented. List/status still inspect only the command host. Original note:
   product-scope decisions, not shell bugs. The warm host is not a durable session
   manager, and commands sharing one daemon run serially. The
   [journey contract](planning/production-user-journeys.md) labels proposed remote
@@ -43,7 +66,7 @@ per-stage process status to collect, and "stage N's exit code" is not
 well-defined mid-stream. The following three are one knot:
 
 - **`set -o pipefail` / `$PIPESTATUS`** — standalone `set -o pipefail` maps only
-  to `$ErrorActionPreference='Stop'`; per-stage exit codes are not tracked.
+  to a documented no-op; per-stage exit codes are not tracked.
   `false | true; echo $?` prints `0` (last-command-wins), not `1`.
 - **Broken pipe / SIGPIPE** — `cmd | head -1` does not deliver SIGPIPE to the
   producer; exit-141 semantics do not exist. Mapped cmdlets get partial

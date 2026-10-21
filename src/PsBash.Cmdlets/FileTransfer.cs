@@ -137,7 +137,8 @@ public static class FileTransfer
 
     /// <summary>
     /// Removes a <see cref="MoveAside"/> entry. One still in use (a running program) cannot be deleted on
-    /// Windows: it stays hidden and is removed by the next replace in the same directory once free.
+    /// Windows: it stays hidden. A matching filename alone never authorizes deleting a sibling;
+    /// retained files must be cleaned up explicitly once the owning process releases them.
     /// </summary>
     public static void Discard(string aside)
     {
@@ -317,7 +318,6 @@ public static class FileTransfer
             }
         }
 
-        SweepAsides(dest, src);
         var aside = File.Exists(dest) ? MoveAside(dest) : null;
         if (aside is null && File.Exists(dest))
         {
@@ -356,26 +356,6 @@ public static class FileTransfer
 
     private static string AsideName(string path) =>
         "." + Path.GetFileName(Path.TrimEndingDirectorySeparator(path)) + AsideMarker + Guid.NewGuid().ToString("N")[..8];
-
-    /// <summary>Removes earlier move-aside leftovers next to <paramref name="path"/> whose process has let go.
-    /// <paramref name="keep"/> (the operation's own source) is never swept, whatever it is named.</summary>
-    private static void SweepAsides(string path, string keep)
-    {
-        var parent = Path.GetDirectoryName(Path.GetFullPath(path));
-        if (parent is null) return;
-        var keepFull = Path.GetFullPath(keep);
-        try
-        {
-            foreach (var old in Directory.EnumerateFiles(parent, "." + "*" + AsideMarker + "*",
-                         new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = true }))
-            {
-                if (string.Equals(Path.GetFullPath(old), keepFull, StringComparison.OrdinalIgnoreCase)) continue;
-                try { FileSystemHelpers.DeleteFileForce(old); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-    }
 
     private static IReadOnlyList<string> ExistingOf(string a, string b)
     {

@@ -107,7 +107,16 @@ public class ErrexitDifferentialTests
     public Task Errexit_SetPlusE_TurnsItOff() => Eq($"set -e; set +e; {F}; echo after");
 
     [SkippableFact]
-    public Task Errexit_WithNounset_StillExits() => Eq($"set -u; set -e; {F}; echo never");
+    public async Task UnsupportedNounset_IsRejectedBeforeExecution()
+    {
+        // Explicit rejection is ps-bash's supported contract until Bash nounset exists.
+        var fixture = new BashOracleFixture();
+        Skip.If(fixture.PsBashPath is null, "ps-bash binary not built");
+        var result = await fixture.RunPsBashAsync($"set -u; set -e; {F}; echo never", TimeSpan.FromSeconds(30));
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("not supported", result.Stderr);
+        Assert.DoesNotContain("never", result.Stdout);
+    }
 
     [SkippableFact]
     public Task Errexit_BackgroundJob_IsExempt() => Eq($"set -e; {F} & wait; echo after");

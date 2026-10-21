@@ -4773,12 +4773,42 @@ public class PsEmitterTests
         Assert.Equal("Invoke-BashRead -r LINE", result);
     }
 
-    // set -euo pipefail -> $ErrorActionPreference = 'Stop'; Set-StrictMode -Version Latest
-    [Fact]
-    public void Transpile_SetEuoPipefail_EmitsErrorActionStopAndStrictMode()
+    [Theory]
+    [InlineData("set -u")]
+    [InlineData("set -o nounset")]
+    [InlineData("set -eu")]
+    [InlineData("set -euo pipefail")]
+    [InlineData("set -C")]
+    [InlineData("set -o noclobber")]
+    [InlineData("set -eo noclobber")]
+    [InlineData("set -u -- value")]
+    [InlineData("set '-u'")]
+    [InlineData("set -o 'noclobber'")]
+    [InlineData("set \"-o\" \"nounset\"")]
+    [InlineData("set -o no'clobber'")]
+    [InlineData("set \"$flags\"")]
+    [InlineData("set -o \"$option\"")]
+    [InlineData("set -n")]
+    [InlineData("set -f")]
+    [InlineData("set -o noexec")]
+    [InlineData("set -o unknown")]
+    [InlineData("set -o pipefail -e")]
+    [InlineData("set -e -- value")]
+    [InlineData("set +u")]
+    public void Transpile_SetUnsupportedSafetyOption_RefusesBeforeExecution(string bash)
     {
-        var result = PsEmitter.Transpile("set -euo pipefail");
-        Assert.Equal("$ErrorActionPreference = 'Stop'; $global:__BashErrexit = $true; if (-not (Test-Path variable:global:__BashErrexitSuppress)) { $global:__BashErrexitSuppress = 0 }; Set-StrictMode -Version Latest", result);
+        var error = Assert.Throws<ParseException>(() => PsEmitter.Transpile(bash + "; echo unsafe"));
+        Assert.Equal("shell-option", error.Rule);
+        Assert.Contains("not supported", error.Message);
+    }
+
+    [Fact]
+    public void Transpile_SetPositionalParameters_AllowsDynamicValuesAfterSeparator()
+    {
+        var result = PsEmitter.Transpile("set -- \"$flags\" -u -C");
+        Assert.Contains("$global:BashPositional", result);
+        Assert.Contains("'-u'", result);
+        Assert.Contains("'-C'", result);
     }
 
     [Fact]
@@ -4794,6 +4824,9 @@ public class PsEmitterTests
 
     [Theory]
     [InlineData("set -e", true)]
+    [InlineData("set '-e'", true)]
+    [InlineData("set -o 'errexit'", true)]
+    [InlineData("set -'e'", true)]
     [InlineData("set -euo pipefail", true)]
     [InlineData("set -o errexit", true)]
     [InlineData("set -o pipefail -e", true)]
@@ -4864,27 +4897,6 @@ public class PsEmitterTests
         var result = PsEmitter.Transpile("set -x");
         // The flag lets a subshell scope (BashShellState) undo a `set -x` made inside it.
         Assert.Equal("Set-PSDebug -Trace 1; $global:__BashXtrace = $true", result);
-    }
-
-    [Fact]
-    public void Transpile_SetU_EmitsStrictMode()
-    {
-        var result = PsEmitter.Transpile("set -u");
-        Assert.Equal("Set-StrictMode -Version Latest", result);
-    }
-
-    [Fact]
-    public void Transpile_SetONounset_EmitsStrictMode()
-    {
-        var result = PsEmitter.Transpile("set -o nounset");
-        Assert.Equal("Set-StrictMode -Version Latest", result);
-    }
-
-    [Fact]
-    public void Transpile_SetEU_EmitsErrorActionStopAndStrictMode()
-    {
-        var result = PsEmitter.Transpile("set -eu");
-        Assert.Equal("$ErrorActionPreference = 'Stop'; $global:__BashErrexit = $true; if (-not (Test-Path variable:global:__BashErrexitSuppress)) { $global:__BashErrexitSuppress = 0 }; Set-StrictMode -Version Latest", result);
     }
 
     [Fact]
@@ -5917,7 +5929,6 @@ public class PsEmitterTests
     [Theory]
     [InlineData("set -o pipefail")]
     [InlineData("set +o pipefail")]
-    [InlineData("set -o noclobber")]
     public void Transpile_SetUnsupportedLongOption_IsAStatusZeroNoOp(string bash)
     {
         // Fell through to a bare `set …` — PowerShell's Set-Variable alias ("Cannot bind parameter 'Option'").

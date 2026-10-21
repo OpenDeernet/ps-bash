@@ -281,4 +281,20 @@ public class FileTransferTests : IDisposable, IClassFixture<SharedPwshFixture>
         Assert.Equal("old", Read("dest"));
         Assert.Empty(Directory.GetFiles(_tmp, ".*psbash-replaced-*"));
     }
+
+    // A lookalike name is not proof that ps-bash owns a sibling file.
+    [Fact]
+    public void ReplaceAside_PreservesUnrelatedSiblingNamedLikeAnAside()
+    {
+        Write("src", "new"); Write("dest", "old");
+        Write(".unrelated.psbash-replaced-12345678", "valuable sibling");
+
+        FileTransfer.ReplaceAside(P("src"), P("dest"),
+            overwrite: () => throw new IOException("locked"),
+            place: () => File.Copy(P("src"), P("dest")),
+            clearReadOnly: false, original: new IOException("locked"));
+
+        Assert.Equal("new", Read("dest"));
+        Assert.Equal("valuable sibling", Read(".unrelated.psbash-replaced-12345678"));
+    }
 }

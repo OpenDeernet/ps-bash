@@ -566,7 +566,7 @@ public sealed class InvokeBashTarCommand : PSCmdlet
             return null;
         }
         if (!isGzip) return raw;
-        var gz = new GZipStream(raw, CompressionMode.Decompress);
+        var gz = GzipIntegrity.OpenDecoder(raw);
         owned.Add(gz);
         return gz;
     }

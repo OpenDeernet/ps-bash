@@ -8,7 +8,122 @@ namespace PsBash.Shell.Tests;
 [Trait("Category", "Integration")]
 public class ProgramEndToEndTests
 {
+    [SkippableTheory]
+    [InlineData("-e")]
+    [InlineData("-u")]
+    [InlineData("-C")]
+    [InlineData("-eu")]
+    [InlineData("--unknown-option")]
+    public async Task UnsupportedLauncherOption_RefusesBeforeRunningCommand(string option)
+    {
+        var (code, output, error) = await RunShellAsync(option, "-c", "echo unsafe");
+        Assert.Equal(2, code);
+        Assert.DoesNotContain("unsafe", output);
+        Assert.Contains("unsupported option", error);
+    }
+
+    [SkippableFact]
+    public async Task MissingCommandArgument_ReportsUsageError()
+    {
+        var (code, output, error) = await RunShellAsync("-c");
+        Assert.Equal(2, code);
+        Assert.Empty(output);
+        Assert.Contains("requires an argument", error);
+    }
+
+    [SkippableTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnsupportedSafetyOption_DoesNotFallBackToPowerShell(bool stdin)
+    {
+        const string script = "set -u; Write-Output 'unsafe'";
+        var (code, output, error) = stdin
+            ? await RunShellWithStdinAsync(script, "-s")
+            : await RunShellAsync("-c", script);
+        Assert.Equal(2, code);
+        Assert.DoesNotContain("unsafe", output);
+        Assert.Contains("not supported", error);
+    }
+
     private static readonly string IpcEndpoint = PsBashTestProcess.CreateEndpoint();
+
+    [SkippableTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task TruncatedGzipInput_IsRejectedWithoutDeletingSourceOrReplacingOutput(bool force, bool concatenated)
+    {
+        // Exercise the owned host's startup policy in a fresh process, rather than
+        // this xUnit process's already-initialized compression implementation.
+        var root = Path.Combine(Path.GetTempPath(), "psb-gzip-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var plain = Path.Combine(root, "payload.txt");
+        var archive = plain + ".gz";
+        try
+        {
+            using var compressed = new MemoryStream();
+            using (var gzip = new System.IO.Compression.GZipStream(compressed,
+                       System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true))
+                gzip.Write("new payload"u8);
+            if (concatenated)
+            {
+                using var second = new System.IO.Compression.GZipStream(compressed,
+                    System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true);
+                second.Write("second member"u8);
+            }
+            var truncated = compressed.ToArray()[..^4];
+            File.WriteAllBytes(archive, truncated);
+            if (force) File.WriteAllText(plain, "valuable original");
+            var command = $"gzip -d {(force ? "-f " : "")}'{archive.Replace("\\", "/")}'";
+            var psi = PsBashTestProcess.Create(["-c", command]);
+            var (code, _, error) = await ProcessRunHelper.RunAsync(psi);
+
+            Assert.Equal(1, code);
+            Assert.NotEmpty(error);
+            Assert.Equal(truncated, File.ReadAllBytes(archive));
+            if (force) Assert.Equal("valuable original", File.ReadAllText(plain));
+            else Assert.False(File.Exists(plain));
+            Assert.DoesNotContain(Directory.GetFiles(root), path => Path.GetFileName(path).StartsWith(".psbash-gzip-"));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [SkippableFact]
+    public async Task CompleteConcatenatedGzipMembers_StillDecodeWithStrictValidation()
+    {
+        var archive = Path.Combine(Path.GetTempPath(), "psb-gzip-" + Guid.NewGuid().ToString("N") + ".gz");
+        try
+        {
+            using var compressed = new MemoryStream();
+            foreach (var text in new[] { "first member", "second member" })
+            {
+                using var gzip = new System.IO.Compression.GZipStream(compressed,
+                    System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true);
+                gzip.Write(System.Text.Encoding.UTF8.GetBytes(text));
+            }
+            var bytes = compressed.ToArray();
+            File.WriteAllBytes(archive, bytes);
+            var psi = PsBashTestProcess.Create(["-c", $"gzip -dc '{archive.Replace("\\", "/")}'"]);
+            var (code, output, error) = await ProcessRunHelper.RunAsync(psi);
+            Assert.Equal(0, code);
+            Assert.Empty(error);
+            Assert.Equal("first membersecond member", output);
+            Assert.Equal(bytes, File.ReadAllBytes(archive));
+        }
+        finally { File.Delete(archive); }
+    }
+
+    [SkippableTheory]
+    [InlineData("set '-e'")]
+    [InlineData("set -o 'errexit'")]
+    [InlineData("set -'e'")]
+    public async Task QuotedErrexitOption_StillStopsAfterFailingCmdlet(string enable)
+    {
+        var (code, output, _) = await RunShellAsync("-c", enable + "; cat /__psbash_missing_errexit_file 2>/dev/null; echo unsafe");
+        Assert.Equal(1, code);
+        Assert.DoesNotContain("unsafe", output);
+    }
 
     private static Task<(int ExitCode, string Stdout, string Stderr)> RunShellAsync(
         params string[] arguments)

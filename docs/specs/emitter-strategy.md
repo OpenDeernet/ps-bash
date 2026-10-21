@@ -536,7 +536,7 @@ records become stdout TEXT, so an enclosing stage no longer reads them as stderr
 - `set -e` / `set -o errexit` -> `$ErrorActionPreference = 'Stop'; $global:__BashErrexit = $true` (+ create `$global:__BashErrexitSuppress` if absent)
 - `set +e` / `set +o errexit` -> `$ErrorActionPreference = 'Continue'; $global:__BashErrexit = $false`
 - `set -x` / `set -o xtrace` -> `Set-PSDebug -Trace 1`
-- `set -u` / `set -o nounset` -> `Set-StrictMode -Version Latest`
+- `set -u` / `set -o nounset`, `set -C` / `set -o noclobber` -> unsupported-option `ParseException` (exit 2). PowerShell StrictMode does not check ordinary Bash environment-variable reads.
 - Combined flags (e.g., `set -euo pipefail`) are decomposed.
 
 **errexit checks** (`PsEmitter.EmitStatement`, `PsBuild.Errexit*`). Emitted only when the script itself
@@ -1128,6 +1128,10 @@ interact with hook execution:
   of `on-cd-hooks.md`).
 - `set -x` (`Set-PSDebug -Trace 1`) traces PowerShell statements, including hook
   invocations, to the debug stream.
+- Unsupported options (including nounset, noclobber, noexec and noglob), dynamic options
+  and unsupported combined forms are rejected before execution. Use separate supported
+  `set` commands and `set -- ...` for positional parameters. `pipefail` remains the
+  documented no-op exclusion.
 
 ### 9.3 trap ERR
 

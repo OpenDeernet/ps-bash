@@ -34,7 +34,7 @@ Description = 'Real bash commands for PowerShell with typed objects. 76 commands
 CompatiblePSEditions = 'Core'
 
 # Minimum version of the PowerShell engine required by this module
-PowerShellVersion = '7.0'
+PowerShellVersion = '7.4'
 
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''

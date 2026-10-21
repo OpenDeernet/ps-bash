@@ -18,6 +18,46 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Install-PsBashWindowsPackage {
+    param([string]$Stage, [string]$InstallDir)
+
+    $InstallDir = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($InstallDir))
+    if ($InstallDir -eq [IO.Path]::GetPathRoot($InstallDir)) {
+        throw 'Refusing to install into a filesystem root; choose a package directory.'
+    }
+    $marker = '.ps-bash-package'
+    if (Test-Path -LiteralPath $InstallDir) {
+        $existing = Get-Item -Force -LiteralPath $InstallDir
+        if (-not $existing.PSIsContainer -or ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "Refusing to replace $InstallDir; choose an empty package directory."
+        }
+        $owned = Join-Path $InstallDir $marker
+        if (@(Get-ChildItem -Force -LiteralPath $InstallDir).Count -gt 0 -and
+            (-not (Test-Path -LiteralPath $owned -PathType Leaf) -or
+             [IO.File]::ReadAllText($owned) -ne 'ps-bash')) {
+            throw "Refusing to replace unowned directory $InstallDir; choose an empty package directory. Legacy installs must be moved aside explicitly."
+        }
+    }
+    [IO.File]::WriteAllText((Join-Path $Stage $marker), 'ps-bash')
+    New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($InstallDir)) | Out-Null
+    # Never delete a pre-existing backup. Each upgrade retains its own original directory.
+    $previous = "$InstallDir.previous-$([guid]::NewGuid().ToString('N'))"
+    $movedPrevious = $false
+    if (Test-Path -LiteralPath $InstallDir) {
+        Move-Item -LiteralPath $InstallDir -Destination $previous
+        $movedPrevious = $true
+    }
+    try {
+        Move-Item -LiteralPath $Stage -Destination $InstallDir
+    } catch {
+        if ($movedPrevious -and -not (Test-Path -LiteralPath $InstallDir)) {
+            Move-Item -LiteralPath $previous -Destination $InstallDir
+        }
+        throw
+    }
+    if ($movedPrevious) { Write-Host "Previous package retained at: $previous" }
+}
+
 # --- Platform detection ---
 $os = if ($IsWindows) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
 $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) {
@@ -48,7 +88,9 @@ if (-not $InstallDir) {
         Join-Path $env:HOME '.local/bin'
     }
 }
-$packageRoot = if ($env:INSTALL_ROOT) { $env:INSTALL_ROOT } else { Join-Path $env:HOME '.local/opt/ps-bash' }
+$packageRoot = if (-not $IsWindows) {
+    if ($env:INSTALL_ROOT) { $env:INSTALL_ROOT } else { Join-Path $env:HOME '.local/opt/ps-bash' }
+}
 
 $binaryName = "ps-bash${ext}"
 $hostName = "ps-bash-host${ext}"
@@ -115,18 +157,7 @@ try {
 
     # --- Install the verified package ---
     if ($IsWindows) {
-        # Keep the previous install recoverable beside the new one.
-        $previous = "$InstallDir.previous"
-        if (Test-Path -LiteralPath $InstallDir) {
-            if (Test-Path -LiteralPath $previous) { Remove-Item -Recurse -Force -LiteralPath $previous }
-            Move-Item -LiteralPath $InstallDir -Destination $previous
-        }
-        try {
-            Move-Item -LiteralPath $stage -Destination $InstallDir
-        } catch {
-            if (Test-Path -LiteralPath $previous) { Move-Item -LiteralPath $previous -Destination $InstallDir }
-            throw
-        }
+        Install-PsBashWindowsPackage -Stage $stage -InstallDir $InstallDir
     } else {
         $packageDir = Join-Path $packageRoot ($Version -replace '^v', '')
         New-Item -ItemType Directory -Force -Path $packageRoot, $InstallDir | Out-Null

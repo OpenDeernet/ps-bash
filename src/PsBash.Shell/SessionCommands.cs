@@ -55,6 +55,41 @@ internal static partial class SessionCommands
             : null;
     }
 
+    /// <summary>
+    /// The session token of a terminal broker socket (<c>host-USER-sTOKEN-t.sock</c>), or null for any other
+    /// file. A host session literally named <c>X-t</c> owns <c>host-USER-sX-t.sock</c> too; the caller tells
+    /// the two apart by the host sidecar that only a host socket has.
+    /// </summary>
+    internal static string? TokenFromTerminalSocketName(string fileName, string sanitizedUser)
+    {
+        const string head = "host-", tail = "-t.sock";
+        if (!fileName.StartsWith(head, StringComparison.Ordinal)
+            || !fileName.EndsWith(tail, StringComparison.Ordinal)
+            || fileName.Length < head.Length + tail.Length)
+            return null;
+
+        var stem = fileName[head.Length..^tail.Length];
+        var prefix = sanitizedUser + "-s";
+        return stem.StartsWith(prefix, StringComparison.Ordinal) && stem.Length > prefix.Length
+            ? stem[prefix.Length..]
+            : null;
+    }
+
+    /// <summary>One line of <c>session list</c>: the command host and the terminal broker under one name.</summary>
+    internal static string FormatListLine(string token, HostMetadata? host, bool hostAlive, bool sidecarPresent,
+        Sessions.TerminalClient.BrokerState terminal)
+    {
+        var term = terminal switch
+        {
+            Sessions.TerminalClient.BrokerState.Running => "terminal=running",
+            Sessions.TerminalClient.BrokerState.Stale => "terminal=stale",
+            _ => "terminal=none",
+        };
+        if (!sidecarPresent) return $"{token}\tno-host\t{term}";
+        if (host is null) return $"{token}\tunknown\t{term}";
+        return $"{token}\t{(hostAlive ? "running" : "stale")}\tpid={host.Pid}\tstarted={host.StartedAt:O}\t{(host.Stateful ? "stateful" : "stateless")}\t{term}";
+    }
+
     public static async Task<int> RunAsync(string[] args, CancellationToken ct = default)
     {
         if (args.Length < 2 || args[1] is "-h" or "--help" or "help")
@@ -63,7 +98,7 @@ internal static partial class SessionCommands
             return args.Length < 2 ? 2 : 0;
         }
 
-        if (args[1] == "list") return List();
+        if (args[1] == "list") return await ListAsync(ct).ConfigureAwait(false);
 
         if (args[1] is not ("start" or "status" or "stop" or "attach" or "serve"))
         {
@@ -106,7 +141,11 @@ internal static partial class SessionCommands
                 Environment.SetEnvironmentVariable(IpcTransportFactory.StatefulEnvVar, stateless ? null : "1");
                 return await HostCommands.RunAsync(["host", "start"], ct).ConfigureAwait(false);
             case "status":
-                return await HostCommands.RunAsync(["host", "status"], ct).ConfigureAwait(false);
+                // `attach` starts a broker without a command host; status must see either half.
+                var hostCode = await HostCommands.RunAsync(["host", "status"], ct).ConfigureAwait(false);
+                var terminal = await Sessions.TerminalClient.ProbeCurrentAsync(ct).ConfigureAwait(false);
+                Console.WriteLine($"terminal: {terminal.ToString().ToLowerInvariant()}");
+                return hostCode == 0 || terminal == Sessions.TerminalClient.BrokerState.Running ? 0 : 1;
             case "attach":
                 return await Sessions.TerminalClient.AttachAsync(args[2], args.AsSpan(3).Contains("--read-only"), ct).ConfigureAwait(false);
             case "serve":
@@ -143,7 +182,7 @@ internal static partial class SessionCommands
         return true;
     }
 
-    private static int List()
+    private static async Task<int> ListAsync(CancellationToken ct)
     {
         var dir = PsBashRuntimeDirectory.GetPath();
         if (!Directory.Exists(dir)) return 0;
@@ -151,16 +190,30 @@ internal static partial class SessionCommands
         var user = new string(Environment.UserName
             .Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '_').ToArray());
 
-        foreach (var file in Directory.EnumerateFiles(dir, "*.host.json").OrderBy(f => f, StringComparer.Ordinal))
+        // token -> (host sidecar path or null, terminal socket path or null)
+        var sessions = new SortedDictionary<string, (string? Sidecar, string? Socket)>(StringComparer.Ordinal);
+        foreach (var file in Directory.EnumerateFiles(dir, "*.host.json"))
         {
             var token = TokenFromSidecarName(Path.GetFileName(file), user);
             if (token is null || IsAnchorToken(token)) continue;
+            sessions[token] = (file, sessions.TryGetValue(token, out var prior) ? prior.Socket : null);
+        }
+        foreach (var file in Directory.EnumerateFiles(dir, "*-t.sock"))
+        {
+            var token = TokenFromTerminalSocketName(Path.GetFileName(file), user);
+            if (token is null || IsAnchorToken(token)) continue;
+            if (File.Exists(file + ".host.json")) continue; // a host session literally named "<x>-t", not a broker
+            sessions[token] = (sessions.TryGetValue(token, out var prior) ? prior.Sidecar : null, file);
+        }
 
-            var meta = TryReadSidecar(file);
+        foreach (var (token, (sidecar, socket)) in sessions)
+        {
+            var meta = sidecar is null ? null : TryReadSidecar(sidecar);
             var alive = meta is not null && HostOwnership.ProbeProcess(meta.Pid).Alive;
-            Console.WriteLine(meta is null
-                ? $"{token}\tunknown"
-                : $"{token}\t{(alive ? "running" : "stale")}\tpid={meta.Pid}\tstarted={meta.StartedAt:O}\t{(meta.Stateful ? "stateful" : "stateless")}");
+            var terminal = socket is null
+                ? Sessions.TerminalClient.BrokerState.None
+                : await Sessions.TerminalClient.ProbeAsync(socket, ct).ConfigureAwait(false);
+            Console.WriteLine(FormatListLine(token, meta, alive, sidecar is not null, terminal));
         }
         return 0;
     }
@@ -177,7 +230,7 @@ internal static partial class SessionCommands
         Console.Error.WriteLine("       ps-bash session stop NAME");
         Console.Error.WriteLine("       ps-bash session attach NAME [--read-only]   # reattachable terminal; detach with Ctrl-] d");
         Console.Error.WriteLine("remote: ssh -t HOST ps-bash session attach NAME");
-        Console.Error.WriteLine("       ps-bash session list                         # named sessions only");
+        Console.Error.WriteLine("       ps-bash session list                         # named sessions only; host and terminal state per session");
         Console.Error.WriteLine("attach: PSBASH_SESSION=NAME ps-bash -c '...'");
     }
 }

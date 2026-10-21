@@ -165,12 +165,13 @@ public class ShellArgsTests
     }
 
     [Fact]
-    public void Parse_UnknownFlags_Ignored()
+    public void Parse_UnknownFlags_ReportsError()
     {
         var result = ShellArgs.Parse(["--verbose", "-x", "-c", "echo hi"]);
 
         Assert.Equal("echo hi", result.Command);
         Assert.False(result.Interactive);
+        Assert.Equal("unsupported option '-x'", result.Error);
     }
 
     [Fact]

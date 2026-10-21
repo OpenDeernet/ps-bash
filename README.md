@@ -28,6 +28,10 @@ iwr https://raw.githubusercontent.com/standardbeagle/ps-bash/main/install.ps1 | 
 curl -fsSL https://raw.githubusercontent.com/standardbeagle/ps-bash/main/install.sh | bash
 ```
 
+On Windows, `-InstallDir` must be empty or marked as a PsBash package by this installer.
+Move an older unmarked installation aside before upgrading. Upgrades retain the old
+package in a unique `.previous-*` directory; existing backups are preserved.
+
 <picture>
   <source srcset="docs/assets/demo.webp" type="image/webp">
   <img src="docs/assets/demo.gif" alt="ps-bash demo showing typed pipeline objects" width="800">
@@ -118,17 +122,18 @@ Best for: Windows Terminal, AI coding agents (Claude Code, OpenCode), replacing 
 
 ## Using ps-bash inside PowerShell
 
-Install the binary cmdlet module to get `Invoke-BashEval` and `Invoke-BashSource` for transpiling and evaluating bash directly from PowerShell:
+Install the `PsBash` module, which bundles the binary cmdlets. PowerShell 7.4 or later is required:
 
 ```powershell
-Install-Module PsBash.Cmdlets
+Install-Module PsBash
+Import-Module PsBash
 ```
 
-`PsBash` is automatically pulled in as a dependency. Quickstart:
+Quickstart:
 
 ```powershell
-# Transpile a bash command to PowerShell
-Invoke-BashEval 'ls -la | grep .ps1'
+# Run bash through the separately installed shell executable
+ps-bash -c 'ls -la | grep .ps1'
 
 # Source a bash script into the current PowerShell session
 Invoke-BashSource ./my-script.sh
@@ -138,6 +143,16 @@ Test-BashSyntax 'echo hello | wc -l'
 ```
 
 → See the [Shell Guide](docs/shell-guide.md) for details on dynamic-env tools and advanced usage.
+
+`Invoke-BashEval` is experimental and excluded from default builds. `Format-Styled` and
+`Show-Styled` require an optional Strata build dependency and are absent from builds
+without it. The shell, source and syntax commands above do not require those features.
+
+The shell currently refuses `set -u`/`set -o nounset` and `set -C`/`set -o noclobber`
+because their protections are not implemented. Unsupported launcher flags also exit 2;
+use `ps-bash -c 'set -e; ...'` for errexit rather than a launcher `-e` flag.
+Other unsupported `set` options and mixed option forms also fail explicitly. Use
+separate `set` commands for supported options and `set -- ...` for positional parameters.
 
 ## AI Coding Agent Setup
 

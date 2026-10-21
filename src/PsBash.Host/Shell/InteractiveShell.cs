@@ -63,15 +63,14 @@ public static class InteractiveShell
         // Initialize history store. PSBASH_HOME overrides the home directory used to
         // locate the history DB so that tests can isolate history to a temp directory
         // without touching the real user profile.
-        var historyHomeDir = Environment.GetEnvironmentVariable("PSBASH_HOME")
-            ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var psbashDir = Path.Combine(historyHomeDir, ".psbash");
-        Directory.CreateDirectory(psbashDir);
-
-        var dbPath = Path.Combine(psbashDir, "history.db");
+        string? psbashDir = null;
         try
         {
-            _historyStore = new SqliteHistoryStore(dbPath);
+            var historyHomeDir = Environment.GetEnvironmentVariable("PSBASH_HOME")
+                ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            psbashDir = Path.Combine(historyHomeDir, ".psbash");
+            Directory.CreateDirectory(psbashDir);
+            _historyStore = new SqliteHistoryStore(Path.Combine(psbashDir, "history.db"));
         }
         catch (Exception ex)
         {
@@ -84,8 +83,17 @@ public static class InteractiveShell
         // zoxide-style directory frecency DB, alongside history. Powers the `z`/`zi`
         // jump commands and cd-aware completion / ghost text. Seed the startup dir
         // so it is immediately jumpable; subsequent visits are recorded by SyncWorkerCwdAsync.
-        _frecencyStore = new SqliteFrecencyStore(Path.Combine(psbashDir, "frecency.db"));
-        if (Directory.Exists(_lastDir)) _ = _frecencyStore.AddAsync(_lastDir);
+        _frecencyStore = null;
+        try
+        {
+            if (psbashDir is not null && Directory.Exists(psbashDir))
+                _frecencyStore = new SqliteFrecencyStore(Path.Combine(psbashDir, "frecency.db"));
+            if (_frecencyStore is not null && Directory.Exists(_lastDir)) _ = _frecencyStore.AddAsync(_lastDir);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"ps-bash: warning: directory history unavailable ({ex.Message})");
+        }
 
         // Startup type-ahead: the slow runspace init runs on the launcher's background task; we build
         // the line editor and draw the prompt NOW so the user can type while it warms up. Completion
