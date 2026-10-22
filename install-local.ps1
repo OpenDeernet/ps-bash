@@ -118,9 +118,11 @@ if (Test-Path $destDir) {
         Move-OutOfTheWay $_.FullName
     }
     # Framework/dependency DLLs published alongside the host (System.*.dll etc).
-    # If our live shell has them open, the rename still succeeds.
+    # If our live shell has them open, the rename still succeeds. ~/.local/bin is shared with other
+    # tools, so only DLLs this package publishes ($ours) are renamed — another tool's dependency must
+    # stay loadable.
     Get-ChildItem $destDir -File -Filter '*.dll' | Where-Object {
-        $_.Name -notlike '*.old*'
+        $_.Name -notlike '*.old*' -and $ours.ContainsKey($_.Name)
     } | ForEach-Object {
         Move-OutOfTheWay $_.FullName
     }

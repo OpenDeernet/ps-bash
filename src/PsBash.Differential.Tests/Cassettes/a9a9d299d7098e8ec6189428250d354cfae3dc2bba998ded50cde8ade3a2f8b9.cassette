@@ -1,0 +1,16 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: wsl
+exit-code: 0
+script-length: 62
+stdout-length: 10
+stderr-length: 0
+==== SCRIPT ====
+n=0; for i in 1 2 3; do n=$i; echo $i; done | cat; echo "n=$n"
+==== STDOUT ====
+1
+2
+3
+n=0
+
+==== STDERR ====
+

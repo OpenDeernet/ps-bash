@@ -248,6 +248,11 @@ internal sealed class Connection
             if (sessionMode == SessionMode.Framed)
                 await HostProtocol.WriteStartedAsync(_stream, execCts.Token).ConfigureAwait(false);
 
+            // A command that backgrounds work will need a private host soon: start one now, while this
+            // command runs, instead of when the `&` statement is reached.
+            if (UsesBackgroundJobs(command))
+                JobHostSpares.Prewarm(CountBackgroundJobs(command));
+
             exitCode = await worker.ExecuteWithOutputAsync(
                 command, outputSink, errorSink, execCts.Token, environment, stdinFeed?.CreateCursor());
             WorkerPool<SdkWorker>.DiagLog($"Connection: executed, exit={exitCode}");
@@ -523,5 +528,17 @@ internal sealed class Connection
     {
         var raw = Environment.GetEnvironmentVariable("PSBASH_REQUEST_READ_TIMEOUT_MS");
         return int.TryParse(raw, out var value) && value > 0 ? value : DefaultRequestReadTimeoutMs;
+    }
+
+    private static bool UsesBackgroundJobs(string? command)
+        => command is not null && command.Contains("Invoke-BashBackground", StringComparison.Ordinal);
+
+    /// <summary>Call sites of <c>Invoke-BashBackground</c> in the command text: how many spares the command can use at once.</summary>
+    private static int CountBackgroundJobs(string? command)
+    {
+        if (command is null) return 0;
+        int n = 0, i = 0;
+        while ((i = command.IndexOf("Invoke-BashBackground", i, StringComparison.Ordinal)) >= 0) { n++; i += 21; }
+        return n;
     }
 }

@@ -120,6 +120,9 @@ public sealed class InvokeBashKillCommand : PSCmdlet
                 signalSelf = true;
                 continue;
             }
+            // A background job runs in its own host process: stop its whole tree and let `wait` report the signal.
+            if (!existenceOnly && PsBash.Core.BackgroundJobTable.TrySignal(procId, SignalNumber(signalName ?? "SIGTERM")))
+                continue;
             try
             {
                 using var proc = Process.GetProcessById(procId);

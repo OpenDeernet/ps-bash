@@ -128,12 +128,20 @@ public static class PsBuild
     /// The temp is per child scope, so nested subshells never share it.
     /// </summary>
     public static string ShellStateScope(string body, string? finallyTail = null) =>
-        "& { $__psbash_ss = [PsBash.Cmdlets.BashShellState]::Save($ExecutionContext.SessionState); try { "
+        "& { " + ShellStateGuard(body, finallyTail) + " }";
+
+    /// <summary>
+    /// The save / <c>try</c> / restore of <see cref="ShellStateScope"/> WITHOUT its child <c>&amp; { }</c>: for a
+    /// caller that is already inside a script block of its own and must keep that block's <c>$input</c> (a
+    /// compound pipeline stage), which a nested <c>&amp; { }</c> would hide.
+    /// </summary>
+    public static string ShellStateGuard(string body, string? finallyTail = null) =>
+        "$__psbash_ss = [PsBash.Cmdlets.BashShellState]::Save($ExecutionContext.SessionState); try { "
         + body
         + " } finally { $__psbash_xt = [PsBash.Cmdlets.BashShellState]::Restore($ExecutionContext.SessionState, $__psbash_ss); "
         + "if ($null -ne $__psbash_xt) { if ($__psbash_xt) { Set-PSDebug -Trace 1 } else { Set-PSDebug -Off } }"
         + (finallyTail is null ? "" : "; " + finallyTail)
-        + " } }";
+        + " }";
 
     /// <summary>Wrap in a subexpression: <c>$(expr)</c>.</summary>
     public static string Subexpr(string expr) => "$(" + expr + ")";

@@ -4341,7 +4341,7 @@ public static class PsEmitter
     /// </summary>
     internal const long MaxBraceWords = 1_000_000;
 
-    private static void CheckBraceWords(long count)
+    internal static void CheckBraceWords(long count)
     {
         if (count > MaxBraceWords)
             throw new ParseException(
@@ -6382,16 +6382,21 @@ public static class PsEmitter
     /// </summary>
     private static string EmitCompoundStage(Command cmd, bool isFirstStage, bool entryScope)
     {
+        // bash runs every pipe stage in a subshell: `{ x=2; } | cat` must leave x alone. A Subshell stage already
+        // carries its own scope; a function definition changes the function table by design here.
+        // The guard, not a nested scope: the stage's own `& { }` is the scope, and it must keep its `$input`.
+        string Scoped(string inner) => cmd is Command.Subshell or Command.ShFunction ? inner : PsBuild.ShellStateGuard(inner);
+
         if (isFirstStage)
-            return $"& {{ {Emit(cmd)} }}";
+            return $"& {{ {Scoped(Emit(cmd))} }}";
 
         bool opensScope = cmd is Command.Subshell or Command.BraceGroup or Command.ForIn
                 or Command.ForArith or Command.If or Command.Case
             || (cmd is Command.While loop && !IsWhileRead(loop.Cond, out _, out _));
         if (!opensScope)
-            return $"& {{ {Emit(cmd)} }}";
+            return $"& {{ {Scoped(Emit(cmd))} }}";
 
-        return $"& {{ {PsBuild.StdinScope(WithStdinScope(true, () => Emit(cmd)))} }}";
+        return $"& {{ {PsBuild.StdinScope(WithStdinScope(true, () => Scoped(Emit(cmd))))} }}";
     }
 
     /// <summary>

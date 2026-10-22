@@ -620,6 +620,7 @@ public sealed class InvokeBashTarCommand : PSCmdlet
         TarWriter? writer = null;
         ByteRecordEmitter? emitter = null;
         bool hadError = false;
+        string? archiveFull = null;
         try
         {
             if (toStdout)
@@ -629,6 +630,7 @@ public sealed class InvokeBashTarCommand : PSCmdlet
             }
             else
             {
+                archiveFull = Path.GetFullPath(archiveFile!);
                 outStream = File.Open(archiveFile!, FileMode.Create, FileAccess.Write, FileShare.None);
             }
             tarStream = gzipFilter
@@ -670,6 +672,7 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                     foreach (var childInfo in FileSystemHelpers.EnumerateNoFollow(new DirectoryInfo(resolved)))
                     {
                         string child = childInfo.FullName;
+                        if (IsArchiveItself(child, archiveFull)) { SkipArchive(child); continue; }
                         string relPath = root + "/" + child.Substring(resolved.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length + 1).Replace('\\', '/');
                         if (excludes.IsExcluded(relPath)) { continue; }
                         Say(childInfo is DirectoryInfo ? relPath + "/" : relPath);
@@ -680,6 +683,7 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                 {
                     string relPath = leaf;
                     if (excludes.IsExcluded(relPath)) { continue; }
+                    if (IsArchiveItself(resolved, archiveFull)) { SkipArchive(src); continue; }
                     Say(relPath);
                     writer.WriteEntry(resolved, relPath);
                 }
@@ -704,6 +708,46 @@ public sealed class InvokeBashTarCommand : PSCmdlet
             FileSystemHelpers.WriteStderr(this, FailureStatusLine);
             FileSystemHelpers.SetLastExitCode(this, 2);
         }
+    }
+
+    private static bool IsArchiveItself(string path, string? archiveFull)
+        => archiveFull is not null && FileIdentity.SameFileNotFollowing(path, archiveFull);
+
+    /// <summary>GNU tar notes that the output archive is not dumped into itself and carries on (exit 0).</summary>
+    private void SkipArchive(string name)
+        => FileSystemHelpers.WriteStderr(this, $"tar: {name}: file is the archive; not dumped");
+
+    /// <summary>
+    /// After the last member, read the rest of a compressed archive so the decoder validates its trailer
+    /// (CRC32/ISIZE). The tar reader stops at the end marker, so a truncated or corrupt gzip would otherwise
+    /// be accepted. Returns false (exit 2 reported) when the stream is bad.
+    /// </summary>
+    private bool DrainCompressed(Stream tarStream)
+    {
+        if (tarStream.CanSeek) { return true; }
+        try
+        {
+            tarStream.CopyTo(Stream.Null);
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidDataException or EndOfStreamException)
+        {
+            bool truncated = ex is EndOfStreamException || ex.Message.Contains("end of file", StringComparison.OrdinalIgnoreCase);
+            FileSystemHelpers.WriteBashError(this, truncated
+                ? "gzip: stdin: unexpected end of file"
+                : "gzip: stdin: invalid compressed data--crc error");
+            FileSystemHelpers.WriteStderr(this, "tar: Child returned status 1");
+            FileSystemHelpers.WriteStderr(this, NotRecoverableLine);
+            FileSystemHelpers.SetLastExitCode(this, 2);
+            return false;
+        }
+    }
+
+    /// <summary>True when something (file, directory, or even a dangling link) already stands at <paramref name="path"/>.</summary>
+    private static bool PathEntryExists(string path)
+    {
+        try { File.GetAttributes(path); return true; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { return false; }
     }
 
     private void DoExtract(string? archiveFile, bool stdio, bool gzipFilter, bool verbose, string? changeDir,
@@ -770,6 +814,15 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                     continue;
                 }
 
+                // -k/--keep-old-files: no member type may replace what is already there (a link member
+                // used to delete the destination first). Directories merge, as in GNU tar.
+                if (keepOldFiles && entry.EntryType != TarEntryType.Directory && PathEntryExists(targetPath))
+                {
+                    FileSystemHelpers.WriteBashError(this, $"tar: {name}: Cannot open: File exists");
+                    FileSystemHelpers.SetLastExitCode(this, 2);
+                    continue;
+                }
+
                 switch (entry.EntryType)
                 {
                     case TarEntryType.Directory:
@@ -785,14 +838,6 @@ public sealed class InvokeBashTarCommand : PSCmdlet
 
                 // Regular file.
                 if (entry.DataStream == null) { continue; }
-                // -k/--keep-old-files: never overwrite an existing file.
-                if (keepOldFiles && File.Exists(targetPath))
-                {
-                    FileSystemHelpers.WriteBashError(this,
-                        $"tar: {name}: Cannot open: File exists");
-                    FileSystemHelpers.SetLastExitCode(this, 1);
-                    continue;
-                }
                 string? dir = Path.GetDirectoryName(targetPath);
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 {
@@ -800,9 +845,13 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                     // Re-check after creating: narrows the swap-in window for a racing link.
                     if (RefuseLinkTraversal(destDir, targetPath, name, includeSelf: true)) { continue; }
                 }
+                // Replace the directory entry, never the bytes behind it: File.Create would truncate the
+                // shared file of an existing hard link whose other name lies outside the destination.
+                if (File.Exists(targetPath)) { FileSystemHelpers.DeleteFileForce(targetPath); }
                 using var fs = File.Create(targetPath);
                 entry.DataStream.CopyTo(fs);
             }
+            if (!DrainCompressed(tarStream)) { return; }
             ReportUnmatched(filter);
         }
         catch (Exception ex) when (ex is InvalidDataException or EndOfStreamException)
@@ -1003,6 +1052,7 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                 obj.Properties.Add(new PSNoteProperty("Name", leaf));
                 WriteObject(obj);
             }
+            if (!DrainCompressed(tarStream)) { return; }
             ReportUnmatched(filter);
         }
         catch (Exception ex) when (ex is InvalidDataException or EndOfStreamException)

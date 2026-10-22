@@ -52,6 +52,15 @@ internal static class FileIdentity
         return IsExistingFile(source) && IsExistingFile(destination) && SameInode(source, destination);
     }
 
+    /// <summary>tar semantics: <paramref name="path"/> is the same file (same path or a hard link of one inode) as <paramref name="other"/>.
+    /// A symlink is its own entry (tar stores the link, it never follows it), so it is never the same file.</summary>
+    public static bool SameFileNotFollowing(string path, string other)
+    {
+        if (string.Equals(Path.GetFullPath(path), Path.GetFullPath(other), PathComparison)) return true;
+        if (FileTimes.IsLink(path)) return false;
+        return IsExistingFile(path) && IsExistingFile(other) && SameInode(path, other);
+    }
+
     private static bool IsExistingFile(string path)
     {
         try { return File.Exists(path); }

@@ -150,6 +150,22 @@ public class NestingGuardTests
     }
 
     [Fact]
+    public void Transpile_NestedBraceRangeAtIntMax_TerminatesLikeTopLevel()
+    {
+        // The nested path used an int counter: int.MaxValue + 1 wrapped and accumulated billions of strings.
+        var ps = BashTranspiler.Transpile("echo {x,{2147483647..2147483647}}");
+        Assert.Contains("'x'", ps);
+        Assert.Contains("2147483647", ps);
+    }
+
+    [Fact]
+    public void Transpile_NestedBraceRangeTooLarge_ThrowsBeforeMaterializing()
+    {
+        var ex = Assert.Throws<ParseException>(() => BashTranspiler.Transpile("echo {x,{1..2147483647}}"));
+        Assert.Contains("brace expansion too large", ex.Message);
+    }
+
+    [Fact]
     public void Transpile_OrdinaryBraceExpansion_Unaffected()
     {
         Assert.Contains("1..1000", BashTranspiler.Transpile("echo {1..1000}"));

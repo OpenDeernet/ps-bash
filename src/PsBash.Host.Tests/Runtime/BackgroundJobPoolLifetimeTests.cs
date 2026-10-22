@@ -20,8 +20,21 @@ public class BackgroundJobPoolLifetimeTests : IAsyncLifetime
 {
     private readonly HostWorkerFixture _fixture = new();
 
-    public Task InitializeAsync() => _fixture.InitializeAsync();
-    public Task DisposeAsync() => _fixture.DisposeAsync();
+    private string? _bgMode;
+
+    // These tests cover the in-process runspace pool; the default (process) mode has no pool to tear down.
+    public async Task InitializeAsync()
+    {
+        _bgMode = Environment.GetEnvironmentVariable("PSBASH_BG_MODE");
+        Environment.SetEnvironmentVariable("PSBASH_BG_MODE", "inproc");
+        await _fixture.InitializeAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        Environment.SetEnvironmentVariable("PSBASH_BG_MODE", _bgMode);
+        await _fixture.DisposeAsync();
+    }
 
     [Fact]
     public async Task ReleasingARunspaceThatUsedAmpersand_TearsDownItsJobPool()

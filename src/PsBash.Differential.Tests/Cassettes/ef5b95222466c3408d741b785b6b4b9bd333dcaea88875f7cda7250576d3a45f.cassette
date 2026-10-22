@@ -1,0 +1,15 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: wsl
+exit-code: 0
+script-length: 49
+stdout-length: 8
+stderr-length: 0
+==== SCRIPT ====
+x=1; { x=2; echo a; echo b; } | sort; echo "x=$x"
+==== STDOUT ====
+a
+b
+x=1
+
+==== STDERR ====
+

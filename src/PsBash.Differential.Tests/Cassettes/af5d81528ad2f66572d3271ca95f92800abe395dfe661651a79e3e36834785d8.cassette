@@ -1,0 +1,13 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: wsl
+exit-code: 0
+script-length: 66
+stdout-length: 7
+stderr-length: 0
+==== SCRIPT ====
+y=none; printf 'a\nb\n' | while read l; do y=$l; done; echo "y=$y"
+==== STDOUT ====
+y=none
+
+==== STDERR ====
+

@@ -2488,17 +2488,24 @@ function Complete-BashBgJob {
     $ps = $Job.PowerShell
     try {
         $out = $ps.EndInvoke($Job.AsyncResult)
+        $Job.ExitCode = [int]$Job.Status.Code
         foreach ($item in $out) {
-            $text = if ($null -ne $item -and $item.PSObject.Properties['BashText']) { $item.BashText } else { "$item" }
-            # Emit blank lines too — a background command's empty output line is real
-            # output. `if ($text)` is false for "", silently dropping blank lines.
-            if ($null -ne $text) { Emit-BashLine -Text $text }
+            # A record the job produced already is a line (its terminator is its own flag): pass it
+            # through. Re-emitting its BashText as raw text dropped the newline, so the next command's
+            # output was glued onto the job's last line (`echo hi & wait; echo next` -> `hinext`).
+            if ($Job.Raw) { Emit-BashLine -Text "$item"; continue }
+            if ($null -ne $item -and $item.PSObject.Properties['BashText']) { $item; continue }
+            $text = "$item"
+            if ($null -ne $text) { Emit-BashLine -Text ($text + "`n") }
         }
         foreach ($err in $ps.Streams.Error) {
-            Write-BashHostStderr ("$err")
+            $errText = "$err"
+            if ($Job.Raw) { $errText = $errText.TrimEnd("`n") }
+            Write-BashHostStderr $errText
         }
     } catch {
         Write-BashHostStderr ("$_")
+        if ($null -eq $Job.ExitCode) { $Job.ExitCode = 1 }
     } finally {
         $ps.Dispose()
         $Job.Done = $true
@@ -2595,6 +2602,29 @@ function Invoke-BashBackground {
         [scriptblock]$Command
     )
 
+    # PSBASH_BG_MODE=process: run the job in its own ps-bash-host process (private env/cwd, real pid). Opt-in until it meets the latency bars (docs/specs/background-jobs.md section 11).
+    # Only where the host exposes the launcher type; the module (no daemon) and PSBASH_BG_MODE=inproc keep
+    # the runspace-pool path below.
+    if ($env:PSBASH_BG_MODE -eq 'process' -and ('PsBash.Host.Runtime.BashJobProcess' -as [type])) {
+        if ($script:BashBgJobs.Count -ge $script:BashBgMaxJobs) { Remove-BashBgFinished }
+        $prelude = [PsBash.Cmdlets.BashStateSnapshot]::BuildPrelude($ExecutionContext.SessionState)
+        $bjp = [PsBash.Host.Runtime.BashJobProcess]::Start($prelude, $Command.ToString(), [PsBash.Cmdlets.BashStateSnapshot]::EnvironmentBlock())
+        $job = [pscustomobject]@{
+            Id = $bjp.Pid; PowerShell = $bjp; AsyncResult = $bjp.AsyncResult; Done = $false
+            Status = $bjp; ExitCode = $null; Raw = $true
+        }
+        $job | Add-Member -MemberType ScriptProperty -Name 'HasExited' -Value {
+            if ($this.Done) { return $true }
+            return $this.AsyncResult.IsCompleted
+        } -Force
+        $job | Add-Member -MemberType ScriptMethod -Name 'Kill' -Value {
+            try { $this.PowerShell.Stop() } catch { }
+            $this.Done = $true
+        } -Force
+        $script:BashBgJobs.Add($job)
+        $global:BashBgLastPid = $bjp.Pid
+        return
+    }
     # RC-2: run the background command as a PowerShell pipeline against a pooled,
     # isolated runspace instead of spawning a fresh pwsh process. This eliminates
     # the ~1-3s pwsh cold start per `&` and the WaitForExit hang in `wait`.
@@ -2602,7 +2632,33 @@ function Invoke-BashBackground {
     $pool = Get-BashBgRunspacePool
     $ps = [powershell]::Create()
     $ps.RunspacePool = $pool
-    [void]$ps.AddScript($Command.ToString())
+    # The job shares this process's environment (bash scalars are env vars), so a plain run would leak
+    # the child's assignments into the parent. The wrapper records the environment at job start and, when
+    # the body ends, puts back every variable the job changed (unless the parent has since written a
+    # different value). It also reports the body's exit status for `wait`.
+    $status = [hashtable]::Synchronized(@{ Code = 0 })
+    $wrapped = @'
+param($__bgStatus)
+$__bgBefore = [Environment]::GetEnvironmentVariables()
+$__bgOk = $false
+try {
+'@ + "`n" + $Command.ToString() + "`n" + @'
+    $__bgOk = $true
+} finally {
+    $__bgCode = if ($__bgOk) { $x = $global:LASTEXITCODE; if ($null -eq $x) { 0 } else { [int]$x } } else { 1 }
+    $__bgAfter = [Environment]::GetEnvironmentVariables()
+    foreach ($__bgKey in @($__bgAfter.Keys) + @($__bgBefore.Keys)) {
+        $__bgNew = $__bgAfter[$__bgKey]
+        $__bgOld = $__bgBefore[$__bgKey]
+        if ($__bgNew -ceq $__bgOld) { continue }
+        if ([Environment]::GetEnvironmentVariable($__bgKey) -ceq $__bgNew) {
+            [Environment]::SetEnvironmentVariable($__bgKey, $__bgOld)
+        }
+    }
+    $__bgStatus.Code = $__bgCode
+}
+'@
+    [void]$ps.AddScript($wrapped).AddArgument($status)
 
     $async = $ps.BeginInvoke()
 
@@ -2614,6 +2670,8 @@ function Invoke-BashBackground {
         PowerShell  = $ps
         AsyncResult = $async
         Done        = $false
+        Status      = $status
+        ExitCode    = $null
     }
     # HasExited / Kill() shape so tests asserting against $script:BashBgPids
     # (the alias for $script:BashBgJobs) see Process-like surface. HasExited
@@ -2641,9 +2699,11 @@ function Invoke-BashWait {
     $Arguments = [string[]]$args
     if ($Arguments -contains '--help') { return Show-BashHelp 'wait' }
 
+    $global:LASTEXITCODE = 0
     if ($Arguments.Count -gt 0) {
         # wait $! / wait <id>: wait for a synthetic background-job id; wait %N: the
         # bash job number (positional, 1-based) shown by `jobs` — NOT the id.
+        # The status is that of the LAST operand; an unknown job is 127.
         foreach ($pidArg in $Arguments) {
             $job = $null
             if ($pidArg -like '%*') {
@@ -2661,16 +2721,22 @@ function Invoke-BashWait {
             if ($job) {
                 [void]$job.AsyncResult.AsyncWaitHandle.WaitOne()
                 Complete-BashBgJob -Job $job
+                $code = if ($null -eq $job.ExitCode) { 0 } else { [int]$job.ExitCode }
                 [void]$script:BashBgJobs.Remove($job)
+                $global:LASTEXITCODE = $code
+            } else {
+                Write-BashHostStderr "bash: wait: pid $pidArg is not a child of this shell"
+                $global:LASTEXITCODE = 127
             }
         }
     } else {
-        # wait (no arg): wait for all pending background jobs.
+        # wait (no arg): wait for all pending background jobs; status is 0 like bash.
         foreach ($job in @($script:BashBgJobs)) {
             [void]$job.AsyncResult.AsyncWaitHandle.WaitOne()
             Complete-BashBgJob -Job $job
         }
         $script:BashBgJobs.Clear()
+        $global:LASTEXITCODE = 0
     }
 }
 
@@ -3850,3 +3916,9 @@ Set-Alias -Name 'more'     -Value 'Invoke-BashMore'     -Force -Scope Global -Op
         Update-TypeData -TypeName $typeName -MemberName ToString -MemberType ScriptMethod -Value { $this.BashText } -Force
     }
 }
+
+# Every function the runtime defines, so a background job's state snapshot (BashStateSnapshot) carries only the
+# functions the user defined; the job's own host already has these. Must stay the last statement of the file.
+$global:__BashBaselineFunctions = [System.Collections.Generic.HashSet[string]]::new(
+    [string[]]@(Get-ChildItem -Path Function: | ForEach-Object { $_.Name }),
+    [System.StringComparer]::OrdinalIgnoreCase)

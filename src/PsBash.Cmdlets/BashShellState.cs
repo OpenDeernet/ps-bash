@@ -29,7 +29,15 @@ public static class BashShellState
         "__BashErrexit", "__BashErrexitSuppress", "__BashErrexitTail", "__BashXtrace",
         "BashFlags", "BashPositional", "BashPositional0", "BASH_REMATCH",
         "BashTrapHandlers", "__BashTrapERR", "__BashTrapEXIT", "BashBgLastPid",
+        "BashUserAliases", "BashLastArg", "BashDirStack",
     ];
+
+    /// <summary>Every shell-state global, for the inventory guard (<see cref="BashStateSnapshot"/>).</summary>
+    internal static IReadOnlyList<string> AllGlobalNames => GlobalNames;
+
+    /// <summary>The globals a background job inherits (<see cref="BashStateSnapshot"/>).</summary>
+    internal static IEnumerable<string> InheritedGlobalNames
+        => GlobalNames.Where(n => Array.IndexOf(BashStateSnapshot.NotInherited, n) < 0);
 
     private static readonly StringComparer EnvNames =
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;

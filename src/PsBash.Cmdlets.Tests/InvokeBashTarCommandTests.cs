@@ -584,6 +584,126 @@ public class InvokeBashTarCommandTests : IDisposable, IClassFixture<SharedPwshFi
         Assert.Contains(errs, m => m.Contains("File exists", StringComparison.OrdinalIgnoreCase));
     }
 
+    // ===================== Review 2026-10-21: hard links, -k, gzip integrity, self-archive =====================
+
+    private static string WriteTar(string path, Action<System.Formats.Tar.TarWriter> fill)
+    {
+        using (var fs = File.Create(path))
+        using (var w = new System.Formats.Tar.TarWriter(fs, System.Formats.Tar.TarEntryFormat.Pax))
+            fill(w);
+        return path;
+    }
+
+    private static System.Formats.Tar.PaxTarEntry RegularEntry(string name, string text)
+        => new(System.Formats.Tar.TarEntryType.RegularFile, name)
+        { DataStream = new MemoryStream(Encoding.UTF8.GetBytes(text)) };
+
+    [Fact]
+    public void Tar_Extract_OverExistingHardLink_DoesNotTouchTheOutsideName()
+    {
+        string dest = Path.Combine(_tmpDir, "hl-dest");
+        Directory.CreateDirectory(dest);
+        string outside = Path.Combine(_tmpDir, "hl-outside.txt");
+        File.WriteAllText(outside, "OUTSIDE-ORIGINAL");
+        RunLines($"New-Item -ItemType HardLink -Path '{PsQuote(Path.Combine(dest, "protected"))}' -Target '{PsQuote(outside)}' | Out-Null");
+        string arc = WriteTar(Path.Combine(_tmpDir, "hl.tar"), w => w.WriteEntry(RegularEntry("protected", "REPLACED")));
+
+        RunWithErrors($"Invoke-BashTar -xf '{PsQuote(arc)}' --directory='{PsQuote(dest)}'");
+
+        Assert.Equal("REPLACED", File.ReadAllText(Path.Combine(dest, "protected")));
+        Assert.Equal("OUTSIDE-ORIGINAL", File.ReadAllText(outside));
+    }
+
+    [Fact]
+    public void Tar_KeepOldFiles_HardLinkMember_DoesNotReplaceExisting()
+    {
+        string dest = Path.Combine(_tmpDir, "kl-dest");
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, "protected"), "ORIGINAL");
+        string arc = WriteTar(Path.Combine(_tmpDir, "kl.tar"), w =>
+        {
+            w.WriteEntry(RegularEntry("payload", "REPLACED"));
+            w.WriteEntry(new System.Formats.Tar.PaxTarEntry(System.Formats.Tar.TarEntryType.HardLink, "protected") { LinkName = "payload" });
+        });
+
+        var (_, errs) = RunWithErrors($"Invoke-BashTar -xkf '{PsQuote(arc)}' --directory='{PsQuote(dest)}'");
+
+        Assert.Equal("ORIGINAL", File.ReadAllText(Path.Combine(dest, "protected")));
+        Assert.Contains(errs, m => m.Contains("File exists", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(2, ExitOf($"Invoke-BashTar -xkf '{PsQuote(arc)}' --directory='{PsQuote(dest)}'"));
+    }
+
+    private string MakeGzipTar(string name, Action<byte[], string> corrupt)
+    {
+        string tar = WriteTar(Path.Combine(_tmpDir, name + ".tar"), w => w.WriteEntry(RegularEntry("a.txt", "hello")));
+        var ms = new MemoryStream();
+        using (var gz = new GZipStream(ms, CompressionLevel.Fastest, leaveOpen: true))
+            gz.Write(File.ReadAllBytes(tar));
+        string path = Path.Combine(_tmpDir, name + ".tgz");
+        File.WriteAllBytes(path, ms.ToArray());
+        corrupt(ms.ToArray(), path);
+        return path;
+    }
+
+    [Theory]
+    [InlineData("trunc", true)]
+    [InlineData("badcrc", false)]
+    public void Tar_Gzip_BadTrailer_ListAndExtractFail(string name, bool truncate)
+    {
+        string path = MakeGzipTar(name, (bytes, p) =>
+        {
+            if (truncate) File.WriteAllBytes(p, bytes[..^8]);
+            else { bytes[^8] ^= 0xFF; File.WriteAllBytes(p, bytes); }
+        });
+        string dest = Path.Combine(_tmpDir, name + "-out");
+        Directory.CreateDirectory(dest);
+
+        Assert.Equal(2, ExitOf($"Invoke-BashTar -tzf '{PsQuote(path)}' | Out-Null"));
+        Assert.Equal(2, ExitOf($"Invoke-BashTar -xzf '{PsQuote(path)}' --directory='{PsQuote(dest)}'"));
+    }
+
+    [Fact]
+    public void Tar_Gzip_GoodArchive_StillSucceeds()
+    {
+        string path = MakeGzipTar("good", (_, _) => { });
+        Assert.Equal(0, ExitOf($"Invoke-BashTar -tzf '{PsQuote(path)}' | Out-Null"));
+    }
+
+    [Fact]
+    public void Tar_Create_ArchiveInsideSourceTree_SkipsItselfAndArchivesTheRest()
+    {
+        string dir = Path.Combine(_tmpDir, "self");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "a.txt"), "a");
+        File.WriteAllText(Path.Combine(dir, "z.txt"), "z");
+        string arc = Path.Combine(dir, "backup.tar");
+
+        Assert.Equal(0, ExitOf($"Invoke-BashTar -cf '{PsQuote(arc)}' --directory='{PsQuote(dir)}' '{PsQuote(dir)}'"));
+
+        string[] listed = RunLines($"Invoke-BashTar -tf '{PsQuote(arc)}'");
+        Assert.Contains(listed, l => l.EndsWith("a.txt"));
+        Assert.Contains(listed, l => l.EndsWith("z.txt"));
+        Assert.DoesNotContain(listed, l => l.EndsWith("backup.tar"));
+    }
+
+    [Fact]
+    public void Tar_Create_HardLinkOfTheArchiveInsideSourceTree_IsSkippedByIdentity()
+    {
+        string dir = Path.Combine(_tmpDir, "selflink");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "a.txt"), "a");
+        string arc = Path.Combine(_tmpDir, "selflink.tar");
+        File.WriteAllText(arc, "");
+        string alias = Path.Combine(dir, "alias.tar");
+        RunLines($"New-Item -ItemType HardLink -Path '{PsQuote(alias)}' -Target '{PsQuote(arc)}' | Out-Null");
+        Assert.True(File.Exists(alias), "the hard link must exist before tar runs");
+
+        Assert.Equal(0, ExitOf($"Invoke-BashTar -cf '{PsQuote(arc)}' --directory='{PsQuote(dir)}' '{PsQuote(dir)}'"));
+
+        string[] listed = RunLines($"Invoke-BashTar -tf '{PsQuote(arc)}'");
+        Assert.Contains(listed, l => l.EndsWith("a.txt"));
+        Assert.DoesNotContain(listed, l => l.EndsWith("alias.tar"));
+    }
     // ===================== Shared ordered parser: behaviour (oracle: GNU tar 1.35) =====================
 
     private int ExitOf(string script)

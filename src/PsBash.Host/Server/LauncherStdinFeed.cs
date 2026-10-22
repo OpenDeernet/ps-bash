@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Management.Automation;
 using System.Text;
 using PsBash.Core;
@@ -15,16 +14,24 @@ namespace PsBash.Host.Server;
 /// stateful <see cref="RawBytes"/> decoder: a chunk may end mid-character and invalid UTF-8 travels as
 /// escaped-byte markers.
 /// <para>
-/// The queue is bounded: when the command is not reading, the pump stops pulling frames off the socket
-/// (back-pressure reaches the launcher, which stops reading its own stdin) instead of buffering an
-/// unbounded pipe. A command that never reads stdin therefore never consumes any of it.
+/// The queue is bounded by bytes (<see cref="MaxQueuedBytes"/>): past that the pump stops pulling frames
+/// off the socket (back-pressure reaches the launcher) instead of buffering an unbounded pipe. The bound
+/// is large on purpose — a parked pump cannot observe the peer's disconnect.
 /// </para>
 /// </summary>
 internal sealed class LauncherStdinFeed : IDisposable
 {
-    private const int ChunkCapacity = 64;
+    /// <summary>
+    /// Unread bytes held in memory; the rest of a backlog spills to a temp file (<see cref="ChunkQueue"/>),
+    /// so the pump keeps draining the socket and always sees the peer's EOF. A pump parked on a full
+    /// queue could not, and a disconnected launcher then kept the shared execution gate.
+    /// </summary>
+    internal const long MaxMemoryBytes = 4L * 1024 * 1024;
 
-    private readonly BlockingCollection<byte[]> _chunks = new(ChunkCapacity);
+    /// <summary>Hard ceiling on unread bytes (memory + spill) before the pump finally applies back-pressure.</summary>
+    internal const long MaxQueuedBytes = 4L * 1024 * 1024 * 1024;
+
+    private readonly ChunkQueue _chunks = new(MaxMemoryBytes);
     private readonly CancellationToken _ct;
 
     internal LauncherStdinFeed(CancellationToken ct) => _ct = ct;
@@ -47,13 +54,15 @@ internal sealed class LauncherStdinFeed : IDisposable
                 if (line is null) return true; // peer closed: no more input AND the launcher is gone
                 if (!HostProtocol.TryParseStdinFrame(line, out var bytes, out var eof)) continue;
                 if (eof) return false;
-                if (bytes is { Length: > 0 })
-                    _chunks.Add(bytes, stop);
+                if (bytes is not { Length: > 0 }) continue;
+                while (_chunks.QueuedBytes >= MaxQueuedBytes)
+                    await Task.Delay(10, stop).ConfigureAwait(false);
+                _chunks.Add(bytes);
             }
         }
         finally
         {
-            try { _chunks.CompleteAdding(); } catch (ObjectDisposedException) { }
+            _chunks.CompleteAdding();
         }
     }
 
@@ -97,7 +106,7 @@ internal sealed class LauncherStdinFeed : IDisposable
                     linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _feed._ct);
                     token = linked.Token;
                 }
-                if (!_feed._chunks.TryTake(out var taken, Timeout.Infinite, token)) return false;
+                if (!_feed._chunks.TryTake(out var taken, token)) return false;
                 chunk = taken!;
                 return true;
             }
@@ -106,7 +115,7 @@ internal sealed class LauncherStdinFeed : IDisposable
                 throw new OperationCanceledException(ct); // the caller gave up waiting; nothing was taken
             }
             catch (OperationCanceledException) { return false; }  // the command was stopped
-            catch (InvalidOperationException) { return false; }   // completed and drained, or the feed is disposed
+            catch (ObjectDisposedException) { return false; }     // the feed is disposed
             finally
             {
                 linked?.Dispose();
@@ -148,7 +157,103 @@ internal sealed class LauncherStdinFeed : IDisposable
 
     public void Dispose()
     {
-        try { _chunks.CompleteAdding(); } catch (ObjectDisposedException) { }
         _chunks.Dispose();
+    }
+
+    /// <summary>
+    /// FIFO of byte chunks: up to <c>memoryLimit</c> bytes in memory, further chunks appended to a
+    /// delete-on-close temp file while a backlog exists. Order is kept because once anything is spilled
+    /// every later chunk spills too, and memory is always drained before the file.
+    /// </summary>
+    private sealed class ChunkQueue(long memoryLimit) : IDisposable
+    {
+        private readonly object _gate = new();
+        private readonly Queue<byte[]> _mem = new();
+        private readonly SemaphoreSlim _items = new(0);
+        private FileStream? _spill;
+        private long _memBytes, _writePos, _readPos;
+        private int _spilled;
+        private bool _completed, _disposed;
+
+        internal long QueuedBytes { get { lock (_gate) return _memBytes + (_writePos - _readPos); } }
+
+        internal void Add(byte[] bytes)
+        {
+            lock (_gate)
+            {
+                if (_completed || _disposed) return;
+                if (_spilled == 0 && _memBytes + bytes.Length <= memoryLimit)
+                {
+                    _mem.Enqueue(bytes);
+                    _memBytes += bytes.Length;
+                }
+                else
+                {
+                    _spill ??= new FileStream(Path.Combine(PsBash.Core.Runtime.PsBashRuntimeDirectory.EnsureDirectory(), "stdin-spill-" + Guid.NewGuid().ToString("N")), FileMode.CreateNew, FileAccess.ReadWrite,
+                        FileShare.None, 1, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
+                    var header = BitConverter.GetBytes(bytes.Length);
+                    RandomAccess.Write(_spill.SafeFileHandle, header, _writePos);
+                    RandomAccess.Write(_spill.SafeFileHandle, bytes, _writePos + header.Length);
+                    _writePos += header.Length + bytes.Length;
+                    _spilled++;
+                }
+            }
+            _items.Release();
+        }
+
+        internal void CompleteAdding()
+        {
+            lock (_gate)
+            {
+                if (_completed) return;
+                _completed = true;
+            }
+            _items.Release(); // wakes a waiting taker that finds nothing left: end of input
+        }
+
+        /// <summary>False at the end of input; throws <see cref="OperationCanceledException"/> when cancelled.</summary>
+        internal bool TryTake(out byte[]? chunk, CancellationToken ct)
+        {
+            chunk = null;
+            while (true)
+            {
+                _items.Wait(ct);
+                lock (_gate)
+                {
+                    if (_disposed) throw new ObjectDisposedException(nameof(ChunkQueue));
+                    if (_mem.Count > 0)
+                    {
+                        chunk = _mem.Dequeue();
+                        _memBytes -= chunk.Length;
+                        return true;
+                    }
+                    if (_spilled > 0)
+                    {
+                        Span<byte> header = stackalloc byte[4];
+                        RandomAccess.Read(_spill!.SafeFileHandle, header, _readPos);
+                        chunk = new byte[BitConverter.ToInt32(header)];
+                        RandomAccess.Read(_spill.SafeFileHandle, chunk, _readPos + 4);
+                        _readPos += 4 + chunk.Length;
+                        if (--_spilled == 0) { _spill.SetLength(0); _readPos = _writePos = 0; }
+                        return true;
+                    }
+                }
+                _items.Release(); // the completion token: leave it for any other taker
+                return false;
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_gate)
+            {
+                if (_disposed) return;
+                _disposed = true;
+                _completed = true;
+                _mem.Clear();
+                _spill?.Dispose();
+            }
+            _items.Release();
+        }
     }
 }

@@ -98,6 +98,9 @@ public sealed class IpcWorker : IWorker
     // PerInvocation only: the private host process this worker owns and kills on
     // dispose. Null for Daemon lifetime (the shared host outlives this worker).
     private Process? _ownedHost;
+    // PerInvocation on Windows: the Job Object around _ownedHost, so a hard-killed owner takes the host AND
+    // everything the host started (a background job's children) with it.
+    private PsBash.Core.Runtime.Processes.WindowsProcessTree? _ownedTree;
     // Daemon only: the host PID resolved when the daemon was confirmed reachable
     // (optimistic local reuse, or a fresh spawn). Lets ExchangeOnceAsync arm its
     // liveness watchdog WITHOUT re-reading + re-parsing the sidecar per command
@@ -115,6 +118,12 @@ public sealed class IpcWorker : IWorker
     internal static readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> SpawnCounts = new();
 
     public Action<string>? OutputCallback { get; set; }
+
+    /// <summary>Receives STDERR frames (exact bytes, LF included) instead of the launcher's console. Null = console.</summary>
+    public Action<string>? ErrorCallback { get; set; }
+
+    /// <summary>OS pid of the private host this worker owns (<see cref="Lifetime.PerInvocation"/>); 0 otherwise.</summary>
+    public int OwnedHostPid => _ownedHost?.Id ?? 0;
 
     public bool HasExited => _disposed != 0;
 
@@ -629,7 +638,11 @@ public sealed class IpcWorker : IWorker
                     // tree. Daemon leaves the host running for the next launcher
                     // and must NOT retain (or later kill) the handle.
                     if (_lifetime == Lifetime.PerInvocation)
+                    {
                         _ownedHost = proc;
+                        if (OperatingSystem.IsWindows())
+                            _ownedTree = PsBash.Core.Runtime.Processes.WindowsProcessTree.TryContain(proc);
+                    }
                     else
                         // (B) Cache the fresh daemon's PID for the watchdog now,
                         // off the spawned process handle — no sidecar re-read on
@@ -856,7 +869,8 @@ public sealed class IpcWorker : IWorker
             // Exact bytes: the host sends every line with its LF and an unterminated record
             // (`printf x >&2`) without one. Adding a "missing" LF here gave every record a newline.
             // The launcher only reuses a host of its own build, so both sides move together.
-            Console.Error.Write(line);
+            if (ErrorCallback is { } ecb) ecb(line);
+            else Console.Error.Write(line);
             return;
         }
         if (OutputCallback is { } cb) cb(line);
@@ -1400,6 +1414,8 @@ public sealed class IpcWorker : IWorker
         {
             var old = _ownedHost;
             _ownedHost = null;
+            try { _ownedTree?.Kill(); _ownedTree?.Dispose(); } catch { /* best effort */ }
+            _ownedTree = null;
             if (old is not null)
             {
                 try { if (!old.HasExited) old.Kill(entireProcessTree: true); }
@@ -1612,6 +1628,8 @@ public sealed class IpcWorker : IWorker
         // for the next launcher and its endpoint is the canonical per-session one.
         if (_lifetime == Lifetime.PerInvocation && _ownedHost is { } host)
         {
+            try { _ownedTree?.Kill(); _ownedTree?.Dispose(); } catch { /* best effort */ }
+            _ownedTree = null;
             try { if (!host.HasExited) host.Kill(entireProcessTree: true); }
             catch { /* already exited / race — best effort */ }
             try { host.Dispose(); }

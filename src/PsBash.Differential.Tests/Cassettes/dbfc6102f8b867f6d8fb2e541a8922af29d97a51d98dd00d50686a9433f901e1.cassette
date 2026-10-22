@@ -1,0 +1,14 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: wsl
+exit-code: 0
+script-length: 55
+stdout-length: 8
+stderr-length: 0
+==== SCRIPT ====
+z=0; if true; then z=9; echo hit; fi | cat; echo "z=$z"
+==== STDOUT ====
+hit
+z=0
+
+==== STDERR ====
+

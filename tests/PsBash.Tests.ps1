@@ -6983,6 +6983,34 @@ Describe 'Invoke-BashWait' {
             $script:BashBgPids.Count | Should -Be 0
         }
 
+        It 'returns the exit status of the waited job' {
+            Invoke-BashBackground { $global:LASTEXITCODE = 3 }
+            Invoke-BashWait $script:BashBgPids[-1].Id
+            $global:LASTEXITCODE | Should -Be 3
+        }
+
+        It 'keeps the line terminator of a background job''s output' {
+            Invoke-BashBackground { Invoke-BashEcho 'hi' }
+            $out = @(Invoke-BashWait)
+            $out.Count | Should -Be 1
+            $out[0].BashText | Should -Be 'hi'
+            $out[0].NoTrailingNewline | Should -Not -BeTrue
+        }
+
+        It 'reports 127 for an unknown job id' {
+            Invoke-BashWait 987654 2>$null
+            $global:LASTEXITCODE | Should -Be 127
+        }
+
+        It 'does not leak a background job''s variable writes into the parent after wait' {
+            $env:PSB_BG_LEAK = 'parent'
+            try {
+                Invoke-BashBackground { $env:PSB_BG_LEAK = 'child' }
+                Invoke-BashWait
+                $env:PSB_BG_LEAK | Should -Be 'parent'
+            } finally { Remove-Item Env:PSB_BG_LEAK -ErrorAction SilentlyContinue }
+        }
+
         It 'returns help with --help' {
             $result = Invoke-BashWait --help
             $result.BashText | Should -Match 'Usage: wait'
@@ -7131,5 +7159,43 @@ Describe 'Invoke-BashPs error hygiene' {
         $errs = @($out | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
         $errs.Count | Should -Be 0
         @($Error).Count | Should -Be 0
+    }
+}
+
+Describe 'install-local.ps1 shared-bin ownership' {
+    # Runs the installer's own Move-OutOfTheWay + rename block (parsed from source, unchanged) against a
+    # sandbox: ~/.local/bin is shared with other tools, so only DLLs the package publishes may be renamed.
+    BeforeAll {
+        $script:fixture = Join-Path ([IO.Path]::GetTempPath()) ('psb-inst-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        $destDir = Join-Path $script:fixture 'shared-bin'
+        $publishDir = Join-Path $script:fixture 'publish'
+        [void][IO.Directory]::CreateDirectory($destDir)
+        [void][IO.Directory]::CreateDirectory($publishDir)
+        [IO.File]::WriteAllText((Join-Path $destDir 'OtherTool.dll'), 'unrelated tool dependency')
+        [IO.File]::WriteAllText((Join-Path $destDir 'PsBash.Core.dll'), 'old package')
+        [IO.File]::WriteAllText((Join-Path $destDir 'System.Text.Json.dll'), 'old shared framework copy')
+        [IO.File]::WriteAllText((Join-Path $publishDir 'PsBash.Core.dll'), 'new package')
+        [IO.File]::WriteAllText((Join-Path $publishDir 'System.Text.Json.dll'), 'new framework copy')
+
+        $source = Join-Path (Split-Path $PSScriptRoot -Parent) 'install-local.ps1'
+        $ast = [Management.Automation.Language.Parser]::ParseFile($source, [ref]$null, [ref]$null)
+        $function = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -eq 'Move-OutOfTheWay' })
+        $block = @($ast.EndBlock.Statements | Where-Object { $_.Extent.Text.StartsWith('if (Test-Path $destDir)') })
+        if ($function.Count -ne 1 -or $block.Count -ne 1) { throw 'install-local.ps1 structure changed; update this test' }
+        . ([scriptblock]::Create($function[0].Extent.Text))
+        . ([scriptblock]::Create($block[0].Extent.Text))
+        $script:destDir = $destDir
+    }
+    AfterAll { Remove-Item $script:fixture -Recurse -Force -ErrorAction SilentlyContinue }
+
+    It 'leaves another tool''s DLL in place' {
+        Test-Path (Join-Path $script:destDir 'OtherTool.dll') | Should -BeTrue
+        Test-Path (Join-Path $script:destDir 'OtherTool.dll.old') | Should -BeFalse
+    }
+
+    It 'still moves the DLLs the package publishes out of the way' {
+        Test-Path (Join-Path $script:destDir 'PsBash.Core.dll') | Should -BeFalse
+        Test-Path (Join-Path $script:destDir 'System.Text.Json.dll') | Should -BeFalse
+        Test-Path (Join-Path $script:destDir 'System.Text.Json.dll.old') | Should -BeTrue
     }
 }

@@ -1125,7 +1125,10 @@ public sealed partial class BashParser
         var expansions = ExpandBraceContent(braceContent);
         var result = new List<string>();
         foreach (var exp in expansions)
+        {
             result.AddRange(ExpandNestedBraces(prefix + exp + suffix));
+            PsEmitter.CheckBraceWords(result.Count);
+        }
         return result;
     }
 
@@ -1146,9 +1149,12 @@ public sealed partial class BashParser
 
             if (int.TryParse(startStr, out int startVal) && int.TryParse(endStr, out int endVal))
             {
-                int step = startVal <= endVal ? 1 : -1;
+                // long counter + size check BEFORE materializing: an int counter wrapped past
+                // int.MaxValue and accumulated billions of strings.
+                long step = startVal <= endVal ? 1 : -1;
+                PsEmitter.CheckBraceWords(Math.Abs((long)endVal - startVal) + 1);
                 var nums = new List<string>();
-                for (int v = startVal; step > 0 ? v <= endVal : v >= endVal; v += step)
+                for (long v = startVal; step > 0 ? v <= endVal : v >= endVal; v += step)
                     nums.Add(v.ToString());
                 return nums;
             }
@@ -1165,7 +1171,10 @@ public sealed partial class BashParser
         var rawItems = SplitTopLevelCommas(inner);
         var result = new List<string>();
         foreach (var item in rawItems)
+        {
             result.AddRange(ExpandNestedBraces(item));
+            PsEmitter.CheckBraceWords(result.Count);
+        }
         return result;
     }
 
