@@ -676,7 +676,7 @@ public class PsEmitterTests
     }
 
     [Fact]
-    public void Transpile_GreatAndUserFdTarget_DegradesToComment()
+    public void Transpile_GreatAndUserFdTarget_WritesToTheDescriptor()
     {
         // This previously asserted `cmd 1>&3`, on the assumption that a numeric
         // target is a genuine fd-merge worth keeping. But `1>&3` is NOT valid
@@ -685,10 +685,26 @@ public class PsEmitterTests
         // redirection operator"). Found in dotnet-install.sh and the Visual Studio
         // prereq scripts, which use the `exec 3>&1` + `>&3` logging idiom.
         //
-        // bash's user fds cannot be modeled (they are opened by `exec`), so this
-        // degrades to a visible inline no-op, as `<&-` already does.
+        // The user fds ARE modelled now (docs/specs/shell-fds-and-bash-source.md): `exec 3>&1` /
+        // `exec 3>file` open the descriptor and `cmd >&3` pipes the command into it, which is valid
+        // PowerShell however the descriptor was opened.
         var result = PsEmitter.Transpile("cmd >&3");
-        Assert.Equal("cmd <# ps-bash: fd merge 1>&3 has no PowerShell equivalent #>", result);
+        Assert.Equal("cmd | Write-BashFd 3", result);
+    }
+
+    [Fact]
+    public void Transpile_ExecRedirectsOnly_OpensDescriptors()
+    {
+        Assert.Equal("Invoke-BashExecFd 7 '<' f.txt", PsEmitter.Transpile("exec 7< f.txt"));
+        Assert.Equal("Invoke-BashExecFd 3 '>&' 1", PsEmitter.Transpile("exec 3>&1"));
+        Assert.Equal("Invoke-BashExecFd 3 '>&' -", PsEmitter.Transpile("exec 3>&-"));
+    }
+
+    [Fact]
+    public void Transpile_ExecWithCommand_RunsItThenExits()
+    {
+        var result = PsEmitter.Transpile("exec echo hi");
+        Assert.Equal("Invoke-BashEcho hi; exit $global:LASTEXITCODE", result);
     }
 
     [Fact]

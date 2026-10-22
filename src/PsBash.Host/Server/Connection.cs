@@ -25,7 +25,10 @@ internal sealed class Connection
         "$ErrorActionPreference = 'Continue'; " +
         "$global:LASTEXITCODE = 0; " +
         "$global:BashPositional = $null; " +
-        "$global:BashPositional0 = $null; ";
+        "$global:BashPositional0 = $null; " +
+        "$global:BASH_SOURCE = @(); " +
+        // Descriptors opened by `exec N<file` belong to one invocation.
+        "try { Clear-BashFd } catch { } ";
 
     private readonly Stream _stream;
     private readonly WorkerPool<SdkWorker> _pool;

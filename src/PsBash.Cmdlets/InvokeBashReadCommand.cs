@@ -125,6 +125,7 @@ public sealed class InvokeBashReadCommand : PSCmdlet
         int? maxChars = null;
         int? exactChars = null;
         double? timeoutSecs = null;
+        int? fromFd = null;   // -u N: read from descriptor N (opened by `exec N<file`) instead of stdin
         var varNames = new List<string>();
 
         // De-bundle short flags: `-ra` -> `-r` `-a`. Without this a bundled value
@@ -157,6 +158,17 @@ public sealed class InvokeBashReadCommand : PSCmdlet
             if (a == "-N" && i + 1 < args.Length)
             {
                 if (int.TryParse(args[i + 1], out var n)) exactChars = n;
+                i += 2; continue;
+            }
+            if (a == "-u" && i + 1 < args.Length)
+            {
+                if (!int.TryParse(args[i + 1], out var ufd) || ufd < 0)
+                {
+                    FileSystemHelpers.WriteBashError(this, $"read: {args[i + 1]}: invalid file descriptor specification");
+                    FileSystemHelpers.SetLastExitCode(this, 1);
+                    return;
+                }
+                fromFd = ufd;
                 i += 2; continue;
             }
             if (a == "-t" && i + 1 < args.Length)
@@ -205,7 +217,17 @@ public sealed class InvokeBashReadCommand : PSCmdlet
 
         // Source the input line.
         string? inputLine;
-        if (_pipeline.Count > 0)
+        if (fromFd is int ufd2 && ufd2 > 2)
+        {
+            try { inputLine = BashFdTable.ReadLine(ufd2); }
+            catch (InvalidOperationException ex)
+            {
+                FileSystemHelpers.WriteBashError(this, $"read: {ex.Message}");
+                FileSystemHelpers.SetLastExitCode(this, 1);
+                return;
+            }
+        }
+        else if (_pipeline.Count > 0)
         {
             // Pipeline mode — concatenate pipeline item text, strip trailing
             // newlines (oracle's `-replace "`r`n","`n" -replace "`n$",''` slice).

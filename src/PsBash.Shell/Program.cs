@@ -428,7 +428,8 @@ if (pwshCommand is not null && shellArgs.ScriptArgs.Length > 0)
 {
     pwshCommand = BuildPositionalPreamble(
         shellArgs.ScriptArgs[0],
-        shellArgs.ScriptArgs.Skip(1).ToArray()) + pwshCommand;
+        shellArgs.ScriptArgs.Skip(1).ToArray(),
+        isFile: false) + pwshCommand;
 }
 
 if (debug)
@@ -473,7 +474,7 @@ return exitCode;
 // Builds a PowerShell preamble that sets $global:BashPositional and
 // $global:BashPositional0 so that $1..$9, $@, $#, and $0 resolve
 // correctly inside a transpiled .sh script.
-static string BuildPositionalPreamble(string script0, string[] scriptArgs)
+static string BuildPositionalPreamble(string script0, string[] scriptArgs, bool isFile = true)
 {
     static string QuotePs(string s) =>
         "'" + s.Replace("'", "''") + "'";
@@ -483,7 +484,9 @@ static string BuildPositionalPreamble(string script0, string[] scriptArgs)
     var argList = string.Join(", ", scriptArgs.Select(QuotePs));
     var arrayLiteral = scriptArgs.Length == 0 ? "@()" : $"@({argList})";
 
-    return $"$global:BashPositional0 = {scriptName}; $global:BashPositional = {arrayLiteral}; ";
+    // BASH_SOURCE[0] is the script file itself (`-c` has none: the array stays empty, as in bash).
+    var source = isFile ? $"@({scriptName})" : "@()";
+    return $"$global:BashPositional0 = {scriptName}; $global:BashPositional = {arrayLiteral}; $global:BASH_SOURCE = {source}; ";
 }
 
 static async Task<string> ReadFileTextBoundedAsync(string path, long maxChars, string tooLargeMessage)

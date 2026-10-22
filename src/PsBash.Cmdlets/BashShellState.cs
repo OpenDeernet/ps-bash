@@ -27,7 +27,7 @@ public static class BashShellState
     private static readonly string[] GlobalNames =
     [
         "__BashErrexit", "__BashErrexitSuppress", "__BashErrexitTail", "__BashXtrace",
-        "BashFlags", "BashPositional", "BashPositional0", "BASH_REMATCH",
+        "BashFlags", "BashPositional", "BashPositional0", "BASH_REMATCH", "BASH_SOURCE",
         "BashTrapHandlers", "__BashTrapERR", "__BashTrapEXIT", "BashBgLastPid",
         "BashUserAliases", "BashLastArg", "BashDirStack",
     ];

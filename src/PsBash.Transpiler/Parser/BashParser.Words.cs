@@ -499,6 +499,7 @@ public sealed partial class BashParser
             // applied to the indexed or @-expanded value). Capture everything up to
             // the matching '}' as part of the suffix so EmitBracedVar can apply it —
             // previously this branch returned early and the operator was dropped.
+            ImmutableArray<WordPart>? elemArgWord = null;
             if (pos < len && raw[pos] != '}')
             {
                 int opStart = pos;
@@ -509,12 +510,20 @@ public sealed partial class BashParser
                     else if (raw[pos] == '}') braceDepth--;
                     if (braceDepth > 0) pos++;
                 }
-                subscript += raw[opStart..pos];
+                string tail = raw[opStart..pos];
+                subscript += tail;
+
+                // ${arr[i]:-$0}: a default / alternative / assigned word is an expandable WORD, as for a plain
+                // variable (see below); left raw, `$0` and `$(cmd)` in it came out literally.
+                int opLen = tail.Length >= 2 && tail[0] == ':' && tail[1] is '-' or '=' or '+' or '?' ? 2
+                    : tail.Length >= 1 && tail[0] is '-' or '=' or '+' or '?' ? 1 : 0;
+                if (opLen > 0 && IsWordBearingBracedOp(tail[..opLen]))
+                    elemArgWord = DecomposeWord(tail[opLen..]);
             }
 
             if (pos < len && raw[pos] == '}')
                 pos++; // skip }
-            parts.Add(new WordPart.BracedVarSub(varName, subscript));
+            parts.Add(new WordPart.BracedVarSub(varName, subscript, elemArgWord));
             return pos;
         }
 

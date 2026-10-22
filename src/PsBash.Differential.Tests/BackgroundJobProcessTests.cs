@@ -145,6 +145,31 @@ public class BackgroundJobProcessTests
         Assert.Empty(pids.Where(IsAlive));
     }
 
+    /// <summary>
+    /// Soak: 100 jobs started in waves (PSBASH_JOBS_MAX bounds the concurrent ones), all reaped, none left behind.
+    /// Minutes long (every job is a host process), so opt-in: set PSBASH_SOAK=1.
+    /// </summary>
+    [SkippableFact]
+    [Trait("Category", "Soak")]
+    public async Task Job_HundredJobsInWaves_AllReapedAndNoneLeftBehind()
+    {
+        Skip.If(Environment.GetEnvironmentVariable("PSBASH_SOAK") != "1", "opt-in soak: set PSBASH_SOAK=1");
+        var runner = PsBashRunner.Create().WithTimeout(900);
+        Skip.If(runner.TryResolveBinary() is null, "ps-bash binary not found -- build PsBash.Shell first");
+        var r = await runner.RunScriptAsync(
+            "export PSBASH_BG_MODE=process\n" +
+            "for w in 1 2 3 4 5 6 7 8 9 10; do for i in 1 2 3 4 5 6 7 8 9 10; do true & echo $!; done; wait; done; echo \"rc=$?\"");
+        var lines = r.Stdout.Replace("\r\n", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("rc=0", lines[^1]);
+        var pids = lines[..^1].Select(int.Parse).ToArray();
+        Assert.Equal(100, pids.Length);
+        Assert.Equal(100, pids.Distinct().Count());
+
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (pids.Any(IsAlive) && DateTime.UtcNow < deadline) await Task.Yield();
+        Assert.Empty(pids.Where(IsAlive));
+    }
+
     [SkippableFact]
     public async Task Job_StillRunningAtCommandEnd_LeavesNoProcessBehind()
     {

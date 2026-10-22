@@ -2523,6 +2523,9 @@ public static class PsEmitter
         if (TryEmitHereDoc(cmd, out var hereDocResult))
             return hereDocResult;
 
+        if (TryEmitFdRedirect(cmd, out var fdResult))
+            return fdResult;
+
         if (TryEmitStderrRedirect(cmd, out var stderrResult))
             return stderrResult;
 
@@ -2660,7 +2663,8 @@ public static class PsEmitter
     // (PsBuild.EmptyStdinScope) where every stdin reader sees end of input.
     private static bool TryEmitInputRedirect(Command.Simple cmd, out string result)
     {
-        var inputRedirect = cmd.Redirects.FirstOrDefault(r => r.Op == "<");
+        // Only fd 0 is stdin: `exec 7<file` / `cmd 3<file` open ANOTHER descriptor and must not feed the command.
+        var inputRedirect = cmd.Redirects.FirstOrDefault(r => r.Op == "<" && r.Fd == 0);
         if (inputRedirect is null)
         {
             result = "";
@@ -2895,6 +2899,71 @@ public static class PsEmitter
     // exactly (it is behavior): `unset`/`trap DEBUG` return immediately (outside
     // the else-if chain, same as before) so other `unset`/`trap` forms still fall
     // through to TryEmitMappedCommand; everything else sets specialResult.
+    /// <summary>
+    /// <c>cmd &gt;&amp;N</c> / <c>cmd &lt;&amp;N</c> with N &gt;= 3: a descriptor opened by <c>exec</c>. The command's output
+    /// is piped to <c>Write-BashFd N</c>, or its stdin is the rest of <c>Read-BashFd N</c>. N of 0-2 keeps the
+    /// ordinary redirect handling.
+    /// </summary>
+    private static bool TryEmitFdRedirect(Command.Simple cmd, out string result)
+    {
+        result = "";
+        if (cmd.Redirects.IsDefaultOrEmpty || cmd.Words.Length < 1 || !cmd.HereDocs.IsDefaultOrEmpty)
+            return false;
+
+        int? outFd = null, inFd = null;
+        var rest = ImmutableArray.CreateBuilder<Redirect>();
+        foreach (var r in cmd.Redirects)
+        {
+            var target = GetLiteralValue(r.Target);
+            if (target is not null && IsAllDigits(target) && int.TryParse(target, out var n) && n >= 3)
+            {
+                if (r.Op == ">&" && r.Fd == 1) { outFd = n; continue; }
+                if (r.Op == "<&" && r.Fd == 0) { inFd = n; continue; }
+            }
+            rest.Add(r);
+        }
+        if (outFd is null && inFd is null)
+            return false;
+
+        string body = EmitSimple(new Command.Simple(cmd.Words, cmd.EnvPairs, rest.ToImmutable()));
+        if (outFd is { } o)
+            body = (PsBuild.IsStatementList(body) ? "& { " + body + " }" : body) + $" | Write-BashFd {o}";
+        if (inFd is { } i)
+            body = $"Read-BashFd {i} | " + body;
+        result = body;
+        return true;
+    }
+
+    /// <summary>
+    /// <c>exec</c>. With only redirections (<c>exec 7&lt;f</c>, <c>exec 8&gt;&amp;-</c>) each one opens, duplicates or
+    /// closes a numbered descriptor (<c>Invoke-BashExecFd</c>); with a command (<c>exec cmd args</c>) the command
+    /// runs and the shell then leaves with its status (a subshell, only itself) — there is no process image to replace.
+    /// </summary>
+    private static bool TryEmitExec(Command.Simple cmd, out string result)
+    {
+        if (cmd.Words.Length > 1)
+        {
+            var inner = new Command.Simple(cmd.Words.RemoveAt(0), cmd.EnvPairs, cmd.Redirects);
+            result = EmitSimple(inner) + "; " + ErrexitExitStatement();
+            return true;
+        }
+
+        if (cmd.Redirects.IsDefaultOrEmpty)
+        {
+            result = "$global:LASTEXITCODE = 0";
+            return true;
+        }
+
+        var steps = new List<string>();
+        foreach (var r in cmd.Redirects)
+        {
+            // `exec N<&-` / `exec N>&-` close; `exec N>&M` duplicates; the rest open a file.
+            steps.Add($"Invoke-BashExecFd {r.Fd} {PsBuild.SingleQuote(r.Op)} {EmitArgWord(r.Target)}");
+        }
+        result = string.Join("; ", steps);
+        return true;
+    }
+
     private static bool TryEmitSpecialBuiltins(Command.Simple cmd, out string result)
     {
         result = "";
@@ -2910,6 +2979,9 @@ public static class PsEmitter
         }
 
         var cmd0 = GetLiteralValue(cmd.Words[0]);
+
+        if (cmd0 == "exec" && cmd.HereDocs.IsDefaultOrEmpty && cmd.EnvPairs.IsEmpty)
+            return TryEmitExec(cmd, out result);
 
         // unset PROMPT_COMMAND -> Unregister-BashPromptHook -Name 'prompt-command'
         // Checked early (outside the else-if chain) so that `unset OTHER_VAR` still
@@ -3435,6 +3507,9 @@ public static class PsEmitter
             // stderr to wherever stdout now points).
             "&>" => $">{target} 2>&1",
             "&>>" => $">>{target} 2>&1",
+            // `cmd 7<file` opens descriptor 7 FOR the command; nothing here reads it, and the raw `7<file` is a
+            // PowerShell parse error ("'<' is reserved"). Stdin is untouched, as in bash.
+            "<" when r.Fd > 2 => $"<# ps-bash: fd {r.Fd} input redirect ignored #>",
             _ => $"{r.Fd}{r.Op}{target}",
         };
     }
@@ -5413,6 +5488,7 @@ public static class PsEmitter
                 string arrayVar = bvs.Name switch
                 {
                     "BASH_VERSINFO" => "$global:BashVersionInfo",
+                    "BASH_SOURCE" => "$global:BASH_SOURCE",
                     var n => $"${n}"
                 };
 
@@ -5435,7 +5511,7 @@ public static class PsEmitter
                 string elemRef = int.TryParse(subscript, out _)
                     ? $"{arrayVar}[{subscript}]"
                     : $"{arrayVar}['{SqEsc(subscript)}']";
-                return EmitScalarSuffix(elemRef, subOp, inDoubleQuote)
+                return EmitScalarSuffix(elemRef, subOp, inDoubleQuote, bvs.ArgWord)
                     ?? (inDoubleQuote ? $"$({elemRef})" : elemRef);
             }
         }

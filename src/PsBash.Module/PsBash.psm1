@@ -89,6 +89,10 @@ if (-not (Get-Variable -Name BashPositional -Scope global -ErrorAction SilentlyC
 if (-not (Get-Variable -Name BashPositional0 -Scope global -ErrorAction SilentlyContinue)) {
     $global:BashPositional0 = $null
 }
+# BASH_SOURCE: the script file (and, while `source` runs, the sourced files above it); empty for `-c`.
+if (-not (Get-Variable -Name BASH_SOURCE -Scope global -ErrorAction SilentlyContinue)) {
+    $global:BASH_SOURCE = @()
+}
 
 # --- Error Mode ---
 # Controls how errors are reported:

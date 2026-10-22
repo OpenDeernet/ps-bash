@@ -117,6 +117,11 @@ public sealed class InvokeBashSourceCommand : PSCmdlet
             result = "try {\n" + result + "\n} finally { $global:BashPositional = $global:" + saved
                 + "; Remove-Variable -Name " + saved + " -Scope Global -ErrorAction SilentlyContinue }";
         }
+        // BASH_SOURCE[0] is the sourced file, as typed (`source "$DIR/lib.sh"` -> "$DIR/lib.sh"), for as long
+        // as it runs; the caller's file is BASH_SOURCE[1]. Scripts find their own directory from it.
+        string quotedPath = "'" + Path.Replace("'", "''") + "'";
+        result = "$global:BASH_SOURCE = @(" + quotedPath + ") + @($global:BASH_SOURCE); try {\n" + result
+            + "\n} finally { $global:BASH_SOURCE = @($global:BASH_SOURCE | Select-Object -Skip 1) }";
         return ScriptBlock.Create(result);
     }
     // The shared runtime path policy (ProviderPath → RuntimePath.Map). This used to carry its own
