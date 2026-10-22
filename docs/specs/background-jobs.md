@@ -388,6 +388,11 @@ Known gaps / not done:
   (bounded by `MaxSpares`), so a command with several `&` starts its spares before the first one is reached. Effect on the
   cold-miss bar is NOT yet measured: the only run after the change was on a saturated machine (echo p50 1023 ms vs 278 ms)
   and is not comparable. Re-run `scripts/bench-warm.ps1` on a quiet machine before deciding the default flip.
+- A/B on the same Debug binary, back to back, machine at ~55% CPU (p50 ms, inproc -> process, 8 runs each):
+  `{ :; } & wait` 935 -> 3505 (3.7x; bar 1.05x), `sleep 1 & wait` 1898 -> 2287 (fg `sleep 1` 1848, bar +50 ms),
+  4 concurrent 7282 -> 4139 (batch wall, noisy). Process mode still misses the cold-miss bars even with the
+  spare pool sized from the command, so the default stays `inproc` and Phase 6 (which this design gates on the
+  bars) is not started. The remaining cost is a job host's start (process + runspace), not the prelude.
 - Orphan tests that exist: command-end leaves no job process, and a launcher killed without cleanup leaves none
   (Windows; `BackgroundJobProcessTests`), 10 short jobs are all reaped, and a recorded identity does not match a
   different process on the same pid (`JobProcessTests`). Not written: a 100-job soak and the POSIX hard kill.
