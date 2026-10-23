@@ -1012,8 +1012,8 @@ public static class PsEmitter
     /// is literal, so it is backtick-escaped (the PowerShell wildcard escape, preserved
     /// verbatim inside the single-quoted clause). Glob metacharacters OUTSIDE quotes stay
     /// active (<c>"foo"*</c> → <c>foo*</c>). Backslash escapes the next char in both
-    /// contexts. (Variable expansion inside a pattern — <c>$pat</c> — is a separate,
-    /// larger change: the parser stores patterns as raw text, not words.)
+    /// contexts. (A pattern holding an expansion — <c>$pat</c> — goes through
+    /// <see cref="EmitCasePatternTest"/> instead.)
     /// </summary>
     private static string NormalizeCasePattern(string raw)
     {
@@ -1083,6 +1083,22 @@ public static class PsEmitter
         sb.Append(c);
     }
 
+    /// <summary>
+    /// The test of one case pattern against <c>$_</c>. A pattern holding an expansion (<c>$i</c>,
+    /// <c>"$i"</c>, <c>$(cmd)</c>) is only known at run time: an unquoted expansion's value is pattern
+    /// text, quoted parts are literal — the same rule as the right-hand side of <c>[[ x == $p ]]</c>.
+    /// </summary>
+    private static string EmitCasePatternTest(string raw)
+    {
+        if (raw.IndexOfAny(['$', '`']) >= 0)
+        {
+            var word = new CompoundWord(BashParser.DecomposeWord(raw));
+            if (!TryGetStaticPatternText(word, out _))
+                return PsBuild.DynamicPatternTest("$_", EmitGlobPatternExpr(word, mapPaths: false));
+        }
+        return PsBuild.PatternTest("$_", BashPattern.ToAnchoredRegex(raw));
+    }
+
     private static string EmitCase(Command.Case caseCmd)
     {
         // Every arm matches through BashPattern (bash glob/extglob → anchored regex) tested by the
@@ -1105,7 +1121,7 @@ public static class PsEmitter
                 if (p > 0) sb.Append(' ');
                 sb.Append(arm.Patterns[p] == "*"
                     ? "{ $true }"
-                    : "{ " + PsBuild.PatternTest("$_", BashPattern.ToAnchoredRegex(arm.Patterns[p])) + " }");
+                    : "{ " + EmitCasePatternTest(arm.Patterns[p]) + " }");
                 sb.Append(" { ").Append(bodyText).Append(" }");
             }
         }
