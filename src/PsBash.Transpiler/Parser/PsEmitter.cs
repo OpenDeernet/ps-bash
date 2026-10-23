@@ -38,6 +38,10 @@ public static class PsEmitter
     [ThreadStatic]
     private static bool _inStdinScope;
 
+    /// <summary>Names declared <c>declare -i</c> in the script being emitted: later plain assignments evaluate arithmetically.</summary>
+    [ThreadStatic]
+    private static HashSet<string>? _intVars;
+
     /// <summary>Lexical nesting of <c>&lt; /dev/null</c> scopes (names <see cref="PsBuild.EmptyStdinScope"/>'s save variable).</summary>
     [ThreadStatic]
     private static int _emptyStdinDepth;
@@ -432,6 +436,8 @@ public static class PsEmitter
         var prior = _context;
         var priorErrexit = _errexitMode;
         var priorExempt = _errexitExemptDepth;
+        var priorIntVars = _intVars;
+        _intVars = new HashSet<string>(StringComparer.Ordinal);
         _context = context;
         // Only a script that itself turns errexit on gets the checks (a sourced file running under
         // its caller's `set -e` does not — see intentional-differences.md).
@@ -447,6 +453,7 @@ public static class PsEmitter
         finally
         {
             _context = prior;
+            _intVars = priorIntVars;
             _errexitMode = priorErrexit;
             _errexitExemptDepth = priorExempt;
         }
@@ -2535,7 +2542,10 @@ public static class PsEmitter
             else
             {
                 sb.Append(pair.Op == AssignOp.PlusEqual ? " += " : " = ");
-                sb.Append(EmitAssignmentValue(pair.Value));
+                string assigned = EmitAssignmentValue(pair.Value);
+                sb.Append(pair.Op == AssignOp.Equal && _intVars?.Contains(pair.Name) == true
+                    ? "[string](Invoke-BashArith ([string](" + assigned + ")))"
+                    : assigned);
             }
         }
         // `local`/`export x=$(false)`: the status is the BUILTIN's (0), not the substitution's —
@@ -2767,6 +2777,11 @@ public static class PsEmitter
             else if (val is { Length: > 1 } && val[0] == '-' && val.AsSpan(1).IndexOfAnyExcept("pfF") < 0) isPrint = true;
             else if (val is not null && !val.StartsWith('-')) varName = val;
             else if (val is null && TrySplitInitializer(word, out var n, out var v)) { exprName = n; exprValue = v; }
+        }
+        if (!isPrint && !isAssoc && _intVars is not null && cmd.Words.Skip(1).Any(w => GetLiteralValue(w) == "-i"))
+        {
+            string? intName = exprName ?? (varName is null ? null : varName.Split('=')[0]);
+            if (intName is not null && IsValidVarName(intName)) _intVars.Add(intName);
         }
         if (!isPrint && exprName is not null && !isAssoc)
         {

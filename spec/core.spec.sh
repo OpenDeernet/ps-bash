@@ -82,3 +82,13 @@ readonly v=1; unset v 2>/dev/null; echo $? $v
 w=1; unset w; echo $? "${w-gone}"
 ## stdout: 0 gone
 ## status: 0
+
+#### declare -i evaluates later assignments
+declare -i n=2+3; n=n+1; n=n*2; echo $n
+## stdout: 12
+## status: 0
+
+#### plain variable keeps the text
+m=2+3; m=m+1; echo $m
+## stdout: m+1
+## status: 0

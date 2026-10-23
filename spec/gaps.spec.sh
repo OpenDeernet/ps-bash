@@ -10,7 +10,6 @@ x=1; declare -n r=x; r=5; echo $x
 declare -i n=2+3; n=n+1; echo $n
 ## stdout: 6
 ## status: 0
-## XFAIL ps-bash declare-i integer attribute not applied
 
 #### unset of a readonly variable fails
 readonly v=1; unset v 2>/dev/null; echo $?
