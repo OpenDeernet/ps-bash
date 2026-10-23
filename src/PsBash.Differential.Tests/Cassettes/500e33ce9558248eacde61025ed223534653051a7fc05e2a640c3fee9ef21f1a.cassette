@@ -1,0 +1,13 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 62
+stdout-length: 13
+stderr-length: 0
+==== SCRIPT ====
+c=(a b c); for i in "${c[@]}" q; do echo -n "<$i>"; done; echo
+==== STDOUT ====
+<a><b><c><q>
+
+==== STDERR ====
+

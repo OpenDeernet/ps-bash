@@ -46,6 +46,7 @@ rows prove only that the construct does not crash; rows that print an absolute p
 | `eval echo \$$a` | emitted unparseable PowerShell |
 | a sourced/eval'd pipeline | output ended each line with CR LF (fused batch) |
 | `getopts` | command not found; now a builtin with silent mode, clusters, `OPTIND`/`OPTARG` |
+| `"${a[@]}"` / `"$@"` beside other words | joined into one argument; now one argument per element (commands, `for` lists, array literals) |
 
 ### Missing builtins (command not found)
 
@@ -55,7 +56,7 @@ logout select suspend times ulimit umask`. (`getopts` was the one scripts use mo
 ### Semantics gaps (the construct runs but differs)
 
 - Arrays: sparse assignment (`a[3]=x` on an empty array), associative-array literals and key listing, `declare -p`,
-  `"${a[@]/pat/rep}"`, `"${a[@]}"` word splitting when quoted, `unset a[i]`, `readarray -C`.
+  `"${a[@]/pat/rep}"`, `unset a[i]`, `readarray -C`.
 - Variables: `declare -n` (namerefs), `declare -i`, `readonly`/`declare -r` enforcement, `export -n`, `local` dynamic
   scope, `${x@A}`, `${@}` with `IFS`, `set -u` unbound-variable error, (`${x:?msg}` in a subshell now ends only the subshell.)
 - Special variables not provided: `BASHPID BASHOPTS SHELLOPTS EUID UID GROUPS HOSTNAME HOSTTYPE MACHTYPE OSTYPE

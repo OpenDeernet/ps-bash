@@ -2472,13 +2472,13 @@ public static class PsEmitter
                 // A glob element (`arr=(*.txt)`) expands to ZERO or more elements, which the comma
                 // form cannot splice (`'a',@('b','c')` is two elements). Such a list is emitted as
                 // `@( item; item; ... )`, whose statements each enumerate into one flat array.
-                bool anyGlobElement = pair.ArrayValue.Elements.Any(IsGlobWord);
+                bool anyGlobElement = pair.ArrayValue.Elements.Any(e => IsGlobWord(e) || IsArrayValuedWord(e));
                 for (int j = 0; j < pair.ArrayValue.Elements.Length; j++)
                 {
                     if (j > 0)
                         sb.Append(anyGlobElement ? "; " : ",");
                     var elem = pair.ArrayValue.Elements[j];
-                    if (anyGlobElement && IsGlobWord(elem))
+                    if (anyGlobElement && (IsGlobWord(elem) || IsArrayValuedWord(elem)))
                     {
                         sb.Append(EmitUnquotedSplitWordArray(elem));
                         continue;
@@ -5179,7 +5179,17 @@ public static class PsEmitter
     /// "Cannot convert System.Object[] to String").
     /// </summary>
     private static bool IsArrayValuedWord(CompoundWord word)
-        => IsUnquotedArrayAllWord(word) || IsPlainBraceWord(word);
+        => IsUnquotedArrayAllWord(word) || IsQuotedArrayAllWord(word) || IsPlainBraceWord(word);
+
+    /// <summary>
+    /// Exactly <c>"${a[@]}"</c> or <c>"$@"</c>: each element is its OWN argument, never split again. Joined into one
+    /// string it made <c>printf '[%s]' "${a[@]}"</c> print <c>[a b c]</c> instead of <c>[a][b][c]</c>.
+    /// </summary>
+    private static bool IsQuotedArrayAllWord(CompoundWord word)
+        => word.Parts is [WordPart.DoubleQuoted { Parts: [var only] }]
+           && only is WordPart.SimpleVarSub { Name: "@" }
+               or WordPart.BracedVarSub { Name: "@", Suffix: null }
+               or WordPart.BracedVarSub { Suffix: "[@]" };
 
     /// <summary>A brace expansion (<c>{1..5}</c>, <c>x{a,b}</c>) with no glob part: an array of words at run time.</summary>
     private static bool IsPlainBraceWord(CompoundWord word)
@@ -5201,8 +5211,17 @@ public static class PsEmitter
     /// pathname expansion of each word), fed the value / the substitution's whole text; a glob word goes
     /// through <c>ConvertTo-BashGlob</c> (see <see cref="EmitGlobPatternExpr"/>).
     /// </summary>
+    private static string EmitQuotedArrayElements(WordPart part) => part switch
+    {
+        WordPart.BracedVarSub { Name: "@" } or WordPart.SimpleVarSub { Name: "@" }
+            => "@($(if ($global:BashPositional) { $global:BashPositional } else { $args }))",
+        _ => "@(" + EmitBracedVar((WordPart.BracedVarSub)part) + ")",
+    };
+
     private static string EmitUnquotedSplitWordArray(CompoundWord word)
-        => IsPlainBraceWord(word)
+        => IsQuotedArrayAllWord(word)
+            ? EmitQuotedArrayElements(((WordPart.DoubleQuoted)word.Parts[0]).Parts[0])
+            : IsPlainBraceWord(word)
             ? "@(" + EmitBraceExpandedWord(word.Parts) + ")"
             : IsUnquotedArrayAllWord(word)
             // ConvertTo-BashWords takes ONE string: the elements joined by a space split back apart on IFS.
