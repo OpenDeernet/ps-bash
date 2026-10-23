@@ -307,5 +307,4 @@ status=99
 - exit
 ## END
 ## status: 5
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10

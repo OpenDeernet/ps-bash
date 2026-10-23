@@ -170,11 +170,29 @@ public sealed partial class BashParser
         if (pendingHeredocs.Count > 0)
             CollectHereDocBodies(pendingHeredocs, hereDocs);
 
+        // `\break` / `\return`: the backslash only escapes the letter, so it is still the control builtin.
+        if (words.Count > 0 && EscapedControlBuiltin(words[0]) is { } controlName)
+            words[0] = new CompoundWord(ImmutableArray.Create<WordPart>(new WordPart.Literal(controlName)));
+
         return new Command.Simple(
             words.ToImmutable(),
             envPairs.ToImmutable(),
             redirects.ToImmutable(),
             hereDocs.ToImmutable());
+    }
+
+    private static string? EscapedControlBuiltin(CompoundWord word)
+    {
+        if (!word.Parts.Any(p => p is WordPart.EscapedLiteral)) return null;
+        var sb = new System.Text.StringBuilder();
+        foreach (var p in word.Parts)
+        {
+            if (p is WordPart.Literal l) sb.Append(l.Value);
+            else if (p is WordPart.EscapedLiteral e) sb.Append(e.Value);
+            else return null;
+        }
+        var name = sb.ToString();
+        return name is "break" or "continue" or "return" or "exit" ? name : null;
     }
 
     /// <summary>
