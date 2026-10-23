@@ -1,0 +1,13 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 39
+stdout-length: 23
+stderr-length: 0
+==== SCRIPT ====
+printf '%(%Y-%m-%d %j %a %b)T\n' 302400
+==== STDOUT ====
+1970-01-04 004 Sun Jan
+
+==== STDERR ====
+

@@ -61,11 +61,11 @@ logout select suspend times ulimit umask`. (`getopts` was the one scripts use mo
   scope, `${x@A}`, `${@}` with `IFS`, `set -u` unbound-variable error, (`${x:?msg}` in a subshell now ends only the subshell.)
 - Special variables still not provided: `BASHOPTS SHELLOPTS GROUPS DIRSTACK FUNCNAME LINENO(in sourced) OPTIND(initial) PS4 TIMEFORMAT`. (`UID EUID OSTYPE HOSTTYPE MACHTYPE HOSTNAME BASHPID EPOCHSECONDS EPOCHREALTIME` are now provided; `OSTYPE` is `msys` on Windows.)
   EPOCHSECONDS EPOCHREALTIME DIRSTACK FUNCNAME LINENO(in sourced) OPTIND PS4 TIMEFORMAT`.
-- Builtins: `printf %q` and `%(...)T`, `read -d`, `set -f`/`set -o` listing, `set -x` trace output, `shift` error
+- Builtins: `printf %q` and `%(...)T`, `read -d`, `set -o` listing, `set -x` trace output, `shift` error
   status, `shopt -p`, `test -v`, `unalias` error, `trap` for DEBUG/ERR/RETURN/EXIT-ordering/signals.
 - Pipelines: `pipefail`, `PIPESTATUS` (deferred on purpose, see the memory note), `time` formatting.
 - Redirection: `exec N>file` for fd 1/2, `/dev/fd/N`, `{var}>file`, `<>`, `noclobber`, swapping `3>&1 1>&2 2>&3`.
-- Globbing: `extglob`, `globstar`, `nocaseglob`, `failglob`, `set -f`.
+- Globbing: `extglob`, `globstar`, `nocaseglob`, `failglob`. (`set -f`/`set -o noglob` now work; `printf %q` and `%(fmt)T` are implemented.)
 - Misc: command-not-found status (127), `function-unset`, empty-command syntax errors, here-document into a function.
 
 ### Windows-environment differences (not counted as bugs)

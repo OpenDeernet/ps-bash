@@ -1,0 +1,14 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 113
+stdout-length: 10
+stderr-length: 0
+==== SCRIPT ====
+case $(printf '%(%Y)T' -1) in 20[0-9][0-9]) echo year;; esac; case $(printf '%(%s)T') in [0-9]*) echo secs;; esac
+==== STDOUT ====
+year
+secs
+
+==== STDERR ====
+

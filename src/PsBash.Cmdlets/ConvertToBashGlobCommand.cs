@@ -30,10 +30,13 @@ public sealed class ConvertToBashGlobCommand : PSCmdlet
     [AllowEmptyString]
     public string? Pattern { get; set; }
 
+    /// <summary><c>set -f</c> / <c>set -o noglob</c>: patterns stay literal.</summary>
+    internal static bool IsNoGlob(SessionState session) => session.PSVariable.GetValue("global:__BashNoglob") is true;
+
     protected override void ProcessRecord()
     {
         string pattern = Pattern ?? string.Empty;
-        if (!BashGlob.HasPattern(pattern))
+        if (IsNoGlob(SessionState) || !BashGlob.HasPattern(pattern))
         {
             WriteObject(BashGlob.Unescape(pattern));
             return;

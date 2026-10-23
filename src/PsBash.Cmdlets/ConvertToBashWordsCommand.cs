@@ -52,7 +52,7 @@ public sealed class ConvertToBashWordsCommand : PSCmdlet
             && word[1] == ':' && word[2] == '\\'
             ? word.Replace('\\', '/')
             : word;
-        if (!BashGlob.HasPattern(pattern)) return new[] { word };
+        if (ConvertToBashGlobCommand.IsNoGlob(SessionState) || !BashGlob.HasPattern(pattern)) return new[] { word };
 
         string cwd = SessionState.Path.CurrentFileSystemLocation.ProviderPath;
         var matches = BashGlob.Expand(pattern, cwd, InvokeBashShoptCommand.IsEnabled("dotglob"));

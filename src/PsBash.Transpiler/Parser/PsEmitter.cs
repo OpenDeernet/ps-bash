@@ -3233,12 +3233,12 @@ public static class PsEmitter
             if (arg is "-o" or "+o")
             {
                 var name = literalArgs[++i];
-                if (name is not ("errexit" or "xtrace" or "pipefail"))
+                if (name is not ("errexit" or "xtrace" or "pipefail" or "noglob"))
                     throw new ParseException($"set: option '{name ?? "dynamic name"}' is not supported by ps-bash", 1, 1, "shell-option");
                 continue;
             }
-            if (arg is "+e" or "+x") continue;
-            if (arg.StartsWith('-') && arg.Length > 1 && arg.Skip(1).All(c => c is 'e' or 'x')) continue;
+            if (arg is "+e" or "+x" or "+f") continue;
+            if (arg.StartsWith('-') && arg.Length > 1 && arg.Skip(1).All(c => c is 'e' or 'x' or 'f')) continue;
             string unsupported = arg.Contains('u') ? "nounset" : arg.Contains('C') ? "noclobber" : arg;
             throw new ParseException($"set: option '{unsupported}' is not supported by ps-bash", 1, 1, "shell-option");
         }
@@ -3271,6 +3271,11 @@ public static class PsEmitter
         else
         {
             var args = literalArgs;
+            // noglob (`set -f`, `set -o noglob`): the glob cmdlets keep a pattern literal while the flag is set.
+            if (args.Count == 1 && args[0] == "-f" || args.SequenceEqual(new[] { "-o", "noglob" }))
+                return "$global:__BashNoglob = $true; " + PsBuild.SetStatus(0);
+            if (args.Count == 1 && args[0] == "+f" || args.SequenceEqual(new[] { "+o", "noglob" }))
+                return "$global:__BashNoglob = $false; " + PsBuild.SetStatus(0);
             bool longOpt = args.Any(a => a == "-o");
             // `set +e` / `set +o errexit` turn errexit back off (the runtime checks read the flag).
             bool errexitOff = args.Any(a => a is not null && a.StartsWith('+') && a.Contains('e'))
@@ -3301,6 +3306,7 @@ public static class PsEmitter
                 var parts = new List<string>();
                 if (e) parts.AddRange(new[]{"$ErrorActionPreference = 'Stop'", SetErrexitOn});
                 if (x) parts.Add(SetXtraceOn);
+                if (flags.Any(f => f!.Contains('f'))) parts.Add("$global:__BashNoglob = $true");
                 if (parts.Count > 0) specialResult = string.Join("; ", parts);
             }
         }

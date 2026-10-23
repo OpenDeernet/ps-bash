@@ -168,8 +168,31 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
                 string widthStr = width.ToString();
                 string precStr = precision.ToString();
 
+                if (spec == '(')
+                {
+                    // %(fmt)T: strftime of an epoch-seconds argument (-1 or none = now).
+                    int close = format.IndexOf(")T", j, StringComparison.Ordinal);
+                    if (close > 0)
+                    {
+                        string fmt = format.Substring(j + 1, close - j - 1);
+                        string raw = argIdx < argList.Length ? argList[argIdx] : "-1";
+                        long secs = long.TryParse(raw, out var parsed) ? parsed : -1;
+                        var when = secs < 0 ? DateTimeOffset.Now : DateTimeOffset.FromUnixTimeSeconds(secs).ToLocalTime();
+                        sb.Append(InvokeBashDateCommand.ConvertDateFormat(when, fmt));
+                        argIdx++;
+                        i = close + 2;
+                        continue;
+                    }
+                }
+
                 switch (spec)
                 {
+                    case 'q':
+                        if (argIdx < converted.Count)
+                            sb.Append(ShellQuote(argList[argIdx]));
+                        argIdx++;
+                        i = j + 1;
+                        break;
                     case 's':
                         if (argIdx < converted.Count)
                         {
@@ -424,6 +447,51 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
     // PadLeft. Cap at a value past any meaningful terminal field so neither can
     // happen. The spec regex only yields digits, so a parse failure IS overflow.
     private const int MaxPrintfField = 1_000_000;
+    /// <summary>
+    /// bash <c>%q</c>: the argument quoted so the shell reads it back as the same word. Backslash-escapes
+    /// metacharacters; a control character switches to the <c>$'...'</c> form; the empty string is <c>''</c>.
+    /// </summary>
+    internal static string ShellQuote(string s)
+    {
+        if (s.Length == 0) return "''";
+        bool control = false;
+        foreach (char c in s) if (c < ' ' || c == '\u007f') { control = true; break; }
+        var sb = new StringBuilder();
+        if (control)
+        {
+            sb.Append("$'");
+            foreach (char c in s)
+            {
+                switch (c)
+                {
+                    case '\n': sb.Append("\\n"); break;
+                    case '\t': sb.Append("\\t"); break;
+                    case '\r': sb.Append("\\r"); break;
+                    case '\a': sb.Append("\\a"); break;
+                    case '\b': sb.Append("\\b"); break;
+                    case '\f': sb.Append("\\f"); break;
+                    case '\v': sb.Append("\\v"); break;
+                    case '\u001b': sb.Append("\\E"); break;
+                    case '\'': sb.Append("\\'"); break;
+                    case '\\': sb.Append("\\\\"); break;
+                    default:
+                        if (c < ' ' || c == '\u007f') sb.Append('\\').Append(Convert.ToString(c, 8).PadLeft(3, '0'));
+                        else sb.Append(c);
+                        break;
+                }
+            }
+            return sb.Append('\'').ToString();
+        }
+        for (int k = 0; k < s.Length; k++)
+        {
+            char c = s[k];
+            bool safe = char.IsLetterOrDigit(c) || c > '\u007f' || "_-./:+=@%".IndexOf(c) >= 0
+                        || (k > 0 && (c == '#' || c == '~'));
+            if (!safe) sb.Append('\\');
+            sb.Append(c);
+        }
+        return sb.ToString();
+    }
     private static int ParseFieldWidth(string digits)
         => int.TryParse(digits, out int v) ? Math.Min(v, MaxPrintfField) : MaxPrintfField;
 

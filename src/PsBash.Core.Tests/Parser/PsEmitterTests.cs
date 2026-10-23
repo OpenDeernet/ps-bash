@@ -4805,7 +4805,6 @@ public class PsEmitterTests
     [InlineData("set \"$flags\"")]
     [InlineData("set -o \"$option\"")]
     [InlineData("set -n")]
-    [InlineData("set -f")]
     [InlineData("set -o noexec")]
     [InlineData("set -o unknown")]
     [InlineData("set -o pipefail -e")]

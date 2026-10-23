@@ -1,0 +1,24 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 86
+stdout-length: 61
+stderr-length: 0
+==== SCRIPT ====
+printf '%q\n' 'a b' "it's" 'x$y' 'a;b' 'a&b' 'a|b' 'a*b' 'a?b' 'a(b' 'a"b' 'a`b' 'a\b'
+==== STDOUT ====
+a\ b
+it\'s
+x\$y
+a\;b
+a\&b
+a\|b
+a\*b
+a\?b
+a\(b
+a\"b
+a\`b
+a\\b
+
+==== STDERR ====
+

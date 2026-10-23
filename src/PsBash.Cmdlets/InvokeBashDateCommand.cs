@@ -218,7 +218,7 @@ public sealed class InvokeBashDateCommand : PSCmdlet
     /// Reproduces the psm1 oracle's <c>Convert-DateFormat</c> per-char switch
     /// byte-for-byte. Unknown specs preserve <c>%X</c> literally.
     /// </summary>
-    private static string ConvertDateFormat(DateTimeOffset dto, string format)
+    internal static string ConvertDateFormat(DateTimeOffset dto, string format)
     {
         var ci = CultureInfo.InvariantCulture;
         var sb = new StringBuilder();
