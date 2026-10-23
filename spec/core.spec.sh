@@ -156,3 +156,25 @@ A
 B A
 ## END
 ## status: 0
+
+#### flock runs the command and returns its status
+d=$(mktemp -d); flock "$d/l" printf "held\n"; echo $?; rm -rf "$d"
+## STDOUT:
+held
+0
+## END
+## status: 0
+
+#### flock -c runs a command line
+d=$(mktemp -d); flock "$d/l" -c "echo a; echo b"; echo $?; rm -rf "$d"
+## STDOUT:
+a
+b
+0
+## END
+## status: 0
+
+#### flock -n fails while the lock is held
+d=$(mktemp -d); flock "$d/l" sleep 2 & sleep 0.5; flock -n "$d/l" echo got; echo $?; wait; rm -rf "$d"
+## stdout: 1
+## status: 0

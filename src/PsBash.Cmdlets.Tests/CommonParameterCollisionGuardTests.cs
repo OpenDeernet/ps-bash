@@ -52,6 +52,8 @@ public class CommonParameterCollisionGuardTests
             // cmdlets still keep decoys for DIRECT calls (Pester: `Invoke-BashTee -a f`).
             // getopts: its argv is the script's own (`getopts ab: o -a`), so every dash word is single-quoted.
             ["getopts"] = new(CollidingLetters),
+            // flock: -n/-x/-s/-w/-E/-c are the script's own flags; every dash word is single-quoted.
+            ["flock"] = new(CollidingLetters),
             ["time"] = new(CollidingLetters),
             ["env"] = new(CollidingLetters),
             // command: emitter single-quotes every dash literal (its own -v/-V/-p AND the inner
