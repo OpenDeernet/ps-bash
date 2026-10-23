@@ -178,3 +178,15 @@ b
 d=$(mktemp -d); flock "$d/l" sleep 2 & sleep 0.5; flock -n "$d/l" echo got; echo $?; wait; rm -rf "$d"
 ## stdout: 1
 ## status: 0
+
+#### assignment to a readonly variable fails and keeps the value
+readonly X=1
+X=2
+echo "rc=$? X=$X"
+Y=3
+echo Y=$Y
+## STDOUT:
+rc=1 X=1
+Y=3
+## END
+## status: 0

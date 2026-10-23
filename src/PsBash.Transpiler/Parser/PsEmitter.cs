@@ -41,6 +41,9 @@ public static class PsEmitter
     /// <summary>Names declared <c>declare -i</c> in the script being emitted: later plain assignments evaluate arithmetically.</summary>
     [ThreadStatic]
     private static HashSet<string>? _intVars;
+    // Names a literal `readonly NAME` made read-only earlier in this script: a later plain assignment is refused.
+    [ThreadStatic]
+    private static HashSet<string>? _readonlyVars;
 
     /// <summary><c>declare -n ref=target</c> in the script being emitted: <c>ref</c> reads and writes <c>target</c>.
     /// Static only (a literal target, resolved at emit time); a nameref set at run time is not modelled.</summary>
@@ -452,6 +455,8 @@ public static class PsEmitter
         var priorExempt = _errexitExemptDepth;
         var priorIntVars = _intVars;
         _intVars = new HashSet<string>(StringComparer.Ordinal);
+        var priorReadonly = _readonlyVars;
+        _readonlyVars = new HashSet<string>(StringComparer.Ordinal);
         var priorNamerefs = _namerefs;
         _namerefs = new Dictionary<string, string>(StringComparer.Ordinal);
         _context = context;
@@ -470,6 +475,7 @@ public static class PsEmitter
         {
             _context = prior;
             _intVars = priorIntVars;
+            _readonlyVars = priorReadonly;
             _namerefs = priorNamerefs;
             _errexitMode = priorErrexit;
             _errexitExemptDepth = priorExempt;
@@ -2499,6 +2505,13 @@ public static class PsEmitter
                 continue;
             }
 
+            if (!cmd.IsLocal && !cmd.IsExport && _readonlyVars?.Contains(pair.Name) == true)
+            {
+                sb.Append("Write-Error ").Append(PsBuild.SingleQuote($"ps-bash: {pair.Name}: readonly variable"))
+                  .Append(" -ErrorAction Continue; ").Append(PsBuild.SetStatus(1));
+                continue;
+            }
+
             string varPrefix = cmd.IsLocal ? "$" : "$env:";
 
             // Array assignment: arr=(a b c) -> $arr = @('a','b','c')
@@ -3243,9 +3256,11 @@ public static class PsEmitter
                 if (eq <= 0)
                 {
                     roSb.Append("[PsBash.Cmdlets.BashShellState]::MarkReadonly(").Append(PsBuild.SingleQuote(val)).Append("); ");
+                    _readonlyVars?.Add(val);
                     continue;
                 }
                 roSb.Append("[PsBash.Cmdlets.BashShellState]::MarkReadonly(").Append(PsBuild.SingleQuote(val[..eq])).Append("); ");
+                _readonlyVars?.Add(val[..eq]);
                 roSb.Append("$env:").Append(val[..eq]).Append(" = ").Append(PsBuild.SingleQuote(val[(eq + 1)..])).Append("; ");
             }
             else if (TrySplitInitializer(word, out var name, out var value))
