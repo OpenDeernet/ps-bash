@@ -757,7 +757,16 @@ public static class PsEmitter
             // element. Quoted "${arr[@]}" would otherwise stringify the array into
             // one space-joined word and run once. Emit the array variable directly.
             if (IsArrayAllWord(list[0], out var arrName))
-                return "$" + arrName;
+                return $"$(if (${arrName} -is [System.Collections.IDictionary]) {{ ${arrName}.Values }} else {{ ${arrName} }})";
+            // `for k in "${!m[@]}"`: the KEYS (or indices), one iteration each.
+            var keysWord = list[0].Parts switch
+            {
+                [WordPart.BracedVarSub { Suffix: "![@]" or "![*]" } k] => k,
+                [WordPart.DoubleQuoted { Parts: [WordPart.BracedVarSub { Suffix: "![@]" } qk] }] => qk,
+                _ => null,
+            };
+            if (keysWord is not null)
+                return EmitBracedVar(keysWord);
 
             // `for w in $x` — an UNQUOTED ordinary variable is word-split on IFS,
             // so `x="a b c"` runs the loop THREE times. RC-7 applied this splitting
@@ -2466,6 +2475,11 @@ public static class PsEmitter
             // Array append:     arr+=('x')  -> $arr += @('x')
             if (pair.ArrayValue is not null)
             {
+                if (pair.Op == AssignOp.Equal && TryEmitAssocLiteral(pair.ArrayValue, out var assoc))
+                {
+                    sb.Append('$').Append(pair.Name).Append(" = ").Append(assoc);
+                    continue;
+                }
                 sb.Append('$');
                 sb.Append(pair.Name);
                 sb.Append(pair.Op == AssignOp.PlusEqual ? " += @(" : " = @(");
@@ -3819,6 +3833,48 @@ public static class PsEmitter
     /// Emit a value in assignment context: bare literals get wrapped in double quotes,
     /// already-quoted values are emitted as-is.
     /// </summary>
+    /// <summary>
+    /// <c>m=([k1]=v1 [k2]=v2)</c> with non-numeric keys: an associative array, a PowerShell hashtable (the shape
+    /// <c>declare -A m; m[k]=v</c> already builds). Numeric keys stay on the indexed-array path.
+    /// </summary>
+    private static bool TryEmitAssocLiteral(ArrayWord array, out string literal)
+    {
+        literal = "";
+        if (array.Elements.IsDefaultOrEmpty) return false;
+        var entries = new List<string>(array.Elements.Length);
+        foreach (var elem in array.Elements)
+        {
+            // The lexer reads the subscript `[k1]` as a glob part, then `=v1` as a literal.
+            string? first = elem.Parts.IsDefaultOrEmpty ? null : elem.Parts[0] switch
+            {
+                WordPart.Literal l => l.Value,
+                WordPart.GlobPart g => g.Pattern,
+                _ => null,
+            };
+            if (first is not { Length: > 2 } || first[0] != '[') return false;
+            string key, head;
+            ImmutableArray<WordPart> parts;
+            if (first[^1] == ']' && elem.Parts.Length > 1 && elem.Parts[1] is WordPart.Literal { Value: var eqTail } && eqTail.StartsWith('='))
+            {
+                key = first[1..^1];
+                head = eqTail[1..];
+                parts = elem.Parts.RemoveRange(0, 2);
+            }
+            else
+            {
+                int close = first.IndexOf("]=", StringComparison.Ordinal);
+                if (close < 2) return false;
+                key = first[1..close];
+                head = first[(close + 2)..];
+                parts = elem.Parts.RemoveAt(0);
+            }
+            if (key.Length == 0 || key.All(char.IsDigit)) return false;
+            if (head.Length > 0) parts = parts.Insert(0, new WordPart.Literal(head));            entries.Add(PsBuild.SingleQuote(key) + " = " + EmitAssignmentValue(new CompoundWord(parts)));
+        }
+        literal = "@{ " + string.Join("; ", entries) + " }";
+        return true;
+    }
+
     private static string EmitAssignmentValue(CompoundWord? value)
     {
         if (value is null)
@@ -5195,7 +5251,7 @@ public static class PsEmitter
         => word.Parts is [WordPart.DoubleQuoted { Parts: [var only] }]
            && only is WordPart.SimpleVarSub { Name: "@" }
                or WordPart.BracedVarSub { Name: "@", Suffix: null }
-               or WordPart.BracedVarSub { Suffix: "[@]" };
+               or WordPart.BracedVarSub { Suffix: "[@]" or "![@]" };
 
     /// <summary>A brace expansion (<c>{1..5}</c>, <c>x{a,b}</c>) with no glob part: an array of words at run time.</summary>
     private static bool IsPlainBraceWord(CompoundWord word)
@@ -5567,8 +5623,15 @@ public static class PsEmitter
 
                 if (subOp.Length == 0)
                 {
+                    // ${arr[@]} -> $arr (whole array); an associative array (hashtable) yields its VALUES.
                     if (subscript is "@" or "*")
-                        return arrayVar; // ${arr[@]} -> $arr (whole array)
+                        return $"$(if ({arrayVar} -is [System.Collections.IDictionary]) {{ {arrayVar}.Values }} else {{ {arrayVar} }})";
+                    // ${m[$k]} / ${a[$i]}: the subscript is a variable's value.
+                    if (System.Text.RegularExpressions.Regex.Match(subscript, @"^\$\{?(\w+)\}?$") is { Success: true } sv)
+                    {
+                        string subRef = $"{arrayVar}[{EmitSimpleVar(sv.Groups[1].Value)}]";
+                        return inDoubleQuote ? $"$({subRef})" : subRef;
+                    }
                     if (int.TryParse(subscript, out _))
                         return inDoubleQuote ? $"$({arrayVar}[{subscript}])" : $"{arrayVar}[{subscript}]";
                     return inDoubleQuote ? $"$({arrayVar}['{SqEsc(subscript)}'])" : $"{arrayVar}['{SqEsc(subscript)}']";

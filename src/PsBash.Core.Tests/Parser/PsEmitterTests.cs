@@ -1743,7 +1743,7 @@ public class PsEmitterTests
         // `for x in "${arr[@]}"` iterates per element; the quoted expansion must
         // not stringify the array into one word. Emit the array variable directly.
         var result = PsEmitter.Transpile("for x in \"${arr[@]}\"; do echo $x; done");
-        Assert.Contains("foreach ($x in $arr)", result);
+        Assert.Contains("foreach ($x in $(if ($arr -is [System.Collections.IDictionary]) { $arr.Values } else { $arr }))", result);
     }
 
     [Fact]
@@ -4162,7 +4162,7 @@ public class PsEmitterTests
     public void Transpile_ArrayAllElements_EmitsPsArrayRef()
     {
         var result = PsEmitter.Transpile("echo ${arr[@]}");
-        Assert.Equal("Invoke-BashEcho $arr", result);
+        Assert.Equal("Invoke-BashEcho $(if ($arr -is [System.Collections.IDictionary]) { $arr.Values } else { $arr })", result);
     }
 
     [Fact]
@@ -4176,7 +4176,7 @@ public class PsEmitterTests
     public void Transpile_ArrayIteration_EmitsForEachOverArray()
     {
         var result = PsEmitter.Transpile("for item in ${arr[@]}; do echo $item; done");
-        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($item in $arr) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; Invoke-BashEcho $item }", result);
+        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($item in $(if ($arr -is [System.Collections.IDictionary]) { $arr.Values } else { $arr })) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; Invoke-BashEcho $item }", result);
     }
 
     [Fact]

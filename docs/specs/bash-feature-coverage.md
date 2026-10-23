@@ -55,8 +55,8 @@ logout select suspend times ulimit umask`. (`getopts` was the one scripts use mo
 
 ### Semantics gaps (the construct runs but differs)
 
-- Arrays: sparse assignment (`a[3]=x` on an empty array), associative-array literals and key listing, `declare -p`,
-  `"${a[@]/pat/rep}"`, `unset a[i]`, `readarray -C`.
+- Arrays: sparse assignment (`a[3]=x` on an empty array; PowerShell arrays are dense), `declare -p`,
+  `"${a[@]/pat/rep}"`, `readarray -C`. (Associative-array literals, `${!m[@]}`, `${m[@]}` values, `unset a[i]` and `${m[$k]}` now work.)
 - Variables: `declare -n` (namerefs), `declare -i`, `readonly`/`declare -r` enforcement, `export -n`, `local` dynamic
   scope, `${x@A}`, `${@}` with `IFS`, `set -u` unbound-variable error, (`${x:?msg}` in a subshell now ends only the subshell.)
 - Special variables still not provided: `BASHOPTS SHELLOPTS GROUPS DIRSTACK FUNCNAME LINENO(in sourced) OPTIND(initial) PS4 TIMEFORMAT`. (`UID EUID OSTYPE HOSTTYPE MACHTYPE HOSTNAME BASHPID EPOCHSECONDS EPOCHREALTIME` are now provided; `OSTYPE` is `msys` on Windows.)

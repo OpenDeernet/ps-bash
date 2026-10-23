@@ -44,6 +44,38 @@ public sealed class InvokeBashUnsetCommand : PSCmdlet
     [Parameter(ValueFromRemainingArguments = true)]
     public string[]? Arguments { get; set; }
 
+    /// <summary>
+    /// <c>unset 'arr[i]'</c> / <c>unset 'map[key]'</c>: remove one element. A hashtable loses the key; a
+    /// PowerShell array (not sparse) loses the slot and later elements close up, so the survivors keep their
+    /// order and the count is right even though their indices shift.
+    /// </summary>
+    private bool TryUnsetElement(string name)
+    {
+        int open = name.IndexOf('[');
+        if (open <= 0 || !name.EndsWith(']')) return false;
+        string baseName = name[..open];
+        string key = name[(open + 1)..^1];
+        if (key is "@" or "*") return false;
+
+        var value = SessionState.PSVariable.GetValue(baseName);
+        if (value is System.Collections.IDictionary dict)
+        {
+            dict.Remove(key);
+            return true;
+        }
+        if (value is System.Collections.IList list && int.TryParse(key, out int index))
+        {
+            if (index >= 0 && index < list.Count)
+            {
+                var kept = new List<object?>(list.Count - 1);
+                for (int i = 0; i < list.Count; i++)
+                    if (i != index) kept.Add(list[i]);
+                SessionState.PSVariable.Set(baseName, kept.ToArray());
+            }
+            return true;
+        }
+        return false;
+    }
     protected override void EndProcessing()
     {
         var args = Arguments ?? Array.Empty<string>();
@@ -77,6 +109,7 @@ public sealed class InvokeBashUnsetCommand : PSCmdlet
 
         foreach (var name in names)
         {
+            if (!functionMode && TryUnsetElement(name)) continue;
             if (functionMode)
             {
                 // Function mode: remove from Function:\NAME. Use a parameter-

@@ -1,0 +1,13 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 48
+stdout-length: 6
+stderr-length: 0
+==== SCRIPT ====
+b=(p q r); unset 'b[1]'; echo "${#b[@]} ${b[@]}"
+==== STDOUT ====
+2 p r
+
+==== STDERR ====
+

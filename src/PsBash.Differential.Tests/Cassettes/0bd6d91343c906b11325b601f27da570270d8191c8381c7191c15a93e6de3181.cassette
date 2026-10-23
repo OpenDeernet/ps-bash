@@ -1,0 +1,13 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 61
+stdout-length: 7
+stderr-length: 0
+==== SCRIPT ====
+v=zz; declare -A m=([a]=$v [b]="x y"); echo "${m[a]}|${m[b]}"
+==== STDOUT ====
+zz|x y
+
+==== STDERR ====
+
