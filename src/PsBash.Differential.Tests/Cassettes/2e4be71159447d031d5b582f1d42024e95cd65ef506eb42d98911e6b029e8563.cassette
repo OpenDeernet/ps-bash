@@ -1,0 +1,15 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 85
+stdout-length: 10
+stderr-length: 0
+==== SCRIPT ====
+f() { OPTIND=1; while getopts 'n:v' o; do echo "$o=$OPTARG"; done; }; f -n 5 -v; f -v
+==== STDOUT ====
+n=5
+v=
+v=
+
+==== STDERR ====
+

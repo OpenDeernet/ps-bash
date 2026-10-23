@@ -1,0 +1,14 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 89
+stdout-length: 18
+stderr-length: 0
+==== SCRIPT ====
+getopts 'ab:' o -a; echo "o=$o rc=$?"; OPTIND=1; getopts 'ab:' o plain; echo "o=$o rc=$?"
+==== STDOUT ====
+o=a rc=0
+o=? rc=1
+
+==== STDERR ====
+

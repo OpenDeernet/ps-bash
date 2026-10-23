@@ -1,0 +1,14 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 77
+stdout-length: 10
+stderr-length: 0
+==== SCRIPT ====
+set -- -x -b; while getopts 'ab:' o 2>/dev/null; do echo "$o [$OPTARG]"; done
+==== STDOUT ====
+? []
+? []
+
+==== STDERR ====
+

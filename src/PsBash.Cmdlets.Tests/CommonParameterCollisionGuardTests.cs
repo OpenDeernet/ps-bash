@@ -50,6 +50,8 @@ public class CommonParameterCollisionGuardTests
             // PsEmitter.OrderedArgCommands: the emitter single-quotes EVERY dash-leading literal
             // for these (shared ordered parser), so all colliding letters reach Arguments. Their
             // cmdlets still keep decoys for DIRECT calls (Pester: `Invoke-BashTee -a f`).
+            // getopts: its argv is the script's own (`getopts ab: o -a`), so every dash word is single-quoted.
+            ["getopts"] = new(CollidingLetters),
             ["time"] = new(CollidingLetters),
             ["env"] = new(CollidingLetters),
             // command: emitter single-quotes every dash literal (its own -v/-V/-p AND the inner

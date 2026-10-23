@@ -1,0 +1,16 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 127
+stdout-length: 52
+stderr-length: 0
+==== SCRIPT ====
+set -- -a -b X -c rest1 rest2; while getopts 'ab:c' o; do echo "o=$o arg=[$OPTARG]"; done; shift $((OPTIND-1)); echo "left: $@"
+==== STDOUT ====
+o=a arg=[]
+o=b arg=[X]
+o=c arg=[]
+left: rest1 rest2
+
+==== STDERR ====
+

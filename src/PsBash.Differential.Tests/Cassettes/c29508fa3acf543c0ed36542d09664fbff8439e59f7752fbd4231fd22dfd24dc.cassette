@@ -1,0 +1,15 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 79
+stdout-length: 25
+stderr-length: 0
+==== SCRIPT ====
+set -- -abfile -c; while getopts 'ab:c' o; do echo "$o [$OPTARG] $OPTIND"; done
+==== STDOUT ====
+a [] 1
+b [file] 2
+c [] 3
+
+==== STDERR ====
+
