@@ -5171,13 +5171,25 @@ public static class PsEmitter
     /// <see cref="IsPureUnquotedCommandSubWord"/>.</summary>
     private static bool IsUnquotedSplitWord(CompoundWord word)
         => IsPureUnquotedVarWord(word) || IsPureUnquotedCommandSubWord(word) || IsGlobWord(word)
-           || IsBraceGlobWord(word) || IsUnquotedArrayAllWord(word);
+           || IsBraceGlobWord(word) || IsArrayValuedWord(word);
 
     /// <summary>
     /// Bare <c>${a[@]}</c> / <c>${a[*]}</c>: every element, each split again on IFS. Left as a bare array it is
     /// ONE argument, and an array beside any other argument cannot bind (<c>echo ${a[@]} x</c> failed with
     /// "Cannot convert System.Object[] to String").
     /// </summary>
+    private static bool IsArrayValuedWord(CompoundWord word)
+        => IsUnquotedArrayAllWord(word) || IsPlainBraceWord(word);
+
+    /// <summary>A brace expansion (<c>{1..5}</c>, <c>x{a,b}</c>) with no glob part: an array of words at run time.</summary>
+    private static bool IsPlainBraceWord(CompoundWord word)
+    {
+        foreach (var part in word.Parts)
+            if (part is WordPart.BracedTuple or WordPart.BracedRange)
+                return !IsBraceGlobWord(word);
+        return false;
+    }
+
     private static bool IsUnquotedArrayAllWord(CompoundWord word)
         => word.Parts is [WordPart.BracedVarSub { Suffix: { } s }]
            && (s.StartsWith("[@]", StringComparison.Ordinal) || s.StartsWith("[*]", StringComparison.Ordinal)
@@ -5190,7 +5202,9 @@ public static class PsEmitter
     /// through <c>ConvertTo-BashGlob</c> (see <see cref="EmitGlobPatternExpr"/>).
     /// </summary>
     private static string EmitUnquotedSplitWordArray(CompoundWord word)
-        => IsUnquotedArrayAllWord(word)
+        => IsPlainBraceWord(word)
+            ? "@(" + EmitBraceExpandedWord(word.Parts) + ")"
+            : IsUnquotedArrayAllWord(word)
             // ConvertTo-BashWords takes ONE string: the elements joined by a space split back apart on IFS.
             ? PsBuild.WordSplitArray("(@(" + EmitBracedVar((WordPart.BracedVarSub)word.Parts[0]) + ") -join ' ')")
             : IsBraceGlobWord(word)
@@ -5430,7 +5444,7 @@ public static class PsEmitter
         {
             // A LONE array word binds as the array itself; only beside another argument must it splat.
             if (i != skipIndex && IsUnquotedSplitWord(args[i])
-                && !(args.Length == 1 && IsUnquotedArrayAllWord(args[i])))
+                && !(args.Length == 1 && IsArrayValuedWord(args[i])))
                 return true;
         }
         return false;
@@ -5564,6 +5578,13 @@ public static class PsEmitter
         // variables starting with `prefix`. ps-bash models bash variables as
         // env vars, so match over env:. (bash * joins on IFS, @ keeps words
         // separate; both yield the same name set here.)
+        // Indirect expansion ${!a}: the value of the variable whose NAME is $a's value.
+        if (bvs.Suffix == "!indirect")
+        {
+            string lookup = $"[System.Environment]::GetEnvironmentVariable({varRef})";
+            return inDoubleQuote ? $"$({lookup})" : $"({lookup})";
+        }
+
         if (bvs.Suffix == "!names")
         {
             string expr = $"@(Get-ChildItem env: | Where-Object {{ $_.Name -like '{bvs.Name}*' }} | ForEach-Object {{ $_.Name }})";
@@ -6948,6 +6969,33 @@ public static class PsEmitter
     /// Tries to emit a mapped PowerShell equivalent for known bash pipe-target commands.
     /// Returns false if the command is not a recognized pipe target.
     /// </summary>
+    /// <summary>A let operand's text: literals, quotes and the unquoted * of =3*4 (an arithmetic operator here).</summary>
+    private static bool TryGetLetOperandText(CompoundWord word, out string text)
+    {
+        var sb = new StringBuilder();
+        foreach (var part in word.Parts)
+        {
+            if (part is WordPart.GlobPart g) { sb.Append(g.Pattern); continue; }
+            if (!TryGetPureLiteralText(ImmutableArray.Create(part), out var piece)) { text = ""; return false; }
+            sb.Append(piece);
+        }
+        text = sb.ToString();
+        return text.Length > 0;
+    }
+
+    private static string? TryEmitLetAsArithmetic(ImmutableArray<CompoundWord> args)
+    {
+        if (args.IsEmpty) return null;
+        var statements = new List<string>(args.Length);
+        foreach (var word in args)
+        {
+            if (!TryGetLetOperandText(word, out var text)) return null;
+            try { statements.Add(EmitArithCommand(new Command.ArithCommand(BashArithmeticParser.Parse(text)))); }
+            catch (ParseException) { return null; }
+        }
+        return string.Join("; ", statements);
+    }
+
     private static bool TryEmitMappedCommand(Command.Simple cmd, out string result)
     {
         result = "";
@@ -7253,7 +7301,10 @@ public static class PsEmitter
                 result = EmitPassthrough("Invoke-BashTest", args);
                 return true;
             case "let":
-                result = EmitPassthrough("Invoke-BashLet", args);
+                // `let "a = 3 * 4" b++` is `(( a = 3 * 4 )); (( b++ ))`: arithmetic evaluation with the full
+                // grammar, assigning the shell's own variables. The cmdlet wrote PowerShell variables the
+                // emitted `$env:a` never read. Dynamic or unparseable operands keep the cmdlet.
+                result = TryEmitLetAsArithmetic(args) ?? EmitPassthrough("Invoke-BashLet", args);
                 return true;
             case "id":
                 result = EmitPassthrough("Invoke-BashId", args);
@@ -7534,7 +7585,12 @@ public static class PsEmitter
             }
         }
 
-        var emittedArgs = string.Join(", ", args.Select(EmitWord));
+        // The args sit in a PowerShell array literal (expression mode); a word with an escaped character
+        // (`\$$a`) is command-mode text there, and so is a bare `echo`: each is rendered as one string.
+        var emittedArgs = string.Join(", ", args.Select(a =>
+            a.Parts.Any(p => p is WordPart.EscapedLiteral)
+                ? EmitWord(new CompoundWord(ImmutableArray.Create<WordPart>(new WordPart.DoubleQuoted(a.Parts))))
+                : FormatForItem(EmitWord(a))));
         return
             // Use Get-Variable -ErrorAction SilentlyContinue so the depth probe is
             // safe under Set-StrictMode -Version Latest (set -u). Plain $global:X

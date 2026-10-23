@@ -22,5 +22,10 @@ public class UnquotedArrayArgTests
     [InlineData("a=(x y z); printf '[%s]' ${a[@]} end; echo")]
     [InlineData("a=(x y); for i in ${a[@]} z; do echo $i; done")]
     [InlineData("a=('p q' r); echo \"${a[@]}\" x")]
+    [InlineData("echo {1..5} {a..e} {5..1..2}")]
+    [InlineData("echo {1..3} y")]
+    [InlineData("echo x{a,b}y z {1..2}")]
+    [InlineData("echo {1..3}")]
+    [InlineData("printf '[%s]' {a,b} {c,d}; echo")]
     public Task Expands_To_Words(string script) => AssertOracle.EqualAsync(script);
 }

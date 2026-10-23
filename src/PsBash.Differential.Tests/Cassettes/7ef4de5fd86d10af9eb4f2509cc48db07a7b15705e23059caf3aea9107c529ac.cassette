@@ -1,0 +1,13 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 21
+stdout-length: 14
+stderr-length: 0
+==== SCRIPT ====
+echo x{a,b}y z {1..2}
+==== STDOUT ====
+xay xby z 1 2
+
+==== STDERR ====
+

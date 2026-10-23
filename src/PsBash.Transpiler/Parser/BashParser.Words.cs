@@ -408,6 +408,14 @@ public sealed partial class BashParser
                 return pos;
             }
 
+            // ${!name}: indirect expansion — the value of the variable NAMED by $name (not its array keys).
+            if (pos < len && raw[pos] == '}')
+            {
+                pos++; // skip }
+                parts.Add(new WordPart.BracedVarSub(name, "!indirect"));
+                return pos;
+            }
+
             string keysSuffix = "![@]";
             if (pos < len && raw[pos] == '[')
             {
