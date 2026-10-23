@@ -150,9 +150,16 @@ public sealed class InvokeBashTrapCommand : PSCmdlet
                 var slotName = signal == "EXIT" ? "__BashTrapEXIT" : "__BashTrapERR";
                 InvokeCommand.InvokeScript(
                     "param($name, $a) Set-Variable -Name $name -Value ([scriptblock]::Create($a)) -Scope Global -Force",
-                    slotName, action!);
+                    slotName, TranspileAction(action!));
             }
         }
+    }
+
+    /// <summary>The action is bash text (<c>$?</c>, <c>$((..))</c>, ...), so it runs transpiled; text that does not parse runs as written.</summary>
+    private static string TranspileAction(string action)
+    {
+        try { return PsBash.Core.Transpiler.BashTranspiler.Transpile(action, PsBash.Core.Transpiler.TranspileContext.Eval) ?? action; }
+        catch (Exception) { return action; }
     }
 
     /// <summary>

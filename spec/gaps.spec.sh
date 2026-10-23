@@ -35,4 +35,3 @@ err
 done
 ## END
 ## status: 0
-## XFAIL ps-bash trap-err ERR trap not run

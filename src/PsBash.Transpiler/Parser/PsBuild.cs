@@ -366,7 +366,16 @@ public static class PsBuild
     /// scoped <c>return</c> inside a subshell. <paramref name="status"/> is the status to test.
     /// </summary>
     public static string ErrexitCheck(string exitStatement, string status = "$global:LASTEXITCODE") =>
-        "if (" + ErrexitArmed + " -and " + status + " -ne 0) { " + exitStatement + " }";
+        ErrTrapCheck(status) + "if (" + ErrexitArmed + " -and " + status + " -ne 0) { " + exitStatement + " }";
+
+    /// <summary>
+    /// Run the <c>trap ... ERR</c> action when the statement just run failed outside an exempt context
+    /// (a condition, a non-final <c>&amp;&amp;</c>/<c>||</c> operand, a negated pipeline). The action sees
+    /// the failing status in <c>$?</c>/<c>$LASTEXITCODE</c>, which it leaves unchanged.
+    /// </summary>
+    public static string ErrTrapCheck(string status = "$global:LASTEXITCODE") =>
+        "if (" + status + " -ne 0 -and -not " + ErrexitSuppressVar + " -and (Test-Path variable:global:__BashTrapERR) -and $global:__BashTrapERR) { "
+        + "$__psbErr = " + status + "; & $global:__BashTrapERR; $global:LASTEXITCODE = $__psbErr }; ";
 
     /// <summary>
     /// Run statement(s) with errexit suppressed (an exempt context): no command inside —

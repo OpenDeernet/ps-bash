@@ -92,3 +92,29 @@ declare -i n=2+3; n=n+1; n=n*2; echo $n
 m=2+3; m=m+1; echo $m
 ## stdout: m+1
 ## status: 0
+
+#### trap ERR runs on a failing statement
+trap 'echo err' ERR; false; echo done
+## STDOUT:
+err
+done
+## END
+## status: 0
+
+#### trap ERR is not run for a condition or a non-final && operand
+trap 'echo err' ERR; if false; then :; fi; false && true; ! false; echo done
+## stdout: done
+## status: 0
+
+#### trap ERR sees the failing status
+trap 'echo "rc=$?"' ERR; (exit 3); echo after
+## STDOUT:
+rc=3
+after
+## END
+## status: 0
+
+#### trap ERR cleared
+trap 'echo err' ERR; trap - ERR; false; echo done
+## stdout: done
+## status: 0

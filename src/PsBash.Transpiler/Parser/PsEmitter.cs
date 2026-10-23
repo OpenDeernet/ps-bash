@@ -168,8 +168,10 @@ public static class PsEmitter
         // This is a conservative emission prefilter, not a parser. Quote/escape
         // spelling must not hide static flags such as set '-e' or set -o 'errexit'.
         // Extra checks are inert until the parsed set command enables the runtime flag.
-        bash.Contains("set", StringComparison.Ordinal) &&
-        SetErrexitPattern.IsMatch(bash.Replace("'", "").Replace("\"", "").Replace("\\", ""));
+        (bash.Contains("set", StringComparison.Ordinal) &&
+        SetErrexitPattern.IsMatch(bash.Replace("'", "").Replace("\"", "").Replace("\\", "")))
+        // `trap ... ERR` needs the same statement-position checks (and exempt contexts) to know when a command failed.
+        || (bash.Contains("trap", StringComparison.Ordinal) && bash.Contains("ERR", StringComparison.Ordinal));
 
     private static T WithErrexitExempt<T>(Func<T> emit)
     {
