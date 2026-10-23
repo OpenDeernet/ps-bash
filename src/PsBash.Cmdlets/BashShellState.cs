@@ -23,6 +23,13 @@ namespace PsBash.Cmdlets;
 /// </summary>
 public static class BashShellState
 {
+    private static readonly HashSet<string> ReadonlyNames = new(StringComparer.Ordinal);
+
+    /// <summary>Records <c>readonly NAME</c>; only <c>unset</c> consults it (assignment is not blocked: see intentional-differences.md).</summary>
+    public static void MarkReadonly(string name) { lock (ReadonlyNames) ReadonlyNames.Add(name); }
+
+    internal static bool IsReadonly(string name) { lock (ReadonlyNames) return ReadonlyNames.Contains(name); }
+
     /// <summary>The <c>$global:</c> variables that are shell state (see the class summary).</summary>
     private static readonly string[] GlobalNames =
     [

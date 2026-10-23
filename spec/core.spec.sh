@@ -72,3 +72,13 @@ set -f; echo *; set +f
 ( : "${nope:?boom}" ) 2>/dev/null; echo after
 ## stdout: after
 ## status: 0
+
+#### unset of a readonly variable fails and keeps the value
+readonly v=1; unset v 2>/dev/null; echo $? $v
+## stdout: 1 1
+## status: 0
+
+#### unset of a normal variable succeeds
+w=1; unset w; echo $? "${w-gone}"
+## stdout: 0 gone
+## status: 0

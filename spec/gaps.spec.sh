@@ -16,7 +16,6 @@ declare -i n=2+3; n=n+1; echo $n
 readonly v=1; unset v 2>/dev/null; echo $?
 ## stdout: 1
 ## status: 0
-## XFAIL ps-bash readonly-unset unset of readonly returns 0
 
 #### sparse indexed array
 a=(); a[3]=x; echo ${#a[@]} ${!a[@]}

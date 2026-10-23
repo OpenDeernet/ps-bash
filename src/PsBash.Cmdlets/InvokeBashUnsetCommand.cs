@@ -109,6 +109,12 @@ public sealed class InvokeBashUnsetCommand : PSCmdlet
 
         foreach (var name in names)
         {
+            if (!functionMode && BashShellState.IsReadonly(name))
+            {
+                FileSystemHelpers.WriteStderr(this, $"unset: {name}: cannot unset: readonly variable");
+                FileSystemHelpers.SetLastExitCode(this, 1);
+                continue;
+            }
             if (!functionMode && TryUnsetElement(name)) continue;
             if (functionMode)
             {

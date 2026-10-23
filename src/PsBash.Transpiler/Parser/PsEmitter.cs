@@ -3193,12 +3193,18 @@ public static class PsEmitter
             if (val is not null)
             {
                 int eq = val.IndexOf('=');
-                if (eq <= 0) continue; // `readonly NAME`: marks an existing variable; nothing to assign
+                if (eq <= 0)
+                {
+                    roSb.Append("[PsBash.Cmdlets.BashShellState]::MarkReadonly(").Append(PsBuild.SingleQuote(val)).Append("); ");
+                    continue;
+                }
+                roSb.Append("[PsBash.Cmdlets.BashShellState]::MarkReadonly(").Append(PsBuild.SingleQuote(val[..eq])).Append("); ");
                 roSb.Append("$env:").Append(val[..eq]).Append(" = ").Append(PsBuild.SingleQuote(val[(eq + 1)..])).Append("; ");
             }
             else if (TrySplitInitializer(word, out var name, out var value))
             {
                 roSb.Append("$env:").Append(name).Append(" = ").Append(EmitAssignmentValue(value)).Append("; ");
+                roSb.Append("[PsBash.Cmdlets.BashShellState]::MarkReadonly(").Append(PsBuild.SingleQuote(name)).Append("); ");
             }
         }
         return roSb.Append(PsBuild.SetStatus(0)).ToString();
