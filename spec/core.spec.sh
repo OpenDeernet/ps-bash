@@ -140,3 +140,19 @@ plus
 opt
 ## END
 ## status: 0
+
+#### nameref reads and writes its target
+x=1; declare -n r=x; echo $r; r=7; echo $x "${r}"
+## STDOUT:
+1
+7 7
+## END
+## status: 0
+
+#### nameref to another script variable after the fact
+a=A; b=B; declare -n p=a; echo $p; declare -n q=b; echo $q $a
+## STDOUT:
+A
+B A
+## END
+## status: 0

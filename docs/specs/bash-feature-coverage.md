@@ -57,7 +57,7 @@ logout select suspend times ulimit umask`. (`getopts` was the one scripts use mo
 
 - Arrays: sparse assignment (`a[3]=x` on an empty array; PowerShell arrays are dense), `declare -p`,
   `"${a[@]/pat/rep}"`, `readarray -C`. (Associative-array literals, `${!m[@]}`, `${m[@]}` values, `unset a[i]` and `${m[$k]}` now work.)
-- Variables: `declare -n` (namerefs), `declare -i` across separate invocations (within one script it works), `readonly` assignment enforcement (`unset` of a readonly now fails with status 1), `export -n`, `local` dynamic
+- Variables: `declare -n` across separate invocations or with a run-time target (a literal target within one script works), `declare -i` across separate invocations (within one script it works), `readonly` assignment enforcement (`unset` of a readonly now fails with status 1), `export -n`, `local` dynamic
   scope, `${x@A}`, `${@}` with `IFS`, `set -u` unbound-variable error, (`${x:?msg}` in a subshell now ends only the subshell.)
 - Special variables still not provided: `BASHOPTS SHELLOPTS GROUPS DIRSTACK FUNCNAME LINENO(in sourced) OPTIND(initial) PS4 TIMEFORMAT`. (`UID EUID OSTYPE HOSTTYPE MACHTYPE HOSTNAME BASHPID EPOCHSECONDS EPOCHREALTIME` are now provided; `OSTYPE` is `msys` on Windows.)
   EPOCHSECONDS EPOCHREALTIME DIRSTACK FUNCNAME LINENO(in sourced) OPTIND PS4 TIMEFORMAT`.

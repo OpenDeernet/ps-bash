@@ -4,7 +4,6 @@
 x=1; declare -n r=x; r=5; echo $x
 ## stdout: 5
 ## status: 0
-## XFAIL ps-bash nameref declare -n unsupported
 
 #### declare -i arithmetic on assignment
 declare -i n=2+3; n=n+1; echo $n

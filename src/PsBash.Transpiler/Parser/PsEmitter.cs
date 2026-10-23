@@ -42,6 +42,18 @@ public static class PsEmitter
     [ThreadStatic]
     private static HashSet<string>? _intVars;
 
+    /// <summary><c>declare -n ref=target</c> in the script being emitted: <c>ref</c> reads and writes <c>target</c>.
+    /// Static only (a literal target, resolved at emit time); a nameref set at run time is not modelled.</summary>
+    [ThreadStatic]
+    private static Dictionary<string, string>? _namerefs;
+
+    private static string ResolveNameref(string name)
+    {
+        for (int hops = 0; hops < 8 && _namerefs is not null && _namerefs.TryGetValue(name, out var target); hops++)
+            name = target;
+        return name;
+    }
+
     /// <summary>Lexical nesting of <c>&lt; /dev/null</c> scopes (names <see cref="PsBuild.EmptyStdinScope"/>'s save variable).</summary>
     [ThreadStatic]
     private static int _emptyStdinDepth;
@@ -440,6 +452,8 @@ public static class PsEmitter
         var priorExempt = _errexitExemptDepth;
         var priorIntVars = _intVars;
         _intVars = new HashSet<string>(StringComparer.Ordinal);
+        var priorNamerefs = _namerefs;
+        _namerefs = new Dictionary<string, string>(StringComparer.Ordinal);
         _context = context;
         // Only a script that itself turns errexit on gets the checks (a sourced file running under
         // its caller's `set -e` does not — see intentional-differences.md).
@@ -456,6 +470,7 @@ public static class PsEmitter
         {
             _context = prior;
             _intVars = priorIntVars;
+            _namerefs = priorNamerefs;
             _errexitMode = priorErrexit;
             _errexitExemptDepth = priorExempt;
         }
@@ -2533,7 +2548,7 @@ public static class PsEmitter
             }
 
             sb.Append(varPrefix);
-            sb.Append(pair.Name);
+            sb.Append(ResolveNameref(pair.Name));
             if (pair.Value is null)
             {
                 // Bare export/local VAR with no value: ensure variable exists
@@ -2767,6 +2782,7 @@ public static class PsEmitter
 
         bool isAssoc = false;
         bool isPrint = false;
+        bool isNameref = false;
         string? varName = null;
         // `declare x=$(cmd)` / `declare x="$y"`: an initializer with expansions (not one literal).
         string? exprName = null;
@@ -2775,6 +2791,7 @@ public static class PsEmitter
         {
             var val = GetLiteralValue(word);
             if (val == "-A") isAssoc = true;
+            else if (val == "-n") isNameref = true;
             else if (val == "-i") { /* integer — handled below */ }
             else if (val is { Length: > 1 } && val[0] == '-' && val.AsSpan(1).IndexOfAnyExcept("pfF") < 0) isPrint = true;
             else if (val is not null && !val.StartsWith('-')) varName = val;
@@ -2784,6 +2801,13 @@ public static class PsEmitter
         {
             string? intName = exprName ?? (varName is null ? null : varName.Split('=')[0]);
             if (intName is not null && IsValidVarName(intName)) _intVars.Add(intName);
+        }
+        if (isNameref && varName is not null && varName.IndexOf('=') is var neq and > 0
+            && IsValidVarName(varName[..neq]) && IsValidVarName(varName[(neq + 1)..]) && _namerefs is not null)
+        {
+            _namerefs[varName[..neq]] = varName[(neq + 1)..];
+            result = PsBuild.SetStatus(0);
+            return true;
         }
         if (!isPrint && exprName is not null && !isAssoc)
         {
@@ -5139,6 +5163,7 @@ public static class PsEmitter
         if (name.Length == 0)
             return "''";
 
+        name = ResolveNameref(name);
         // Loop variables emit as $var, not $env:var
         if (_loopVars is not null && _loopVars.Contains(name))
             return $"${name}";
@@ -6177,6 +6202,7 @@ public static class PsEmitter
     private static string EmitSimpleVarBraced(string name)
     {
         // Emit ${name} or ${env:name} with braces to prevent PS drive-reference misparse.
+        name = ResolveNameref(name);
         if (_loopVars is not null && _loopVars.Contains(name))
             return $"${{{name}}}";
 
