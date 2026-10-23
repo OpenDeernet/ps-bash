@@ -59,7 +59,7 @@ logout select suspend times ulimit umask`. (`getopts` was the one scripts use mo
   `"${a[@]/pat/rep}"`, `unset a[i]`, `readarray -C`.
 - Variables: `declare -n` (namerefs), `declare -i`, `readonly`/`declare -r` enforcement, `export -n`, `local` dynamic
   scope, `${x@A}`, `${@}` with `IFS`, `set -u` unbound-variable error, (`${x:?msg}` in a subshell now ends only the subshell.)
-- Special variables not provided: `BASHPID BASHOPTS SHELLOPTS EUID UID GROUPS HOSTNAME HOSTTYPE MACHTYPE OSTYPE
+- Special variables still not provided: `BASHOPTS SHELLOPTS GROUPS DIRSTACK FUNCNAME LINENO(in sourced) OPTIND(initial) PS4 TIMEFORMAT`. (`UID EUID OSTYPE HOSTTYPE MACHTYPE HOSTNAME BASHPID EPOCHSECONDS EPOCHREALTIME` are now provided; `OSTYPE` is `msys` on Windows.)
   EPOCHSECONDS EPOCHREALTIME DIRSTACK FUNCNAME LINENO(in sourced) OPTIND PS4 TIMEFORMAT`.
 - Builtins: `printf %q` and `%(...)T`, `read -d`, `set -f`/`set -o` listing, `set -x` trace output, `shift` error
   status, `shopt -p`, `test -v`, `unalias` error, `trap` for DEBUG/ERR/RETURN/EXIT-ordering/signals.

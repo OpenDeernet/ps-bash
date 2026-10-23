@@ -1,0 +1,14 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 137
+stdout-length: 14
+stderr-length: 0
+==== SCRIPT ====
+case "$HOSTTYPE" in x86_64|aarch64) echo arch;; *) echo bad;; esac; case "$MACHTYPE" in "$HOSTTYPE"-*) echo machtype;; *) echo bad;; esac
+==== STDOUT ====
+arch
+machtype
+
+==== STDERR ====
+

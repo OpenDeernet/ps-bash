@@ -752,6 +752,25 @@ public static class PsBuild
                 return braced ? null : "$([math]::Floor(([DateTime]::UtcNow - $global:BashStartTime).TotalSeconds))";
             case "PPID":
                 return braced ? null : "(Get-Process -Id $PID -ErrorAction SilentlyContinue).Parent.Id";
+            // Variables bash defines about the machine and the shell. Computed on read; an env variable of the
+            // same name (HOSTNAME on some hosts) is not consulted, as in bash these are the shell's own.
+            case "UID":
+            case "EUID":
+                return "$(if ($IsWindows) { [long][System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value.Split('-')[-1] } else { [long](id -u) })";
+            case "OSTYPE":
+                return "$(if ($IsWindows) { 'msys' } elseif ($IsMacOS) { 'darwin' } else { 'linux-gnu' })";
+            case "HOSTTYPE":
+                return "$(if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { 'aarch64' } else { 'x86_64' })";
+            case "MACHTYPE":
+                return "$(($(if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { 'aarch64' } else { 'x86_64' })) + $(if ($IsWindows) { '-pc-msys' } elseif ($IsMacOS) { '-apple-darwin' } else { '-pc-linux-gnu' }))";
+            case "HOSTNAME":
+                return "$([System.Environment]::MachineName)";
+            case "BASHPID":
+                return "$PID";
+            case "EPOCHSECONDS":
+                return "$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())";
+            case "EPOCHREALTIME":
+                return "$(([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() * 1000).ToString().Insert(([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() * 1000).ToString().Length - 6, '.'))";
             case "BASH_VERSION":
                 return braced ? null : "$global:BashVersion";
             case "BASH_VERSINFO":

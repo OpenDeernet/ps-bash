@@ -1,0 +1,14 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 110
+stdout-length: 10
+stderr-length: 0
+==== SCRIPT ====
+[ "$UID" -ge 0 ] && [ "$EUID" -ge 0 ] && echo ok; case "$UID" in *[!0-9]*|'') echo bad;; *) echo digits;; esac
+==== STDOUT ====
+ok
+digits
+
+==== STDERR ====
+
