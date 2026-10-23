@@ -42,7 +42,7 @@ public static class BashGlobText
 /// trailing <c>/</c> keeps only directories and is kept. No match yields an empty list (the caller keeps
 /// the literal word, or applies <c>nullglob</c> / <c>failglob</c>).</para>
 ///
-/// <para>Not implemented: <c>**</c> (acts as <c>*</c>), extglob <c>+(a|b)</c>, <c>nocaseglob</c>, and
+/// <para>Not implemented: <c>**</c> (acts as <c>*</c>), <c>nocaseglob</c>, and
 /// collation order other than ordinal.</para>
 /// </summary>
 internal static class BashGlob
@@ -55,6 +55,7 @@ internal static class BashGlob
             char c = pattern[i];
             if (c == '\\') { i++; continue; }
             if (c is '*' or '?') return true;
+            if (c is '+' or '@' or '!' && i + 1 < pattern.Length && pattern[i + 1] == '(') return true;
             if (c == '[' && i + 2 <= pattern.Length && pattern.IndexOf(']', i + 2) >= 0)
                 return true;
         }
@@ -145,7 +146,7 @@ internal static class BashGlob
 
                 foreach (var name in ListNames(fsDir))
                 {
-                    if (!LsGlob.Match(comp, name, dotGlob)) continue;
+                    if (!MatchComponent(comp, name, dotGlob)) continue;
                     string full = Path.Combine(fsDir, name);
                     if (!last || dirOnly)
                     {
@@ -160,6 +161,14 @@ internal static class BashGlob
         var results = new List<string>(frontier.Count);
         foreach (var (pfx, _) in frontier) results.Add(dirOnly ? pfx + "/" : pfx);
         return results;
+    }
+
+    /// <summary>One path component against one name; an extglob component (<c>@(a|b)</c>, <c>!(*.h)</c>) goes through <see cref="BashPattern"/>.</summary>
+    private static bool MatchComponent(string comp, string name, bool dotGlob)
+    {
+        if (!PsBash.Core.Parser.BashPattern.HasExtGlob(comp, honorQuotes: false)) return LsGlob.Match(comp, name, dotGlob);
+        if (!dotGlob && name.Length > 0 && name[0] == '.' && !comp.StartsWith('.')) return false;
+        return System.Text.RegularExpressions.Regex.IsMatch(name, PsBash.Core.Parser.BashPattern.ToAnchoredRegex(comp, honorQuotes: false));
     }
 
     private static bool SafeDirectoryExists(string path)

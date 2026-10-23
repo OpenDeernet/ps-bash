@@ -3664,10 +3664,10 @@ public class PsEmitterTests
     }
 
     [Fact]
-    public void Transpile_ExtGlob_PassesThrough()
+    public void Transpile_ExtGlob_ExpandsViaConvertToBashGlob()
     {
         var result = PsEmitter.Transpile("echo +(*.py|*.js)");
-        Assert.Equal("Invoke-BashEcho +(*.py|*.js)", result);
+        Assert.Equal(GlobSplat("+(*.py|*.js)"), result);
     }
 
     [Fact]
@@ -3773,10 +3773,12 @@ public class PsEmitterTests
     }
 
     [Fact]
-    public void Transpile_ExtglobWord_KeepsItsOldEmission()
+    public void Transpile_ExtglobWord_ReachesTheGlobEngine()
     {
-        // extglob (+(a|b)) is not implemented by the engine: it must not reach ConvertTo-BashGlob.
-        Assert.DoesNotContain("ConvertTo-BashGlob", PsEmitter.Transpile("echo +(*.py|*.js)"));
+        // The engine matches extglob components (BashGlob.MatchComponent); raw, the word was a PowerShell parse error.
+        Assert.Contains("ConvertTo-BashGlob", PsEmitter.Transpile("echo +(*.py|*.js)"));
+        // A plain word with no pattern is still not a glob.
+        Assert.DoesNotContain("ConvertTo-BashGlob", PsEmitter.Transpile("echo plain"));
     }
 
     [Fact]

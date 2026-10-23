@@ -41,4 +41,3 @@ a.c c.c
 a.c b.h
 ## END
 ## status: 0
-## XFAIL ps-bash extglob-pathname extglob works in case and [[ ]] but not in pathname expansion

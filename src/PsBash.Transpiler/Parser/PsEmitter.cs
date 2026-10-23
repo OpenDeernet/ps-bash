@@ -5343,8 +5343,6 @@ public static class PsEmitter
             switch (part)
             {
                 case WordPart.GlobPart gp:
-                    if (gp.Pattern.Length > 1 && gp.Pattern[1] == '(' && gp.Pattern[0] is '+' or '*' or '?' or '!' or '@')
-                        return false;
                     glob = true;
                     break;
                 case WordPart.Literal or WordPart.EscapedLiteral or WordPart.SingleQuoted or WordPart.AnsiCQuoted
@@ -5388,8 +5386,6 @@ public static class PsEmitter
                     brace = true;
                     break;
                 case WordPart.GlobPart gp:
-                    if (gp.Pattern.Length > 1 && gp.Pattern[1] == '(' && gp.Pattern[0] is '+' or '*' or '?' or '!' or '@')
-                        return false;
                     glob = true;
                     break;
                 case WordPart.Literal:
