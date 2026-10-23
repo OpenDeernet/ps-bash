@@ -78,7 +78,8 @@ public abstract record Command : BashNode
         string Var,
         ImmutableArray<CompoundWord> List,
         Command Body,
-        ImmutableArray<Redirect> Redirects = default) : Command;
+        ImmutableArray<Redirect> Redirects = default,
+        bool ExplicitIn = false) : Command;
 
     /// <summary>
     /// A <c>select</c> menu loop: <c>select x in a b c; do body; done</c> —

@@ -2941,7 +2941,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("for x in a b c; do echo $x; done");
 
-        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($x in 'a','b','c') { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; Invoke-BashEcho $x }", result);
+        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($x in 'a','b','c') { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; $env:x = [string]$x; Invoke-BashEcho $x }", result);
     }
 
     [Fact]
@@ -2949,7 +2949,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("for i in 1 2 3; do echo $i; done");
 
-        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($i in 1,2,3) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; Invoke-BashEcho $i }", result);
+        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($i in 1,2,3) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; $env:i = [string]$i; Invoke-BashEcho $i }", result);
     }
 
     [Fact]
@@ -2960,7 +2960,7 @@ public class PsEmitterTests
         // ConvertTo-BashGlob: the shell's pathname expansion (relative names, no hidden files,
         // sorted); an unmatched glob falls back to the literal word so the loop still runs
         // once — bash nullglob is OFF by default.
-        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($f in @(ConvertTo-BashGlob '*.txt')) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; Invoke-BashCat $f }", result);
+        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($f in @(ConvertTo-BashGlob '*.txt')) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; $env:f = [string]$f; Invoke-BashCat $f }", result);
     }
 
     [Fact]
@@ -2995,7 +2995,7 @@ public class PsEmitterTests
         // $(if ...) subexpression — a bare (if ...) is parsed by PowerShell as an
         // invocation of a command named "if" and fails at runtime; the subexpression
         // operator is required for the implicit-$@ iteration to actually run.
-        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($x in $(if ($global:BashPositional) { $global:BashPositional } else { $args })) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; Invoke-BashEcho $x }", result);
+        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($x in $(if ($global:BashPositional) { $global:BashPositional } else { $args })) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; $env:x = [string]$x; Invoke-BashEcho $x }", result);
     }
 
     [Fact]
@@ -3028,8 +3028,10 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("for i in 1 2 3; do echo $i; done");
 
-        Assert.Contains("$i", result);
-        Assert.DoesNotContain("$env:i", result);
+        // The binding is a PowerShell foreach variable; its value is mirrored into the shell variable so
+        // functions in the body see it and it survives the loop.
+        Assert.Contains("foreach ($i in", result);
+        Assert.Contains("$env:i = [string]$i", result);
     }
 
     // ANSI-C quoting ($'...') — transpile-level coverage. The differential
@@ -3080,7 +3082,7 @@ public class PsEmitterTests
 
         Assert.Contains("$env:idx", result);
         Assert.Contains("Invoke-BashEcho @__bashsplat0 $i", result);
-        Assert.DoesNotContain("$env:i ", result);
+        Assert.DoesNotContain("$env:idx = ", result);
     }
 
     [Fact]
@@ -3904,7 +3906,7 @@ public class PsEmitterTests
     public void Transpile_ForInGlobCharClass_EmitsConvertToBashGlob()
     {
         var result = PsEmitter.Transpile("for f in [abc]*.txt; do cat $f; done");
-        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($f in @(ConvertTo-BashGlob '[abc]*.txt')) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; Invoke-BashCat $f }", result);
+        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($f in @(ConvertTo-BashGlob '[abc]*.txt')) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; $env:f = [string]$f; Invoke-BashCat $f }", result);
     }
 
     [Fact]
@@ -4178,7 +4180,7 @@ public class PsEmitterTests
     public void Transpile_ArrayIteration_EmitsForEachOverArray()
     {
         var result = PsEmitter.Transpile("for item in ${arr[@]}; do echo $item; done");
-        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($item in $(if ($arr -is [System.Collections.IDictionary]) { $arr.Values } else { $arr })) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; Invoke-BashEcho $item }", result);
+        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($item in $(if ($arr -is [System.Collections.IDictionary]) { $arr.Values } else { $arr })) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; $env:item = [string]$item; Invoke-BashEcho $item }", result);
     }
 
     [Fact]

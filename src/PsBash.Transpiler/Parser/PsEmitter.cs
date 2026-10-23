@@ -684,8 +684,12 @@ public static class PsEmitter
             sb.Append(IterGuardPrefix(depth));
             sb.Append(label);
 
-            // Empty list means implicit $@ -> use BashPositional if set, else $args
-            if (forIn.List.IsEmpty)
+            // `for i; do` (no `in`) iterates $@; `for i in ; do` has an explicit, empty list and runs zero times.
+            if (forIn.List.IsEmpty && forIn.ExplicitIn)
+            {
+                sb.Append($"foreach (${forIn.Var} in @()) {{ ");
+            }
+            else if (forIn.List.IsEmpty)
             {
                 sb.Append($"foreach (${forIn.Var} in {PsBuild.BuildPositionalExpansion("@")}) {{ ");
             }
@@ -697,6 +701,8 @@ public static class PsEmitter
             }
 
             sb.Append(IterGuardCheck(depth));
+            // The loop variable is an ordinary shell variable: the body's functions see it and it keeps its last value after the loop.
+            sb.Append($"$env:{forIn.Var} = [string]${forIn.Var}; ");
 
             var vars = _loopVars ??= new HashSet<string>();
             bool added = vars.Add(forIn.Var);

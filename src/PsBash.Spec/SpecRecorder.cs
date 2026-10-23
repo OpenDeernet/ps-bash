@@ -7,18 +7,25 @@ public static class SpecRecorder
     public static async Task<SpecFile> RecordAsync(SpecFile file, IScriptExecutor oracle, bool all, int parallelism = 4, CancellationToken cancel = default)
     {
         using var gate = new SemaphoreSlim(Math.Max(1, parallelism));
-        var cases = await Task.WhenAll(file.Cases.Select(async c =>
+        var cases = await Task.WhenAll(file.Cases.Select(async Task<SpecCase?> (c) =>
         {
             bool has = c.Primary.Stdout is not null || c.Primary.Status is not null;
             if (has && !all) return c;
             await gate.WaitAsync(cancel);
             try
             {
-                var r = await oracle.RunAsync(c.Script, c.Timeout ?? SpecRunner.DefaultTimeout, cancel);
-                return c with { Primary = new Expectation(SpecRunner.Normalize(r.Stdout), r.ExitCode) };
+                try
+                {
+                    var r = await oracle.RunAsync(c.Script, c.Timeout ?? SpecRunner.DefaultTimeout, cancel);
+                    return c with { Primary = new Expectation(SpecRunner.Normalize(r.Stdout), r.ExitCode) };
+                }
+                catch (OperationCanceledException) when (!cancel.IsCancellationRequested)
+                {
+                    return null; // the oracle itself timed out: no trustworthy expectation, so the case is dropped
+                }
             }
             finally { gate.Release(); }
         }));
-        return file with { Cases = cases };
+        return file with { Cases = cases.Where(c => c is not null).Select(c => c!).ToList() };
     }
 }

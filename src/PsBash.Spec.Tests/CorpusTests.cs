@@ -13,7 +13,8 @@ public class CorpusTests
     }
 
     public static IEnumerable<object[]> Files()
-        => Directory.GetFiles(SpecDir(), "*.spec.sh").OrderBy(p => p).Select(p => new object[] { Path.GetFileName(p) });
+        => Directory.GetFiles(SpecDir(), "*.spec.sh", SearchOption.AllDirectories).OrderBy(p => p)
+            .Select(p => new object[] { Path.GetRelativePath(SpecDir(), p).Replace('\\', '/') });
 
     [Theory]
     [MemberData(nameof(Files))]
@@ -21,6 +22,13 @@ public class CorpusTests
     {
         string path = Path.Combine(SpecDir(), name);
         var file = SpecParser.Parse(name, File.ReadAllText(path));
+        // Import: PSBASH_SPEC_IMPORT=<oils spec file>, run once with --filter on a (new, empty) spec/oils/NAME.spec.sh.
+        if (Environment.GetEnvironmentVariable("PSBASH_SPEC_IMPORT") is { Length: > 0 } src && file.Cases.Count == 0)
+        {
+            file = SpecImporter.Import(path, File.ReadAllText(src), Path.GetFileName(src));
+            File.WriteAllText(path, SpecParser.Format(file));
+        }
+        bool triage = Environment.GetEnvironmentVariable("PSBASH_SPEC_TRIAGE") == "1";
         if (Environment.GetEnvironmentVariable("PSBASH_SPEC_RECORD") == "1")
         {
             // Fill cases that have no expectation yet from real bash (WSL); existing expectations are kept.
@@ -28,6 +36,18 @@ public class CorpusTests
             File.WriteAllText(path, SpecParser.Format(file));
         }
         var results = await SpecRunner.RunAsync(file, new PsBashExecutor(), parallelism: 3);
+        if (triage)
+        {
+            // Mark every failing case as a known gap, and unmark any that now pass, so the file records the true state.
+            var marked = file.Cases.Select((c, i) => results[i].Verdict switch
+            {
+                Verdict.Fail => c with { Xfail = new XfailMark("triage", "differs from bash 5.2 (auto-marked; investigate)") },
+                Verdict.XPass => c with { Xfail = null },
+                _ => c,
+            }).ToList();
+            File.WriteAllText(path, SpecParser.Format(file with { Cases = marked }));
+            return;
+        }
         var bad = results.Where(r => r.Verdict is Verdict.Fail or Verdict.XPass).ToList();
         Assert.True(bad.Count == 0, SpecRunner.Summarize(file, results) + "\n\n" +
             string.Join("\n---\n", bad.Select(b => $"[{b.Verdict}] {b.Diff}")));

@@ -791,9 +791,11 @@ public sealed partial class BashParser
         SkipTerminators();
 
         // "in" keyword introduces list; absence means implicit $@
+        bool explicitIn = false;
         if (Peek().Kind == BashTokenKind.Word && Peek().Value == "in")
         {
             Advance(); // consume "in"
+            explicitIn = true;
 
             while (Peek().Kind == BashTokenKind.Word
                 && Peek().Value != "do"
@@ -811,7 +813,7 @@ public sealed partial class BashParser
         var body = ParseCompoundBody("done");
         Expect("done");
 
-        return new Command.ForIn(varName, list.ToImmutable(), body, ParseTrailingRedirects());
+        return new Command.ForIn(varName, list.ToImmutable(), body, ParseTrailingRedirects(), explicitIn);
     }
 
     /// <summary>

@@ -164,3 +164,11 @@ status compared, stderr only when the case states it), the oracle (`WslBashExecu
 (`PsBashExecutor`; in-host execution and transpile caching are later phases).
 Record expectations for new cases from real bash: `PSBASH_SPEC_RECORD=1 tman test-proj src/PsBash.Spec.Tests`
 (only cases with no expectation are filled). Add `## XFAIL ps-bash <id> <reason>` for a known gap.
+
+## Importing Oils cases
+
+`PSBASH_SPEC_IMPORT=<oils .test.sh> tman test-proj src/PsBash.Spec.Tests` converts an Oils spec file into an empty
+`spec/oils/NAME.spec.sh` (`SpecImporter`): expectations are stripped, cases that need the Oils harness (`$SH`,
+`$REPO_ROOT`, `ysh`, ...) are dropped, and an Apache-2.0 attribution header is added. `PSBASH_SPEC_RECORD=1` then fills
+expectations from bash 5.2 (oracle timeouts drop the case), and `PSBASH_SPEC_TRIAGE=1` marks failing cases XFAIL and
+unmarks the ones that now pass. First import: `spec/oils/loop.spec.sh`.
