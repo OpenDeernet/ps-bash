@@ -5171,7 +5171,17 @@ public static class PsEmitter
     /// <see cref="IsPureUnquotedCommandSubWord"/>.</summary>
     private static bool IsUnquotedSplitWord(CompoundWord word)
         => IsPureUnquotedVarWord(word) || IsPureUnquotedCommandSubWord(word) || IsGlobWord(word)
-           || IsBraceGlobWord(word);
+           || IsBraceGlobWord(word) || IsUnquotedArrayAllWord(word);
+
+    /// <summary>
+    /// Bare <c>${a[@]}</c> / <c>${a[*]}</c>: every element, each split again on IFS. Left as a bare array it is
+    /// ONE argument, and an array beside any other argument cannot bind (<c>echo ${a[@]} x</c> failed with
+    /// "Cannot convert System.Object[] to String").
+    /// </summary>
+    private static bool IsUnquotedArrayAllWord(CompoundWord word)
+        => word.Parts is [WordPart.BracedVarSub { Suffix: { } s }]
+           && (s.StartsWith("[@]", StringComparison.Ordinal) || s.StartsWith("[*]", StringComparison.Ordinal)
+               || s.StartsWith('!'));
 
     /// <summary>
     /// The array an unquoted split word expands to, for PowerShell <c>@</c>-splatting or flattening into a
@@ -5180,7 +5190,10 @@ public static class PsEmitter
     /// through <c>ConvertTo-BashGlob</c> (see <see cref="EmitGlobPatternExpr"/>).
     /// </summary>
     private static string EmitUnquotedSplitWordArray(CompoundWord word)
-        => IsBraceGlobWord(word)
+        => IsUnquotedArrayAllWord(word)
+            // ConvertTo-BashWords takes ONE string: the elements joined by a space split back apart on IFS.
+            ? PsBuild.WordSplitArray("(@(" + EmitBracedVar((WordPart.BracedVarSub)word.Parts[0]) + ") -join ' ')")
+            : IsBraceGlobWord(word)
             // `*.{c,h}` / `sub/{a,b}*`: brace expansion comes FIRST, then every resulting word globs.
             ? "@(" + EmitBraceExpandedWord(word.Parts) + " | ConvertTo-BashGlob)"
             : IsGlobWord(word)
@@ -5415,7 +5428,9 @@ public static class PsEmitter
     {
         for (int i = 0; i < args.Length; i++)
         {
-            if (i != skipIndex && IsUnquotedSplitWord(args[i]))
+            // A LONE array word binds as the array itself; only beside another argument must it splat.
+            if (i != skipIndex && IsUnquotedSplitWord(args[i])
+                && !(args.Length == 1 && IsUnquotedArrayAllWord(args[i])))
                 return true;
         }
         return false;

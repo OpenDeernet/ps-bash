@@ -1,0 +1,13 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: wsl
+exit-code: 0
+script-length: 26
+stdout-length: 8
+stderr-length: 0
+==== SCRIPT ====
+a=(x y z); echo ${!a[@]} x
+==== STDOUT ====
+0 1 2 x
+
+==== STDERR ====
+
