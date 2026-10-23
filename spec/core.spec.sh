@@ -266,3 +266,21 @@ echo "[$PS4]"
 [>> ]
 ## END
 ## status: 0
+
+#### compgen filters a word list by prefix
+compgen -W "apple apricot banana" -- ap
+echo rc=$?
+compgen -W "x y" -- z
+echo rc=$?
+f1() { :; }
+f2() { :; }
+compgen -A function -- f
+## STDOUT:
+apple
+apricot
+rc=0
+rc=1
+f1
+f2
+## END
+## status: 0

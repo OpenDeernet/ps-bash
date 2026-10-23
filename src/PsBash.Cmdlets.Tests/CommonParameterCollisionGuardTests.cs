@@ -59,6 +59,7 @@ public class CommonParameterCollisionGuardTests
             ["hash"] = new(CollidingLetters),
             ["umask"] = new(CollidingLetters),
             ["ulimit"] = new(CollidingLetters),
+            ["compgen"] = new(CollidingLetters),
             ["time"] = new(CollidingLetters),
             ["env"] = new(CollidingLetters),
             // command: emitter single-quotes every dash literal (its own -v/-V/-p AND the inner
