@@ -138,7 +138,7 @@ public static class PsBuild
     public static string ShellStateGuard(string body, string? finallyTail = null) =>
         "$__psbash_ss = [PsBash.Cmdlets.BashShellState]::Save($ExecutionContext.SessionState); try { "
         + body
-        + " } finally { $__psbash_xt = [PsBash.Cmdlets.BashShellState]::Restore($ExecutionContext.SessionState, $__psbash_ss); "
+        + " } catch [PsBash.Cmdlets.BashParamErrorException] { Write-Error ('ps-bash: ' + $_.Exception.Message) -ErrorAction Continue; $global:LASTEXITCODE = 1 } finally { $__psbash_xt =[PsBash.Cmdlets.BashShellState]::Restore($ExecutionContext.SessionState, $__psbash_ss); "
         + "if ($null -ne $__psbash_xt) { if ($__psbash_xt) { Set-PSDebug -Trace 1 } else { Set-PSDebug -Off } }"
         + (finallyTail is null ? "" : "; " + finallyTail)
         + " }";

@@ -118,3 +118,9 @@ subsystem; each fails loudly.
 | `awk` | `@name()` calls user functions only |
 | `find` | `-used`, `-context` (see Platform) |
 | `cut`, `head -c`, … | `cut -c` counts BYTES like GNU 9.4 (a multi-byte character cut by a range leaves raw-byte markers) |
+
+## `${x:?msg}` at the top level
+
+An unset `${x:?msg}` outside a subshell ends the script like bash, but with exit status 1 where bash 5.2 gives 127
+for a non-interactive shell, and the message is `ps-bash: x: msg` rather than `bash: line N: x: msg`. Inside a
+subshell it ends only the subshell (status 1), as bash does.

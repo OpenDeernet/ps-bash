@@ -129,3 +129,13 @@ public static class BashShellState
         };
     }
 }
+
+/// <summary>
+/// `${x:?msg}` on an unset or empty variable. Thrown as a typed error so a subshell scope can catch it
+/// (bash ends only the subshell, status 1) while the top level still ends the script.
+/// </summary>
+public sealed class BashParamErrorException : Exception
+{
+    public BashParamErrorException(string name, string? message)
+        : base(name + (string.IsNullOrEmpty(message) ? "parameter null or not set" : message)) { }
+}

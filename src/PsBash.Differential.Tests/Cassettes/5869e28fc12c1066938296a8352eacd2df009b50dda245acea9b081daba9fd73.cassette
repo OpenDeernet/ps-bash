@@ -1,0 +1,13 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 54
+stdout-length: 11
+stderr-length: 0
+==== SCRIPT ====
+( echo ${x:?missing} ) 2>/dev/null; echo "after rc=$?"
+==== STDOUT ====
+after rc=1
+
+==== STDERR ====
+

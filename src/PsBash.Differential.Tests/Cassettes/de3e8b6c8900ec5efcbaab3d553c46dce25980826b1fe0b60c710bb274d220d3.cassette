@@ -1,0 +1,14 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 127
+script-length: 57
+stdout-length: 7
+stderr-length: 21
+==== SCRIPT ====
+echo before; echo ${q:?top} 2>/dev/null; echo not-reached
+==== STDOUT ====
+before
+
+==== STDERR ====
+bash: line 1: q: top
+

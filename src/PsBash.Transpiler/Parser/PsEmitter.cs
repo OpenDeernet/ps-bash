@@ -5622,6 +5622,14 @@ public static class PsEmitter
     // `suffix` is not a scalar operator handled here — the caller falls back to the bare
     // reference. Keeping this independent of the variable name lets ${arr[0]##*/},
     // ${arr[i]:-x}, etc. reuse the exact same operator semantics as ${VAR##*/}.
+    /// <summary>`${x:?msg}` / `${x?msg}`: throw the typed error a subshell scope catches (bash ends only the subshell).</summary>
+    private static string ParamErrorThrow(string varRef, string argVal)
+    {
+        var name = varRef.StartsWith("$env:", StringComparison.Ordinal) ? varRef[5..].Trim('{', '}', '(', ')') : "";
+        var prefix = name.Length > 0 ? PsBuild.SingleQuote(name + ": ") : "''";
+        return $"$(throw [PsBash.Cmdlets.BashParamErrorException]::new({prefix}, {argVal}))";
+    }
+
     private static string? EmitScalarSuffix(string varRef, string suffix, bool inDoubleQuote,
         ImmutableArray<WordPart>? argWord = null)
     {
@@ -5689,7 +5697,7 @@ public static class PsEmitter
             return $"{open}{varRef} ? {ArgVal(suffix[2..])} : {q}{q})";
         // Error if unset: ${VAR:?message}
         if (suffix.StartsWith(":?"))
-            return $"{open}{varRef} ? {varRef} : $(throw {ArgVal(suffix[2..])}))";
+            return $"{open}{varRef} ? {varRef} : {ParamErrorThrow(varRef, ArgVal(suffix[2..]))})";
 
         // Colon-less unset-only variants: ${VAR-w} ${VAR=w} ${VAR+w} ${VAR?msg}.
         // Bash distinguishes these (act only when UNSET) from the `:`-prefixed forms
@@ -5703,7 +5711,7 @@ public static class PsEmitter
         if (suffix.StartsWith("+"))
             return $"{open}{varRef} ? {ArgVal(suffix[1..])} : {q}{q})";
         if (suffix.StartsWith("?"))
-            return $"{open}{varRef} ?? $(throw {ArgVal(suffix[1..])}))";
+            return $"{open}{varRef} ?? {ParamErrorThrow(varRef, ArgVal(suffix[1..]))})";
 
         // Remove suffix: ${VAR%%pattern} (longest) / ${VAR%pattern} (shortest).
         // Both anchor the pattern at end-of-string ($). For the LONGEST match a

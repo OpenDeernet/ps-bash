@@ -1598,7 +1598,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("echo ${VAR:?error msg}");
 
-        Assert.Equal("Invoke-BashEcho ($env:VAR ? $env:VAR : $(throw \"error msg\"))", result);
+        Assert.Equal("Invoke-BashEcho ($env:VAR ? $env:VAR : $(throw [PsBash.Cmdlets.BashParamErrorException]::new('VAR: ', \"error msg\")))", result);
     }
 
     [Fact]
@@ -1631,7 +1631,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("echo ${VAR?must be set}");
 
-        Assert.Equal("Invoke-BashEcho ($env:VAR ?? $(throw \"must be set\"))", result);
+        Assert.Equal("Invoke-BashEcho ($env:VAR ?? $(throw [PsBash.Cmdlets.BashParamErrorException]::new('VAR: ', \"must be set\")))", result);
     }
 
     [Fact]
@@ -3418,7 +3418,7 @@ public class PsEmitterTests
         // to pin. Same reason `while` / `case` operands are wrapped.
         Assert.StartsWith("$(& { $__psbash_ss = ", result);
         Assert.Contains("try { Push-Location; $($__psbash_cd_target = '/tmp'", result);
-        Assert.Contains("&& Invoke-BashPwd } finally { ", result);
+        Assert.Contains("&& Invoke-BashPwd } catch [PsBash.Cmdlets.BashParamErrorException] { ", result);
         Assert.EndsWith(PsBuild.PopLocationRestoringProcessCwd
             + " } }); $(if (-not $? -or $global:LASTEXITCODE -ne 0) { Write-Error '' -ErrorAction SilentlyContinue }) && Invoke-BashPwd", result);
     }

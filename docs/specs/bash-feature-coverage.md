@@ -57,7 +57,7 @@ logout select suspend times ulimit umask`. (`getopts` was the one scripts use mo
 - Arrays: sparse assignment (`a[3]=x` on an empty array), associative-array literals and key listing, `declare -p`,
   `"${a[@]/pat/rep}"`, `"${a[@]}"` word splitting when quoted, `unset a[i]`, `readarray -C`.
 - Variables: `declare -n` (namerefs), `declare -i`, `readonly`/`declare -r` enforcement, `export -n`, `local` dynamic
-  scope, `${x@A}`, `${@}` with `IFS`, `set -u` unbound-variable error, `${x:?msg}` inside a subshell kills the shell.
+  scope, `${x@A}`, `${@}` with `IFS`, `set -u` unbound-variable error, (`${x:?msg}` in a subshell now ends only the subshell.)
 - Special variables not provided: `BASHPID BASHOPTS SHELLOPTS EUID UID GROUPS HOSTNAME HOSTTYPE MACHTYPE OSTYPE
   EPOCHSECONDS EPOCHREALTIME DIRSTACK FUNCNAME LINENO(in sourced) OPTIND PS4 TIMEFORMAT`.
 - Builtins: `printf %q` and `%(...)T`, `read -d`, `set -f`/`set -o` listing, `set -x` trace output, `shift` error
