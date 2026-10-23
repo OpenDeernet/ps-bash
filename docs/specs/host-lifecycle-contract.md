@@ -494,3 +494,18 @@ process, and a command that could not be stopped held the lease forever. The rul
   host dropped the connection (`IpcWorker.DescribeStartedReset`).
 - **Not covered:** PowerShell code a command runs in-process (`Invoke-Expression`, .NET calls) can
   always end the host; only a process per command could isolate it.
+
+## Measured warm-path latency (installed 0.13.0-dev, Windows 11, warm daemon)
+
+Mean of 20 sequential launcher invocations from a shell, output discarded (2026-10-23):
+
+| Command | ms |
+|---|---|
+| `cmd.exe /c exit` (process-spawn floor) | 19 |
+| `ps-bash -c ':'` | 301 |
+| `ps-bash -c 'echo a \| cat'` | 328 |
+| `pwsh -NoProfile -c 1` (cold PowerShell, for scale) | 389 |
+
+So a warm `ps-bash -c` costs about 280 ms over the spawn floor, and a second command adds only about 27 ms: the cost is per
+launcher invocation (launcher start, IPC connect, transpile, per-request setup), not per command. This is the number a
+latency optimization (the spec suite's in-host runner, a persistent client) must beat; it has not been profiled by phase yet.
