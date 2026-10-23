@@ -1,0 +1,40 @@
+using System.Diagnostics;
+
+namespace PsBash.Spec;
+
+/// <summary>
+/// The oracle: real bash 5.x under WSL (<c>wsl.exe -d DISTRO -e bash FILE</c>; never <c>--</c>, which re-parses the line in the
+/// login shell). Used only by <c>record</c>; a normal run reads the committed expectations and needs no WSL.
+/// </summary>
+public sealed class WslBashExecutor : IScriptExecutor
+{
+    private readonly string _distro;
+    public WslBashExecutor(string distro = "Ubuntu-24.04") => _distro = distro;
+
+    public async Task<ExecResult> RunAsync(string script, TimeSpan timeout, CancellationToken cancel)
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "ps-bash", "spec-record");
+        Directory.CreateDirectory(dir);
+        string file = Path.Combine(dir, Guid.NewGuid().ToString("N") + ".sh");
+        await File.WriteAllTextAsync(file, script, cancel);
+        try
+        {
+            var psi = new ProcessStartInfo("wsl.exe") { RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true, UseShellExecute = false };
+            foreach (var a in new[] { "-d", _distro, "-e", "bash", ToWslPath(file) }) psi.ArgumentList.Add(a);
+            var sw = Stopwatch.StartNew();
+            using var p = Process.Start(psi)!;
+            p.StandardInput.Close();
+            var stdout = p.StandardOutput.ReadToEndAsync(cancel);
+            var stderr = p.StandardError.ReadToEndAsync(cancel);
+            using var timer = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+            timer.CancelAfter(timeout);
+            try { await p.WaitForExitAsync(timer.Token); }
+            catch (OperationCanceledException) { p.Kill(entireProcessTree: true); throw; }
+            return new ExecResult(p.ExitCode, await stdout, await stderr, sw.ElapsedMilliseconds);
+        }
+        finally { try { File.Delete(file); } catch { /* best effort */ } }
+    }
+
+    internal static string ToWslPath(string windowsPath)
+        => "/mnt/" + char.ToLowerInvariant(windowsPath[0]) + windowsPath[2..].Replace('\\', '/');
+}

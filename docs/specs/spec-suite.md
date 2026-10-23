@@ -155,3 +155,12 @@ The suite is green with gaps listed; fixing one means deleting its XFAIL line (x
 - *Oils cases assume other shells' quirks.* Per-shell annotations carry that; only bash expectations are recorded here.
 - *Absorbing hides an intentional difference.* Rule 3 in section 4: a disagreement with the oracle must become a documented
   XFAIL, never a deleted assertion.
+
+## Phase 1 status (built)
+
+`src/PsBash.Spec` holds the format parser (`SpecParser`), the judge (`SpecRunner`: pass / fail / xfail / xpass, stdout and
+status compared, stderr only when the case states it), the oracle (`WslBashExecutor`) and `SpecRecorder`.
+`src/PsBash.Spec.Tests` runs every `spec/*.spec.sh` against ps-bash, one launcher process per case
+(`PsBashExecutor`; in-host execution and transpile caching are later phases).
+Record expectations for new cases from real bash: `PSBASH_SPEC_RECORD=1 tman test-proj src/PsBash.Spec.Tests`
+(only cases with no expectation are filled). Add `## XFAIL ps-bash <id> <reason>` for a known gap.
