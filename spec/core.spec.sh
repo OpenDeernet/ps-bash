@@ -244,3 +244,15 @@ hi
 end
 ## END
 ## status: 0
+
+#### FUNCNAME is the function call stack
+f() { echo "f: ${FUNCNAME[0]}"; g; }
+g() { echo "g: ${FUNCNAME[0]} ${FUNCNAME[1]}"; }
+f
+echo "top n=${#FUNCNAME[@]}"
+## STDOUT:
+f: f
+g: g f
+top n=0
+## END
+## status: 0

@@ -89,6 +89,15 @@ if (-not (Get-Variable -Name BashPositional -Scope global -ErrorAction SilentlyC
 if (-not (Get-Variable -Name BashPositional0 -Scope global -ErrorAction SilentlyContinue)) {
     $global:BashPositional0 = $null
 }
+# FUNCNAME: the shell functions on the call stack, innermost first (empty at top level). A shell function is a
+# global function with no module; the runtime's own helpers belong to the PsBash module.
+function Get-BashFuncNames {
+    @(Get-PSCallStack | Select-Object -Skip 1 | Where-Object {
+        $c = $_.InvocationInfo.MyCommand
+        $c -and $c.CommandType -eq 'Function' -and -not $c.Module -and $c.Name -and $c.Name -notlike 'Invoke-Bash*' -and $c.Name -ne 'prompt'
+    } | ForEach-Object { $_.InvocationInfo.MyCommand.Name })
+}
+
 # BASH_SOURCE: the script file (and, while `source` runs, the sourced files above it); empty for `-c`.
 if (-not (Get-Variable -Name BASH_SOURCE -Scope global -ErrorAction SilentlyContinue)) {
     $global:BASH_SOURCE = @()

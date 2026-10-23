@@ -5684,6 +5684,7 @@ public static class PsEmitter
                 {
                     "BASH_VERSINFO" => "$global:BashVersionInfo",
                     "BASH_SOURCE" => "$global:BASH_SOURCE",
+                    "FUNCNAME" => "@(Get-BashFuncNames)",
                     var n => $"${n}"
                 };
 
@@ -5723,7 +5724,10 @@ public static class PsEmitter
         {
             string subscript = bvs.Suffix[2..^1]; // strip #[ and ]
             if (subscript is "@" or "*")
-                return inDoubleQuote ? $"$(${bvs.Name}.Count)" : $"${bvs.Name}.Count";
+            {
+                string lenArr = bvs.Name == "FUNCNAME" ? "@(Get-BashFuncNames)" : $"${bvs.Name}";
+                return inDoubleQuote ? $"$({lenArr}.Count)" : $"{lenArr}.Count";
+            }
         }
 
         string varRef = EmitSimpleVar(bvs.Name);
