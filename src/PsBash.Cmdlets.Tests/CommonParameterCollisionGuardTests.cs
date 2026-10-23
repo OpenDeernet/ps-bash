@@ -54,6 +54,10 @@ public class CommonParameterCollisionGuardTests
             ["getopts"] = new(CollidingLetters),
             // flock: -n/-x/-s/-w/-E/-c are the script's own flags; every dash word is single-quoted.
             ["flock"] = new(CollidingLetters),
+            // times/hash/umask: argv is the script's own; every dash word is single-quoted.
+            ["times"] = new(CollidingLetters),
+            ["hash"] = new(CollidingLetters),
+            ["umask"] = new(CollidingLetters),
             ["time"] = new(CollidingLetters),
             ["env"] = new(CollidingLetters),
             // command: emitter single-quotes every dash literal (its own -v/-V/-p AND the inner

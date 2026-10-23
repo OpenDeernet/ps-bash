@@ -195,7 +195,7 @@ AliasesToExport = 'echo', 'printf', 'ls', 'cat', 'grep', 'sort', 'head', 'tail',
                 'sleep', 'time', 'which', 'unalias',
                   'readlink', 'mktemp', 'type', 'bash',
                 'wait', 'jobs', 'fg', 'bg',
-                'shift', 'getopts', 'flock', 'realpath', 'command', 'source', 'unset',
+                'shift', 'getopts', 'flock', 'times', 'hash', 'umask', 'realpath', 'command', 'source', 'unset',
                 'pushd', 'popd', 'dirs',
                 'yes', 'tput', 'shopt',
                 # NB: the '[' alias (the bash `test` builtin) is intentionally NOT

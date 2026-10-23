@@ -3255,6 +3255,9 @@ Set-Alias -Name 'bg'       -Value 'Invoke-BashBg'       -Force -Scope Global -Op
 Set-Alias -Name 'shift'    -Value 'Invoke-BashShift'    -Force -Scope Global -Option AllScope
 Set-Alias -Name 'getopts' -Value 'Invoke-BashGetopts' -Force -Scope Global -Option AllScope
 Set-Alias -Name 'flock' -Value 'Invoke-BashFlock' -Force -Scope Global -Option AllScope
+Set-Alias -Name 'times' -Value 'Invoke-BashTimes' -Force -Scope Global -Option AllScope
+Set-Alias -Name 'hash' -Value 'Invoke-BashHash' -Force -Scope Global -Option AllScope
+Set-Alias -Name 'umask' -Value 'Invoke-BashUmask' -Force -Scope Global -Option AllScope
 Set-Alias -Name 'realpath' -Value 'Invoke-BashRealpath' -Force -Scope Global -Option AllScope
 Set-Alias -Name 'mapfile'  -Value 'Invoke-BashMapfile'  -Force -Scope Global -Option AllScope
 Set-Alias -Name 'readarray' -Value 'Invoke-BashMapfile' -Force -Scope Global -Option AllScope

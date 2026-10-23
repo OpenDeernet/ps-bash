@@ -190,3 +190,18 @@ rc=1 X=1
 Y=3
 ## END
 ## status: 0
+
+#### umask reports and sets the mask
+umask
+umask -S
+umask 077
+umask
+hash -r
+echo rc=$?
+## STDOUT:
+0022
+u=rwx,g=rx,o=rx
+0077
+rc=0
+## END
+## status: 0
