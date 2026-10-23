@@ -4645,7 +4645,8 @@ public static class PsEmitter
     private static string EmitWordPart(WordPart part) => part switch
     {
         WordPart.Literal lit => lit.Value,
-        WordPart.EscapedLiteral el => $"`{el.Value}",
+        // `\b`, `\e`, `\n`... are plain letters in bash; a backtick before one would be a PowerShell escape (bell, ESC, LF).
+        WordPart.EscapedLiteral el => el.Value.Length == 1 && char.IsAsciiLetterOrDigit(el.Value[0]) ? el.Value : $"`{el.Value}",
         WordPart.SingleQuoted sq => $"'{sq.Value}'",
         WordPart.AnsiCQuoted aq => EmitAnsiCQuoted(aq),
         WordPart.DoubleQuoted dq => EmitDoubleQuoted(dq),

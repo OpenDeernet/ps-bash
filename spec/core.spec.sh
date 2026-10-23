@@ -231,3 +231,16 @@ a/b/z.txt
 X.TXT x.txt
 ## END
 ## status: 0
+
+#### backslash before a letter is that letter (not a PowerShell escape)
+echo a\bc a\nb a\ea a\tb
+\echo hi
+for i in 1 2 3; do echo $i; \break; done
+echo end
+## STDOUT:
+abc anb aea atb
+hi
+1
+end
+## END
+## status: 0

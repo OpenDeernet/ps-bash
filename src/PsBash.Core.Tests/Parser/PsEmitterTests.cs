@@ -6608,4 +6608,15 @@ public class PsEmitterTests
 
     private static CompoundWord MakeWord(string value) =>
         new(ImmutableArray.Create<WordPart>(new WordPart.Literal(value)));
+
+    [Theory]
+    [InlineData("\\echo hi")]
+    [InlineData("echo a\\bc")]
+    [InlineData("echo a\\ea")]
+    public void Transpile_BackslashLetter_IsPlainLetterNotPowerShellEscape(string bash)
+    {
+        // `b `e `n... are PowerShell escapes (bell, ESC, LF); bash treats \b \e \n outside quotes as the bare letter.
+        var result = PsEmitter.Transpile(bash)!;
+        Assert.DoesNotMatch("`[a-zA-Z0-9]", result);
+    }
 }
