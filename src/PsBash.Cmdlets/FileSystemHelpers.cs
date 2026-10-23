@@ -254,10 +254,11 @@ internal static class FileSystemHelpers
         {
             cmdlet.WriteError(record);
         }
-        catch
+        catch (Exception ex) when (!IsPipelineStop(ex))
         {
             // Defensive — should not throw with EAP=Continue, but if any
-            // host swaps the runtime semantics we keep going.
+            // host swaps the runtime semantics we keep going. A downstream stop
+            // (`cmd 2>&1 | head -1`) is NOT swallowed: it must unwind the producer.
         }
         finally
         {

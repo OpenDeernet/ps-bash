@@ -3052,7 +3052,10 @@ public static class PsEmitter
             if (_context == TranspileContext.Eval)
                 // try/catch on (1/0) is the mechanism that flips $? to $false so bash `&&` short-circuits;
                 // Write-Error can't be used here because it propagates as a terminating error in eval scope.
-                specialResult = "$(" + argPrelude + "$global:LASTEXITCODE = 1; try { [void](1/0) } catch { }; if ($global:__BashErrexit) { throw 'PsBash.FalseErrexit' })";
+                // No errexit throw: eval/source'd code runs without per-statement checks (intentional-differences.md),
+                // and the throw escaped the eval cmdlet as "ps-bash: PsBash.FalseErrexit", killing the shell, even
+                // for a member of an && / || list that bash exempts.
+                specialResult = "$(" + argPrelude + "$global:LASTEXITCODE = 1; try { [void](1/0) } catch { })";
             else if (_andOrChainDepth > 0 || _errexitMode)
                 // Inside an && / || list: bash exempts every list member from
                 // errexit, so `set -e; false || true` must survive. Non-terminating
