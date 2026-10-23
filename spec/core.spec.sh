@@ -256,3 +256,13 @@ g: g f
 top n=0
 ## END
 ## status: 0
+
+#### PS4 defaults to "+ " and can be set
+echo "[$PS4]"
+PS4='>> '
+echo "[$PS4]"
+## STDOUT:
+[+ ]
+[>> ]
+## END
+## status: 0

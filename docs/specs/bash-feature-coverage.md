@@ -59,8 +59,8 @@ logout select suspend ulimit`. (`getopts` was the one scripts use most; it is no
   `"${a[@]/pat/rep}"`, `readarray -C`. (Associative-array literals, `${!m[@]}`, `${m[@]}` values, `unset a[i]` and `${m[$k]}` now work.)
 - Variables: `declare -n` across separate invocations or with a run-time target (a literal target within one script works), `declare -i` across separate invocations (within one script it works), `readonly` assignment from a later statement in a different invocation (within one script, assignment and `unset` of a readonly fail with status 1), `export -n`, `local` dynamic
   scope, `${x@A}`, `${@}` with `IFS`, `set -u` unbound-variable error, (`${x:?msg}` in a subshell now ends only the subshell.)
-- Special variables still not provided: `BASHOPTS SHELLOPTS GROUPS DIRSTACK LINENO(in sourced) OPTIND(initial) PS4 TIMEFORMAT`. (`UID EUID OSTYPE HOSTTYPE MACHTYPE HOSTNAME BASHPID EPOCHSECONDS EPOCHREALTIME` are now provided; `OSTYPE` is `msys` on Windows.)
-  EPOCHSECONDS EPOCHREALTIME DIRSTACK LINENO(in sourced) OPTIND PS4 TIMEFORMAT`.
+- Special variables still not provided: `BASHOPTS SHELLOPTS GROUPS DIRSTACK LINENO(in sourced) OPTIND(initial) TIMEFORMAT` (`PS4` reads as `+ ` by default). (`UID EUID OSTYPE HOSTTYPE MACHTYPE HOSTNAME BASHPID EPOCHSECONDS EPOCHREALTIME` are now provided; `OSTYPE` is `msys` on Windows.)
+  EPOCHSECONDS EPOCHREALTIME DIRSTACK LINENO(in sourced) OPTIND TIMEFORMAT` (`PS4` reads as `+ ` by default).
 - Builtins: `printf %q` and `%(...)T`, `read -d`, `set -o` listing, `set -x` trace output, `shift` error
   status, `shopt -p`, `test -v`, `unalias` error, `trap` for DEBUG/RETURN/EXIT-ordering/signals (`trap ... ERR` now runs after a failing statement).
 - Pipelines: `pipefail`, `PIPESTATUS` (deferred on purpose, see the memory note), `time` formatting.

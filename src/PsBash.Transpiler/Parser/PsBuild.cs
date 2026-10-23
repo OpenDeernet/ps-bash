@@ -774,6 +774,8 @@ public static class PsBuild
                 return "$(($(if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { 'aarch64' } else { 'x86_64' })) + $(if ($IsWindows) { '-pc-msys' } elseif ($IsMacOS) { '-apple-darwin' } else { '-pc-linux-gnu' }))";
             case "HOSTNAME":
                 return "$([System.Environment]::MachineName)";
+            case "PS4":
+                return "$(if ($null -ne $env:PS4) { $env:PS4 } else { '+ ' })";
             case "BASHPID":
                 return "$PID";
             case "EPOCHSECONDS":
