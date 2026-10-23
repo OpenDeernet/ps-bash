@@ -120,3 +120,14 @@ public class SpecRunnerTests
         Assert.Equal("boom\n", SpecRunner.NormalizeStderr("ps-bash: boom\n"));
     }
 }
+
+public class SpecParserWhitespaceTests
+{
+    [Fact]
+    public void Inline_stdout_keeps_inner_spacing()
+    {
+        var f = SpecParser.Parse("t", "#### w\necho x\n## stdout: a  b\n## OK bash stdout: c   d\n");
+        Assert.Equal("a  b\n", f.Cases[0].Primary.Stdout);
+        Assert.Equal("c   d\n", f.Cases[0].Alternatives[0].Stdout);
+    }
+}

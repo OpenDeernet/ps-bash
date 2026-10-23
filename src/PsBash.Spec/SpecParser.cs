@@ -76,7 +76,8 @@ public static class SpecParser
         }
         else if (words.Length > 0 && words[0] is "N-I") { SkipBlock(body, lines, ref i); return null; }
 
-        string rest = string.Join(' ', words.Skip(skip));
+        string rest = body.TrimStart();
+        for (int w = 0; w < skip; w++) rest = rest[words[w].Length..].TrimStart();
         string key = rest.Split(':')[0];
         string inline = rest.Contains(':') ? rest[(rest.IndexOf(':') + 1)..].TrimStart(' ') : "";
 
