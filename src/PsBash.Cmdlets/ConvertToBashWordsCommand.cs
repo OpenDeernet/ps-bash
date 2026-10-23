@@ -55,7 +55,8 @@ public sealed class ConvertToBashWordsCommand : PSCmdlet
         if (ConvertToBashGlobCommand.IsNoGlob(SessionState) || !BashGlob.HasPattern(pattern)) return new[] { word };
 
         string cwd = SessionState.Path.CurrentFileSystemLocation.ProviderPath;
-        var matches = BashGlob.Expand(pattern, cwd, InvokeBashShoptCommand.IsEnabled("dotglob"));
+        var matches = BashGlob.Expand(pattern, cwd, InvokeBashShoptCommand.IsEnabled("dotglob"),
+            InvokeBashShoptCommand.IsEnabled("globstar"), InvokeBashShoptCommand.IsEnabled("nocaseglob"));
         if (matches.Count > 0) return matches;
 
         if (InvokeBashShoptCommand.IsEnabled("failglob"))

@@ -43,7 +43,7 @@ public sealed class InvokeBashShoptCommand : PSCmdlet
     private static Dictionary<string, bool> NewDefaults() => new(StringComparer.Ordinal)
     {
         ["extglob"] = false,
-        ["globstar"] = true,
+        ["globstar"] = false,
         ["dotglob"] = false,
         ["nullglob"] = false,
         ["failglob"] = false,

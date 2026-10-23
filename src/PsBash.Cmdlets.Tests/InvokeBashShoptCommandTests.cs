@@ -81,10 +81,10 @@ public class InvokeBashShoptCommandTests : IClassFixture<SharedPwshFixture>
     [Fact]
     public void Shopt_QueryDefaultOn_EmitsOn()
     {
-        // globstar defaults to true (per oracle table).
-        var lines = RunLines("Invoke-BashShopt globstar");
+        // cmdhist defaults to true (per oracle table); globstar is off, as in bash.
+        var lines = RunLines("Invoke-BashShopt cmdhist");
         Assert.Single(lines);
-        Assert.Equal("globstar on", lines[0]);
+        Assert.Equal("cmdhist on", lines[0]);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class InvokeBashShoptCommandTests : IClassFixture<SharedPwshFixture>
         // The `shopt` alias (declared in psm1) must resolve to the cmdlet.
         var lines = RunLines("shopt globstar");
         Assert.Single(lines);
-        Assert.Equal("globstar on", lines[0]);
+        Assert.Equal("globstar off", lines[0]);
     }
 
     [Fact]

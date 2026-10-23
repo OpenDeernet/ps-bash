@@ -42,8 +42,10 @@ public static class BashGlobText
 /// trailing <c>/</c> keeps only directories and is kept. No match yields an empty list (the caller keeps
 /// the literal word, or applies <c>nullglob</c> / <c>failglob</c>).</para>
 ///
-/// <para>Not implemented: <c>**</c> (acts as <c>*</c>), <c>nocaseglob</c>, and
-/// collation order other than ordinal.</para>
+/// <para><c>globstar</c>: a <c>**</c> component matches zero or more directory levels (dot-directories only under
+/// <c>dotglob</c>, symlinked directories are not followed); as the last component it matches every file and
+/// directory below. Its results are sorted as a whole, like bash. <c>nocaseglob</c> compares case-insensitively
+/// (ordinal lower-casing). Not implemented: collation order other than ordinal.</para>
 /// </summary>
 internal static class BashGlob
 {
@@ -92,7 +94,7 @@ internal static class BashGlob
     }
 
     /// <summary>Matches of <paramref name="pattern"/>, resolved against <paramref name="cwd"/>; empty when nothing matches.</summary>
-    public static List<string> Expand(string pattern, string cwd, bool dotGlob)
+    public static List<string> Expand(string pattern, string cwd, bool dotGlob, bool globStar = false, bool noCase = false)
     {
         string prefix = "";
         string dir = cwd;
@@ -134,6 +136,16 @@ internal static class BashGlob
             var next = new List<(string, string)>();
             foreach (var (pfx, fsDir) in frontier)
             {
+                if (globStar && comp == "**")
+                {
+                    if (last)
+                    {
+                        if (i > 0) next.Add((pfx, fsDir)); // `a/**` lists `a/` itself first
+                        AddDescendants(pfx, fsDir, dotGlob, includeFiles: true, next);
+                    }
+                    else { next.Add((pfx, fsDir)); AddDescendants(pfx, fsDir, dotGlob, includeFiles: false, next); }
+                    continue;
+                }
                 if (!HasPattern(comp))
                 {
                     string name = Unescape(comp);
@@ -146,7 +158,7 @@ internal static class BashGlob
 
                 foreach (var name in ListNames(fsDir))
                 {
-                    if (!MatchComponent(comp, name, dotGlob)) continue;
+                    if (!MatchComponent(noCase ? comp.ToLowerInvariant() : comp, noCase ? name.ToLowerInvariant() : name, dotGlob)) continue;
                     string full = Path.Combine(fsDir, name);
                     if (!last || dirOnly)
                     {
@@ -160,7 +172,27 @@ internal static class BashGlob
 
         var results = new List<string>(frontier.Count);
         foreach (var (pfx, _) in frontier) results.Add(dirOnly ? pfx + "/" : pfx);
+        if (globStar) results.Sort(StringComparer.Ordinal);
         return results;
+    }
+
+    /// <summary>Pre-order walk below <paramref name="fsDir"/> (sorted names): directories, plus files when asked.</summary>
+    private static void AddDescendants(string pfx, string fsDir, bool dotGlob, bool includeFiles, List<(string, string)> sink)
+    {
+        foreach (var name in ListNames(fsDir))
+        {
+            if (!dotGlob && name.StartsWith('.')) continue;
+            string full = Path.Combine(fsDir, name);
+            bool isDir = SafeDirectoryExists(full) && !IsLink(full);
+            if (!isDir && !includeFiles) continue;
+            sink.Add((pfx + name + (includeFiles ? "" : "/"), full));
+            if (isDir) AddDescendants(pfx + name + "/", full, dotGlob, includeFiles, sink);
+        }
+    }
+
+    private static bool IsLink(string path)
+    {
+        try { return new DirectoryInfo(path).LinkTarget is not null; } catch { return false; }
     }
 
     /// <summary>One path component against one name; an extglob component (<c>@(a|b)</c>, <c>!(*.h)</c>) goes through <see cref="BashPattern"/>.</summary>

@@ -205,3 +205,29 @@ u=rwx,g=rx,o=rx
 rc=0
 ## END
 ## status: 0
+
+#### globstar and nocaseglob
+d=$(mktemp -d)
+cd "$d"
+mkdir -p a/b
+touch x.txt a/y.txt a/b/z.txt
+echo **/*.txt
+shopt -s globstar
+echo **/*.txt
+echo **
+echo a/**
+echo **/z.txt
+shopt -u globstar
+shopt -s nocaseglob
+echo X.TXT *.TXT
+cd /
+rm -rf "$d"
+## STDOUT:
+a/y.txt
+a/b/z.txt a/y.txt x.txt
+a a/b a/b/z.txt a/y.txt x.txt
+a/ a/b a/b/z.txt a/y.txt
+a/b/z.txt
+X.TXT x.txt
+## END
+## status: 0

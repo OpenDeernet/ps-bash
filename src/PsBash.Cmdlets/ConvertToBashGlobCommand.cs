@@ -43,7 +43,8 @@ public sealed class ConvertToBashGlobCommand : PSCmdlet
         }
 
         string cwd = SessionState.Path.CurrentFileSystemLocation.ProviderPath;
-        var matches = BashGlob.Expand(pattern, cwd, InvokeBashShoptCommand.IsEnabled("dotglob"));
+        var matches = BashGlob.Expand(pattern, cwd, InvokeBashShoptCommand.IsEnabled("dotglob"),
+            InvokeBashShoptCommand.IsEnabled("globstar"), InvokeBashShoptCommand.IsEnabled("nocaseglob"));
         if (matches.Count == 0)
         {
             if (InvokeBashShoptCommand.IsEnabled("failglob"))
