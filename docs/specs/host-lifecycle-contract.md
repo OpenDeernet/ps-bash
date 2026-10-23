@@ -35,13 +35,15 @@ health-handshake loop. Pool size: `PSBASH_POOL_WARM` (default 2) warm spares,
 `PSBASH_POOL_WARM=0` is valid: the host reports ready immediately (there is no
 warm-up to wait for) and each connection builds its runspace on demand.
 
-**Isolated runspaces, serialized execution.** Isolation is per connection (own
-runspace, discarded on release); command *execution* is NOT parallel. `SdkWorker`
-holds a static, process-wide exec gate (`_globalExecGate`) across every command,
-because bash variables (`$env:NAME`) and the working directory
-(`Environment.CurrentDirectory`) are process-global and shared by all runspaces.
-Concurrent launchers therefore queue on the gate (output drains after release, so a
-slow consumer does not block the next command). True concurrency would need
+**Isolated runspaces, one command per host.** Isolation is per connection (own
+runspace, discarded on release); command *execution* is NOT parallel inside a host. The host
+holds a one-permit **execution lease** (`HostServer.TryEnterExecution`) across every launcher-framed
+command, because bash variables (`$env:NAME`) and the working directory
+(`Environment.CurrentDirectory`) are process-global and shared by all runspaces. A framed request that
+finds the lease taken is refused at once with `HostProtocol.ExecBusyExitCode` (before STARTED, nothing
+ran, no stdin read) and the launcher re-sends it to another **executor slot**
+(`executor-slots.md`); requests that cannot move (queries, interactive) wait for the lease. Concurrency
+comes from several host processes, not from a queue. True in-process concurrency would need
 invocation-scoped env/cwd, or separate processes (`PSBASH_PER_INVOCATION=1` gives
 each launcher its own host).
 
@@ -116,7 +118,7 @@ now exits when the agent does instead of 10 minutes later.
 
 Not watched (idle timeout only, `PSBASH_HOST_IDLE_SECS`, default 600 s): an explicit
 `PSBASH_SESSION` (the caller owns the grouping; no process represents it), an explicit
-`PSBASH_IPC_ENDPOINT`, the per-user fallback, and nested daemons (already 60 s). A
+`PSBASH_IPC_ENDPOINT`, the per-user fallback, and slot daemons (already 60 s). A
 `PerInvocation` host is private to its launcher and dies with it (`--launcher-pid`).
 
 Regression-pinned by `SessionAnchorWatcherTests.Daemon_ExitsAfterItsSessionAnchorDies` (real
@@ -124,58 +126,31 @@ daemon, idle pinned at 600 s, stand-in anchor killed → host exits; verified re
 watcher), `IdleShutdownTests.ShortenTimeout_*`, `ProcessIdentityTests`, and
 `IpcTransportFactoryTests.ResolveEndpoint_*Anchor*`.
 
-## Nested invocations never reuse the parent's host
+## Nested invocations run on another executor slot
 
-A command executing inside a `Daemon` host may itself start a ps-bash: `bash -c '…'` in a
-script, awk `"cmd" | getline`, `xargs bash -c`, a `.sh` that calls `ps-bash`. That child must
-**not** connect to the host running its parent. The host holds the process-wide exec gate
-(`SdkWorker._globalExecGate`) for the parent's whole command, so the child's request queues
-behind the very command that waits for it:
+A command executing inside a `Daemon` host may itself start a ps-bash: `bash -c '…'` in a script, awk
+`"cmd" | getline`, `xargs bash -c`, a `.sh` that calls `ps-bash`. That child cannot be served by the host
+running its parent: the parent holds that host's execution lease for its whole command, and the child waits for
+the lease while the parent waits for the child. (A child of a different build would instead retire the host as
+obsolete, and the parent saw `host connection reset after the command started executing`, exit 125.)
 
-- same build: the child is accepted and acquires a runspace, then blocks on the gate —
-  deadlock until the parent's `RunChildProcess` timeout (120 s) or the idle timeout;
-- different build (e.g. an installed release first on `PATH` while a dev host serves the
-  parent): the child classifies the host Obsolete, asks it to shut down and replaces it, and
-  the parent sees `host connection reset after the command started executing` (exit 125).
-
-This hit every nested launch whose endpoint matched the parent's — an explicit
-`PSBASH_IPC_ENDPOINT` (differential harness, tests) and also the default per-session endpoint
-when the child resolves the same session anchor.
-
-**Mechanism.** For the duration of every launcher-framed command the host sets
-`PSBASH_INSIDE_HOST=<host pid>` in its process environment (`SdkWorker.RunCommand`, after the
-R06 environment reset, cleared in the `finally`; never set for in-process/legacy callers whose
-environment block is null). Child processes inherit it. `IpcWorker.StartAsync` checks
-`IpcTransportFactory.IsInsideHostCommand()` and downgrades a `Lifetime.Daemon` request to
-a **warm daemon at the launcher's nesting depth** (below), so repeated nested calls reuse one host
-instead of each paying a cold start (a private host per call cost ~10 s: awk close/reopen pipe
-12 s → 2.5 s, 5 awk `system()` 27 s → 4.4 s, 2-level `bash -c` 11.7 s → 2.2 s, medians). Top-level
-launchers (marker absent) keep the canonical endpoint. No caller
-needs its own workaround (awk's `PSBASH_PER_INVOCATION` override was removed).
-
-**Nested daemons (per depth).** Besides the marker, the host publishes
-`PSBASH_NEST_DEPTH = <host depth> + 1` to the command (`IpcTransportFactory.NestDepthEnvVar`; a
-host learns its own depth from the `-nested<d>` suffix of the endpoint it was started on,
-`ParseNestDepth`; the top-level host is depth 0). A nested launcher at depth `d`
-(`CurrentNestDepth()`) resolves `ResolveNestedEndpoint(d)` = the explicit / per-session endpoint
-plus `-nested<d>` (a unix path that would overflow `sun_path` becomes a hashed pipe name), then runs
-the normal Daemon path on it (`EnsureHostReachableAsync`: HostSpawnLock single-flight, BuildIdentity
-replace, optimistic local reuse). The host serving depth `d` is never the host blocked on the
-caller (which is at depth `d-1`), and depth strictly increases down any chain, so there is no
-cycle. Nested daemons idle out after 60 s (`PSBASH_HOST_IDLE_SECS`, unless the environment already
-asks for less) because nothing reaps them when their parent host goes away. Depth beyond
-`MaxNestedDaemonDepth` (6) falls back to a private `PerInvocation` host. `PSBASH_PER_INVOCATION=1`
-is unchanged: such launchers (nested or not) always get a private host, and that host's children
-inherit the flag. After every framed command the host also moves its process cwd out of the
-caller's directory (a persistent host must not pin it, or Windows cannot delete it). The nested
-launcher is also resolved to the `ps-bash` beside the host process
-(`InvokeBashBashCommand.ResolvePsBashExecutable` tier 0), i.e. the SAME build as the host, so an
-older PATH-installed ps-bash — which predates this marker and would connect to the explicit
-endpoint and retire the host as obsolete — is never picked.
-Regression-pinned by `NestedInvocationTests` (explicit and default endpoint, 1–2 levels,
-awk getline, `NestedBashC_RepeatedCalls_ReuseOneWarmNestedHost` via `$$`), `IpcTransportFactoryTests`
-(`ResolveNestedEndpoint_*`, `CurrentNestDepth_*`) and `SdkWorkerEnvironmentTests.LauncherFramedCommand_SeesInsideHostMarker_ClearedAfterwards`.
-
+**Mechanism (executor slots, `executor-slots.md`).** There is no marker in the environment any more.
+The child connects to its normal endpoint, is told `ExecBusyExitCode` before anything runs, and the launcher
+recognises that it is a descendant of the busy host (`ProcessAncestry.IsDescendantOf`, parent-chain walk), so
+it moves to slot k+1 at once: `IpcTransportFactory.ResolveSlotEndpoint(base, k)` = the endpoint plus `-x<k>`
+(a unix path that would overflow `sun_path` becomes a hashed name), brought up by the normal Daemon path
+(`EnsureHostReachableAsync`: HostSpawnLock single-flight, BuildIdentity replace, optimistic local reuse). A
+slot daemon is kept warm for repeated nested calls and idles out after 60 s (`PSBASH_HOST_IDLE_SECS`, unless
+the environment already asks for less) because nothing reaps it when its parent host goes away. When all
+`MaxExecSlots` (6) slots are occupied by an ancestor chain the launcher falls back to a private
+`PerInvocation` host. `PSBASH_PER_INVOCATION=1` is unchanged: such launchers always get a private host. After
+every framed command the host moves its process cwd out of the caller's directory (a persistent host must not
+pin it, or Windows cannot delete it). The nested launcher is also resolved to the `ps-bash` beside the host
+process (`InvokeBashBashCommand.ResolvePsBashExecutable` tier 0), i.e. the SAME build as the host.
+Regression-pinned by `NestedInvocationTests` (explicit and default endpoint, 1–2 levels, awk getline,
+`NestedBashC_RepeatedCalls_ReuseOneWarmNestedHost` via `$$`), `HostServerTests.ExecutionLease_*`,
+`IpcWorkerExecutorSlotTests`, `IpcTransportFactoryTests.ResolveSlotEndpoint_*` and
+`SdkWorkerEnvironmentTests.LauncherFramedCommand_DoesNotSetTheRetiredNestingMarkers`.
 ## Runtime Directory
 
 All per-user runtime artifacts — extracted module, IPC sockets, `.host.json`
@@ -359,10 +334,9 @@ on connect and restoring it on release would race: the pool runs up to
 `PSBASH_POOL_MAX` connections *concurrently in one process*, and they all share
 the single process environment block. Two overlapping commands would restore
 each other's snapshot and corrupt both. The R06 implementation sidesteps the race
-by reusing the **existing process-wide execution gate**: `SdkWorker` already
-serialises command execution through `_globalExecGate` because bash variables and
-cwd are process-global (see the field's comment), so the environment reset runs
-inside that gate and no other runspace is executing during the swap — the
+by reusing the **host's execution lease** (`HostServer`): a host already serialises command
+execution because bash variables and cwd are process-global, so the environment reset runs
+inside that lease and no other runspace is executing during the swap — the
 "serialized env epoch" the earlier analysis called for.
 
 Two further divergences share this root cause (bash variables modeled as
@@ -485,9 +459,9 @@ per-invocation).
 
 ## No input may take the host down
 
-The daemon serves every command of a session under one process-wide exec gate (env vars and cwd are
+A host runs one command at a time under its execution lease (env vars and cwd are
 process-global), so one hostile command used to cost every session: a stack overflow killed the
-process, and a command that could not be stopped held the gate forever. The rules:
+process, and a command that could not be stopped held the lease forever. The rules:
 
 - **Recursion is bounded.** Every recursive scanner/parser/evaluator cycle enters `NestingGuard`
   (lexer `ScanBalancedParens`, `BashParser.ParseCompoundOrSimple`, `ParseBracedVar`, the arithmetic

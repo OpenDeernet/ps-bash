@@ -44,7 +44,7 @@ public enum Lifetime
     /// per invocation by the launcher's cwd preamble, and as of R06 the launcher's
     /// full environment block travels with each request and the host resets its
     /// process environment to exactly that block before running (serialized by
-    /// <c>SdkWorker._globalExecGate</c>), so <c>export</c> in one <c>-c</c> is NOT
+    /// the host execution lease), so <c>export</c> in one <c>-c</c> is NOT
     /// visible to the next — matching a fresh <c>bash -c</c>. Other callers:
     /// <c>ps-bash host restart</c> (<c>HostCommands.cs</c>).</para>
     /// <para>It is <b>not</b> used by the interactive REPL. The interactive
@@ -83,12 +83,16 @@ public enum Lifetime
 /// </remarks>
 public sealed class IpcWorker : IWorker
 {
-    private readonly string _scheme;
-    private readonly string _endpoint;
+    // Mutable only for executor-slot spill (docs/specs/executor-slots.md): slot 0 is the endpoint the launcher resolved,
+    // a busy host sends the next command to slot k = ResolveSlotEndpoint(_baseEndpoint, k).
+    private string _scheme;
+    private string _endpoint;
+    private string _baseEndpoint;
+    private int _slot;
     private readonly string _hostBinaryPath;
     private readonly TimeSpan _startupTimeout;
     private readonly TimeSpan _startupPollInterval;
-    private readonly Lifetime _lifetime;
+    private Lifetime _lifetime;
     // Serializes ExecuteAsync / QueryAsync on this worker. One request in flight at
     // a time is already the de facto model (a launcher issues one command; the pool
     // gives each -c connection its own worker), and it makes QueryAsync's temporary
@@ -131,6 +135,7 @@ public sealed class IpcWorker : IWorker
     {
         _scheme = scheme;
         _endpoint = endpoint;
+        _baseEndpoint = endpoint;
         _hostBinaryPath = hostBinaryPath;
         _startupTimeout = timeout;
         _startupPollInterval = poll;
@@ -167,36 +172,14 @@ public sealed class IpcWorker : IWorker
     {
         ArgumentNullException.ThrowIfNull(hostBinaryPath);
 
-        // Nested invocation: we run inside a command a host is executing. That host holds its
-        // process-wide exec gate for our parent, so connecting to it (explicit
-        // PSBASH_IPC_ENDPOINT or the per-session default) deadlocks behind the parent — or
-        // retires it if our build differs. A private host is the only safe choice.
-        // Instead of paying a cold private host per nested call, a nested launcher uses a WARM
-        // daemon at its own nesting depth (<endpoint>-nested<depth>, see ResolveNestedEndpoint).
-        // The host at depth d+1 is never the host blocked on the parent at depth d, so there is
-        // no cycle; deeper than MaxNestedDaemonDepth falls back to a private host.
-        int nestDepth = 0;
-        if (lifetime == Lifetime.Daemon && IpcTransportFactory.IsInsideHostCommand())
-        {
-            nestDepth = IpcTransportFactory.CurrentNestDepth();
-            if (nestDepth > IpcTransportFactory.MaxNestedDaemonDepth)
-            {
-                lifetime = Lifetime.PerInvocation;
-                nestDepth = 0;
-            }
-        }
-
         ProcessIdentity? sessionAnchor = null;
         var (scheme, endpoint) = lifetime == Lifetime.PerInvocation
             ? IpcTransportFactory.ResolvePerInvocationEndpoint()
-            : nestDepth > 0
-                ? IpcTransportFactory.ResolveNestedEndpoint(nestDepth)
-                : IpcTransportFactory.ResolveEndpoint(null, out sessionAnchor);
+            : IpcTransportFactory.ResolveEndpoint(null, out sessionAnchor);
         var timeout = startupTimeout ?? GetStartupTimeout();
         var poll = startupPollInterval ?? TimeSpan.FromMilliseconds(50);
         var worker = new IpcWorker(scheme, endpoint, hostBinaryPath, timeout, poll, lifetime)
         {
-            _nestDepth = nestDepth,
             _sessionAnchor = sessionAnchor,
         };
         if (lifetime == Lifetime.PerInvocation)
@@ -562,7 +545,6 @@ public sealed class IpcWorker : IWorker
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return HostHealthState.Unhealthy; }
     }
 
-    private int _nestDepth;
     // The process whose session keys this daemon's endpoint (null for an explicit endpoint,
     // PSBASH_SESSION, nested, or per-user daemons). Passed to a daemon this worker spawns so it
     // exits once the session is gone instead of idling out (GH #7).
@@ -600,7 +582,7 @@ public sealed class IpcWorker : IWorker
             // exists to serve repeated nested calls, and nothing reaps it when its parent host
             // goes away. The host reads PSBASH_HOST_IDLE_SECS from its environment.
             string? savedIdle = null;
-            bool lowerIdle = _nestDepth > 0;
+            bool lowerIdle = _slot > 0;
             if (lowerIdle)
             {
                 savedIdle = Environment.GetEnvironmentVariable(NestedIdleEnvVar);
@@ -759,6 +741,58 @@ public sealed class IpcWorker : IWorker
         public HostProcessExitedException(string message) : base(message) { }
     }
 
+    private static int SpillDelayMs()
+        => int.TryParse(Environment.GetEnvironmentVariable("PSBASH_EXEC_SPILL_MS"), out var ms) && ms >= 0 ? ms : 250;
+
+    private int _busyBackoffMs = 5;
+
+    /// <summary>Test seam: slot endpoints are served by scripted hosts already listening, so skip discovery/spawn.</summary>
+    internal bool AssumeSlotHostsReachableForTest { get; set; }
+    internal int SlotForTest => _slot;
+
+    /// <summary>
+    /// The current host refused the command because it is running another one (docs/specs/executor-slots.md).
+    /// A launcher running INSIDE that command (a descendant of the host) can never wait for it, so it moves to
+    /// the next executor slot at once, and to a private host when all slots are busy. An unrelated launcher
+    /// backs off, then spills after <see cref="SpillDelayMs"/>; a stateful (pinned-runspace) host keeps its
+    /// unrelated callers queued on it instead.
+    /// </summary>
+    private async Task YieldToAnotherSlotAsync(System.Diagnostics.Stopwatch busyFor, CancellationToken ct)
+    {
+        var meta = HostMetadata.TryRead(_scheme, _endpoint);
+        int busyPid = meta?.Pid ?? _cachedHostPid;
+        bool nested = busyPid > 0 && ProcessAncestry.IsDescendantOf(busyPid);
+        bool pinned = meta?.Stateful == true;
+
+        if (!nested && (pinned || busyFor.ElapsedMilliseconds < SpillDelayMs()))
+        {
+            await Task.Delay(_busyBackoffMs, ct).ConfigureAwait(false);
+            _busyBackoffMs = Math.Min(_busyBackoffMs * 2, 40);
+            return;
+        }
+
+        _busyBackoffMs = 5;
+        int next = _slot + 1;
+        if (next > IpcTransportFactory.MaxExecSlots)
+        {
+            if (nested)
+            {
+                // Every slot is occupied by an ancestor chain: a private host is the only safe place left.
+                _lifetime = Lifetime.PerInvocation;
+                (_scheme, _endpoint) = IpcTransportFactory.ResolvePerInvocationEndpoint();
+                await SpawnPrivateHostAsync(ct).ConfigureAwait(false);
+                return;
+            }
+            next = 0; // contended, not nested: go round again; the other launchers will finish
+            busyFor.Restart();
+        }
+
+        _slot = next;
+        (_scheme, _endpoint) = IpcTransportFactory.ResolveSlotEndpoint(_scheme, _baseEndpoint, next);
+        if (!AssumeSlotHostsReachableForTest)
+            await EnsureHostReachableAsync(ct).ConfigureAwait(false);
+    }
+
     private async Task<int> SendRequestAsync(Mode mode, CancellationToken ct)
     {
         var idleTimeout = GetCallTimeout();
@@ -784,6 +818,7 @@ public sealed class IpcWorker : IWorker
         // corpse. Timeouts are NOT retried here: they throw TimeoutException from
         // ExchangeOnceAsync (see below).
         const int maxAttempts = 2;
+        System.Diagnostics.Stopwatch? busySince = null;
         for (int attempt = 1; ; attempt++)
         {
             // startedReceived is flipped by the response reader on the STARTED
@@ -794,9 +829,20 @@ public sealed class IpcWorker : IWorker
             bool framesDelivered = false;
             try
             {
-                return await ExchangeOnceAsync(
+                int exit = await ExchangeOnceAsync(
                     mode, command, compactRouteKey, idleTimeout, unbounded, compactFrames,
                     () => framesDelivered = true, () => startedReceived = true, ct).ConfigureAwait(false);
+                // The host's execution lease was taken: it refused BEFORE running anything or reading any
+                // stdin, so the command is re-sent to another executor slot without using a retry.
+                if (exit == HostProtocol.ExecBusyExitCode && !startedReceived && !framesDelivered
+                    && _lifetime == Lifetime.Daemon)
+                {
+                    busySince ??= System.Diagnostics.Stopwatch.StartNew();
+                    await YieldToAnotherSlotAsync(busySince, ct).ConfigureAwait(false);
+                    attempt--;
+                    continue;
+                }
+                return exit;
             }
             catch (Exception ex) when (IsTransportReset(ex))
             {
@@ -991,6 +1037,7 @@ public sealed class IpcWorker : IWorker
 
                 // Forward the launcher's stdin once the host has ACKNOWLEDGED execution start: a reset before
                 // that is retried against a fresh host, and stdin already consumed could not be replayed.
+                bool sawStarted = false;
                 var forwardedStdin = mode is Mode.Command { StdinFollows: true } ? LauncherStdin : null;
                 void StartStdinPump()
                 {
@@ -1041,11 +1088,12 @@ public sealed class IpcWorker : IWorker
 
                         StreamFrame(line, tag);
                     },
-                    () => { onStarted(); StartStdinPump(); },
+                    () => { sawStarted = true; onStarted(); StartStdinPump(); },
                     linked.Token).ConfigureAwait(false);
                 try { stdinPumpStop.Cancel(); } catch (ObjectDisposedException) { }
 
-                if (compactFrames is not null)
+                bool refusedBusy = exitCode == HostProtocol.ExecBusyExitCode && !sawStarted && compactFrames?.Count == 0;
+                if (compactFrames is not null && !refusedBusy)
                 {
                     EmitCompactedOutput(command, compactRouteKey, exitCode, timedOut: false, compactFrames);
                 }

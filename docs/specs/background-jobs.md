@@ -3,7 +3,7 @@
 Status: **DESIGN; implementation started** (2026-10-22): phase 1 = `JobProcess` (§6). Originally written for
 `&` only; generalised to *all* execution in §4.2 (the daemon becomes a pure hub). Supersedes the in-process runspace-pool runner
 (`Invoke-BashBackground`, `src/PsBash.Module/PsBash.psm1`). Companion to
-[host-lifecycle-contract.md](host-lifecycle-contract.md) (daemon, exec gate, nested hosts) and
+[host-lifecycle-contract.md](host-lifecycle-contract.md) (daemon, execution lease, executor slots) and
 [pty.md](pty.md) (interactive hosts).
 
 ## 1. Problem
@@ -27,9 +27,9 @@ supposed to have a private copy of is shared or missing:
 
 ### 1.1 Why the daemon made this a correctness bug, not a quirk
 
-The daemon (`ps-bash-host`, `Lifetime.Daemon`) serializes command execution on one process-wide gate,
-`SdkWorker._globalExecGate`, **because env and cwd are process-global** (host-lifecycle-contract.md,
-"Isolated runspaces, serialized execution"). A background runspace runs **outside that gate**, so it:
+The daemon (`ps-bash-host`, `Lifetime.Daemon`) serializes command execution (originally one process-wide gate in `SdkWorker`, now the per-host
+execution lease in `HostServer`), **because env and cwd are process-global** (host-lifecycle-contract.md,
+"Isolated runspaces, one command per host"). A background runspace runs **outside that lease**, so it:
 
 1. mutates `$env:` / cwd **while another connection's command is executing under the gate** — a job from
    session A can change the variables session B's command is reading (cross-session corruption, not just
@@ -109,10 +109,12 @@ launcher ══ Command / STDIN / output frames, directly ══▶ EXECUTOR  (o
 - **Broker, not proxy.** The hub never relays command traffic; it hands the launcher a private endpoint.
   Warm path cost = one tiny `ACQUIRE` round trip on a local socket (sub-millisecond) plus one connect.
   No fd passing (Windows AF_UNIX fd duplication is not something to depend on).
-- **The exec gate disappears.** `SdkWorker._globalExecGate` exists only because env/cwd are
-  process-global; with one command per executor process it has no purpose. Concurrent launchers run in
-  parallel on different executors. The nested-host machinery (`PSBASH_INSIDE_HOST`, `-nested<d>`
-  endpoints) existed to dodge that gate and is deleted at the end of the migration.
+- **The exec gate disappears.** The process-wide gate existed only because env/cwd are process-global;
+  with one command per host process the host keeps just a one-permit lease. Concurrent launchers run in
+  parallel on different hosts. The nested-host machinery (`PSBASH_INSIDE_HOST`, `-nested<d>`
+  endpoints) existed to dodge that gate and is deleted. **As built (Phase 6):** no hub/ACQUIRE broker; the
+  host itself refuses a command while busy and the launcher spills to the next slot endpoint
+  (`executor-slots.md`).
 - **Crash containment.** A runaway or poisoned command costs one executor (kill tree, respawn). The hub
   holds no user state, so "host must survive any input" reduces to "the hub must survive"; the
   `NestingGuard`/watchdog logic stays in the executor as defence in depth.
@@ -338,9 +340,10 @@ which needs the in-process fallback (§10) or a module-mode job-host spawner.
 4. Orphan reaper + lifecycle table tests; interactive-host integration (fg/bg/Ctrl-Z).
 5. Default flips to `process`; `inproc` retained one release behind `PSBASH_BG_MODE=inproc`, then deleted
    along with the runspace pool and `Remove-BashBgState`.
-6. **Foreground migration** (§4.2): `ACQUIRE` broker handshake; foreground commands lease executors behind
-   `PSBASH_EXEC_MODE=executor`; A/B against §7.3 bars; flip default; then delete `_globalExecGate`, the
-   nested-host endpoints and `PSBASH_INSIDE_HOST` handling.
+6. **Foreground migration** (§4.2) — DONE as `executor-slots.md` (host lease + BUSY + launcher slot spill
+   instead of an `ACQUIRE` broker): `_globalExecGate`, the nested-host endpoints and `PSBASH_INSIDE_HOST`/
+   `PSBASH_NEST_DEPTH` are deleted. Done before the §7.3 bars were met, on the owner's explicit approval; the
+   default background mode stays `inproc`.
 
 Module mode (plain `Import-Module PsBash`, no daemon): the module spawns job hosts through the same
 `JobProcess`; if the host binary is not discoverable it falls back to `inproc` with a one-time warning.
@@ -396,5 +399,7 @@ Known gaps / not done:
 - Orphan tests that exist: command-end leaves no job process, and a launcher killed without cleanup leaves none
   (Windows; `BackgroundJobProcessTests`), 10 short jobs are all reaped, and a recorded identity does not match a
   different process on the same pid (`JobProcessTests`). Not written: a 100-job soak and the POSIX hard kill.
-- Phase 6 (foreground executors, hub/ACQUIRE, removing `_globalExecGate` and the
-  nested-host machinery) are NOT started; the daemon is still the foreground executor.
+- Phase 6 is IMPLEMENTED in a simpler shape than §4.2: `HostServer` execution lease, `ExecBusyExitCode` (76)
+  before STARTED, launcher spill to `-x<k>` slot endpoints (`IpcWorker.YieldToAnotherSlotAsync`), nested
+  launchers detected by `ProcessAncestry.IsDescendantOf`. `_globalExecGate` and the nested-host machinery
+  are removed. NOT done: the hub/ACQUIRE broker, executor scrubbing/leasing, and the POSIX hard-kill test.

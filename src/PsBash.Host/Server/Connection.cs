@@ -149,6 +149,41 @@ internal sealed class Connection
             return;
         }
 
+        // One command at a time per host (env and cwd are process-global). A launcher that supplied an
+        // environment block can run on another executor slot, so it is told "busy" BEFORE anything runs or
+        // any of its stdin is read; requests that cannot move (queries, interactive) wait their turn.
+        bool leased = false;
+        if (_server is not null)
+        {
+            if (sessionMode == SessionMode.Framed && environment is not null)
+            {
+                if (!_server.TryEnterExecution())
+                {
+                    await HostProtocol.WriteExitAsync(_stream, HostProtocol.ExecBusyExitCode, ct);
+                    return;
+                }
+            }
+            else
+            {
+                await _server.EnterExecutionAsync(ct);
+            }
+            leased = true;
+        }
+
+        try
+        {
+            await RunLeasedAsync(mode, command, sessionMode, environment, ct);
+        }
+        finally
+        {
+            if (leased) _server!.ExitExecution();
+        }
+    }
+
+    private async Task RunLeasedAsync(
+        Mode mode, string command, SessionMode sessionMode,
+        IReadOnlyList<KeyValuePair<string, string>>? environment, CancellationToken ct)
+    {
         // Reset per-invocation state so globals set by one -c or script run
         // (e.g. set -e → $global:__BashErrexit, positional params) do not
         // leak into the next invocation on the shared SdkWorker runspace.

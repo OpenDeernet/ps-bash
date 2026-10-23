@@ -21,6 +21,8 @@ Nav starts at /CODE_MAP.md. Keep this index complete — a guard test fails on a
 - [frecency-jump.md](frecency-jump.md) — Frecency Directory Jump (zoxide-style `z` / `zi`)
 - [history-store-interface.md](history-store-interface.md) — IHistoryStore Interface Specification
 - [host-lifecycle-contract.md](host-lifecycle-contract.md) — Host Lifecycle Metadata and Ownership Contract
+- [spec-suite.md](spec-suite.md) — fast bash-conformance corpus + runner (DESIGN; in-host execution, executor-slot parallelism, absorbs overlapping tests)
+- [executor-slots.md](executor-slots.md) — one command per host + launcher-side executor slots (replaces the global exec gate and nested hosts)
 - [shell-fds-and-bash-source.md](shell-fds-and-bash-source.md) — `BASH_SOURCE`, `exec N<file` / `read -u` / `>&N` descriptors, `exec cmd`
 - [background-jobs.md](background-jobs.md) — process-isolated `&` design (DESIGN; fork semantics, cross-platform process management)
 - [interactive-completion.md](interactive-completion.md) — Interactive Completion Specification

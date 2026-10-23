@@ -122,6 +122,25 @@ internal static partial class ProcessAncestry
     }
 
     /// <summary>
+    /// True when this process descends from <paramref name="ancestorPid"/> (walks the parent chain, at most
+    /// 32 links). A launcher that is a descendant of the host it found busy is running inside that host's
+    /// command, so waiting for the host would deadlock on its own parent. False when ancestry is unknown.
+    /// </summary>
+    public static bool IsDescendantOf(int ancestorPid)
+    {
+        if (ancestorPid <= 0) return false;
+        int pid = Environment.ProcessId;
+        for (int i = 0; i < 32; i++)
+        {
+            var parent = GetParentProcessIdByPid(pid);
+            if (parent is not { } p || p <= 0) return false;
+            if (p == ancestorPid) return true;
+            pid = p;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Real ancestry lookup: Windows via <c>NtQueryInformationProcess</c> on the
     /// target's handle; Linux via <c>/proc/{pid}/stat</c>. Returns <c>null</c> when
     /// unavailable (macOS without /proc, no permission, process gone).

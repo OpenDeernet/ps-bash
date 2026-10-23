@@ -69,6 +69,78 @@ public sealed class HostServerTests : IAsyncLifetime
         }
     }
 
+    // The execution lease (docs/specs/executor-slots.md): env vars and cwd are process-global, so a host runs
+    // one command at a time. A framed launcher request that finds it taken is refused with ExecBusyExitCode
+    // BEFORE Started and before any output, so the launcher can re-send it to another slot.
+    private static IReadOnlyList<KeyValuePair<string, string>> LauncherEnvironment()
+    {
+        var list = new List<KeyValuePair<string, string>>();
+        foreach (System.Collections.DictionaryEntry e in Environment.GetEnvironmentVariables())
+            if (e.Key is string k) list.Add(new KeyValuePair<string, string>(k, e.Value as string ?? string.Empty));
+        return list;
+    }
+
+    private async Task<(int ExitCode, bool Started, string Output)> SendFramedAsync(
+        string command, Action? onStarted = null, CancellationToken ct = default)
+    {
+        await using var client = new UnixSocketTransport(_socketPath);
+        using var stream = await client.ConnectAsync(ct);
+        await HostProtocol.WriteRequestAsync(
+            stream, new Mode.Command(command, SessionMode.Framed, LauncherEnvironment()), ct);
+        bool started = false;
+        var sb = new System.Text.StringBuilder();
+        var exit = await HostProtocol.ReadResponseAsync(
+            stream, (line, _) => sb.Append(line), () => { started = true; onStarted?.Invoke(); }, ct);
+        return (exit, started, sb.ToString());
+    }
+
+    [Fact]
+    public async Task ExecutionLease_SecondFramedCommandWhileFirstRuns_IsToldBusyAndNothingRuns()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var firstRunning = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = SendFramedAsync("Start-Sleep -Milliseconds 1500; Invoke-BashEcho first",
+            () => firstRunning.TrySetResult(), cts.Token);
+        await firstRunning.Task.WaitAsync(cts.Token);
+
+        var second = await SendFramedAsync("Invoke-BashEcho second", ct: cts.Token);
+
+        Assert.Equal(HostProtocol.ExecBusyExitCode, second.ExitCode);
+        Assert.False(second.Started);
+        Assert.Equal("", second.Output);
+        var done = await first;
+        Assert.Equal(0, done.ExitCode);
+        Assert.Contains("first", done.Output);
+    }
+
+    [Fact]
+    public async Task ExecutionLease_IsReleasedWhenTheCommandFinishes_AndWhenItFails()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+
+        var failing = await SendFramedAsync("exit 3", ct: cts.Token);
+        var after = await SendFramedAsync("Invoke-BashEcho again", ct: cts.Token);
+
+        Assert.NotEqual(HostProtocol.ExecBusyExitCode, failing.ExitCode);
+        Assert.Equal(0, after.ExitCode);
+        Assert.Contains("again", after.Output);
+    }
+
+    [Fact]
+    public async Task ExecutionLease_QueryWithoutEnvironmentBlock_WaitsInsteadOfBeingRefused()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var firstRunning = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = SendFramedAsync("Start-Sleep -Milliseconds 800; Invoke-BashEcho first",
+            () => firstRunning.TrySetResult(), cts.Token);
+        await firstRunning.Task.WaitAsync(cts.Token);
+
+        var (output, exitCode) = await SendCommandAsync("Invoke-BashEcho queried", cts.Token);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("queried", output);
+        await first;
+    }
     [Fact]
     public async Task SingleConnection_InvokeBashEcho_ReturnsOutputAndExit0()
     {

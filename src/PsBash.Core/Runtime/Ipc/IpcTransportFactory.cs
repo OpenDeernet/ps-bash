@@ -43,69 +43,28 @@ public static class IpcTransportFactory
     /// </summary>
     public const string StatefulEnvVar = "PSBASH_SESSION_STATEFUL";
 
-    /// <summary>
-    /// Marker the host sets in its process environment (value = host PID) for the duration of
-    /// every launcher-framed command. A ps-bash started by that command inherits it and must
-    /// not reuse the host that is executing its parent (the host serializes execution behind a
-    /// process-wide gate the parent holds, so the child would deadlock behind it, or — on an
-    /// obsolete-build mismatch — retire the host out from under the parent).
-    /// <see cref="IpcWorker.StartAsync"/> therefore gives such a launcher a private host.
-    /// </summary>
-    public const string InsideHostEnvVar = "PSBASH_INSIDE_HOST";
+    /// <summary>Executor slots per endpoint: slot 0 is the endpoint itself, slots 1..N spill (docs/specs/executor-slots.md).</summary>
+    public const int MaxExecSlots = 6;
 
-    /// <summary>True when this process was started (transitively) by a command a host is running.</summary>
-    public static bool IsInsideHostCommand()
-        => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(InsideHostEnvVar));
+    private const string SlotMarker = "-x";
 
     /// <summary>
-    /// Nesting depth the host publishes to a command it runs (host depth + 1). A launcher
-    /// started by that command serves from a WARM daemon at exactly this depth
-    /// (<see cref="ResolveNestedEndpoint"/>), never from the host blocked on its parent.
+    /// The endpoint of executor slot <paramref name="slot"/> (&gt;= 1) of <paramref name="baseEndpoint"/>:
+    /// the base with a <c>-x{slot}</c> suffix. Slot 0 is the base itself. Falls back to a hashed name when a
+    /// unix path would not fit.
     /// </summary>
-    public const string NestDepthEnvVar = "PSBASH_NEST_DEPTH";
-
-    /// <summary>Deepest nested daemon; beyond it a launcher falls back to a private host.</summary>
-    public const int MaxNestedDaemonDepth = 6;
-
-    /// <summary>Depth of THIS host process (0 = top-level), set from its bound endpoint.</summary>
-    public static int HostNestDepth { get; set; }
-
-    /// <summary>Depth this launcher lives at: 0 outside any host command, else the published depth (min 1).</summary>
-    public static int CurrentNestDepth()
+    public static (string Scheme, string Endpoint) ResolveSlotEndpoint(string scheme, string baseEndpoint, int slot)
     {
-        if (!IsInsideHostCommand()) return 0;
-        return int.TryParse(Environment.GetEnvironmentVariable(NestDepthEnvVar), out var d) && d > 0 ? d : 1;
-    }
-
-    private const string NestedMarker = "-nested";
-
-    /// <summary>Depth encoded in an endpoint name by <see cref="ResolveNestedEndpoint"/>; 0 when none.</summary>
-    public static int ParseNestDepth(string endpoint)
-    {
-        var i = endpoint.LastIndexOf(NestedMarker, StringComparison.Ordinal);
-        if (i < 0) return 0;
-        return int.TryParse(endpoint.AsSpan(i + NestedMarker.Length), out var d) && d > 0 ? d : 0;
-    }
-
-    /// <summary>
-    /// The warm-daemon endpoint for nesting depth <paramref name="depth"/> (&gt;= 1): the
-    /// canonical / explicit endpoint with a <c>-nested{depth}</c> suffix. One daemon per
-    /// (session, depth), so repeated nested calls reuse it and the depth strictly increases down
-    /// the chain (no cycle). Falls back to a hashed pipe name when a unix path would not fit.
-    /// </summary>
-    public static (string Scheme, string Endpoint) ResolveNestedEndpoint(int depth)
-    {
-        var (scheme, endpoint) = ResolveEndpoint();
-        var depthText = depth.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        var nested = endpoint + NestedMarker + depthText;
-        if (nested.Length > UnixSocketPathBudget())
+        if (slot <= 0) return (scheme, baseEndpoint);
+        var slotText = slot.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var endpoint = baseEndpoint + SlotMarker + slotText;
+        if (endpoint.Length > UnixSocketPathBudget())
         {
-            var dir = Path.GetDirectoryName(endpoint) ?? SocketDirectory();
-            nested = Path.Combine(dir, $"psbash-nested-{ShortHash(nested)}{NestedMarker}{depthText}");
+            var dir = Path.GetDirectoryName(baseEndpoint) ?? SocketDirectory();
+            endpoint = Path.Combine(dir, $"psbash-slot-{ShortHash(endpoint)}{SlotMarker}{slotText}");
         }
-        return (scheme, RequireFits(nested));
+        return (scheme, RequireFits(endpoint));
     }
-
     private static string ShortHash(string s, int chars = 16)
         => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(s)))[..chars];
 

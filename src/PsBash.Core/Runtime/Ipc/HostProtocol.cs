@@ -52,6 +52,13 @@ public static class HostProtocol
     public const int HealthStartingExitCode = 75;
 
     /// <summary>
+    /// Exit status of a framed command request the host refused because it is already running another
+    /// command (docs/specs/executor-slots.md). Sent with NO <see cref="StartedSentinel"/> and no output, so
+    /// the launcher knows nothing ran and no stdin was consumed, and tries another executor slot.
+    /// </summary>
+    public const int ExecBusyExitCode = 76;
+
+    /// <summary>
     /// Hard per-frame line cap enforced by <see cref="StreamLineReader"/>. A frame
     /// whose raw bytes exceed this is a malformed/foreign-host protocol error, NOT
     /// a broken connection, so it is surfaced as

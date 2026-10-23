@@ -45,41 +45,28 @@ public class IpcTransportFactoryTests : IDisposable
         => Environment.SetEnvironmentVariable(IpcTransportFactory.SessionEnvVar, value);
 
     [Fact]
-    public void ResolveNestedEndpoint_DerivesPerDepthEndpoint_AndParsesBack()
+    public void ResolveSlotEndpoint_Slot0IsTheBase_HigherSlotsAreDistinctSiblings()
     {
-        SetEnv("unix:/tmp/psb-nest-x.sock");
-        var (s1, e1) = IpcTransportFactory.ResolveNestedEndpoint(1);
-        var (_, e2) = IpcTransportFactory.ResolveNestedEndpoint(2);
+        var (s0, e0) = IpcTransportFactory.ResolveSlotEndpoint("unix", "/tmp/psb-slot-x.sock", 0);
+        var (s1, e1) = IpcTransportFactory.ResolveSlotEndpoint("unix", "/tmp/psb-slot-x.sock", 1);
+        var (_, e2) = IpcTransportFactory.ResolveSlotEndpoint("unix", "/tmp/psb-slot-x.sock", 2);
+        Assert.Equal("unix", s0);
         Assert.Equal("unix", s1);
-        Assert.Equal("/tmp/psb-nest-x.sock-nested1", e1);
-        Assert.NotEqual(e1, e2);
-        Assert.Equal(1, IpcTransportFactory.ParseNestDepth(e1));
-        Assert.Equal(2, IpcTransportFactory.ParseNestDepth(e2));
-        Assert.Equal(0, IpcTransportFactory.ParseNestDepth("/tmp/psb-nest-x.sock"));
+        Assert.Equal("/tmp/psb-slot-x.sock", e0);
+        Assert.Equal("/tmp/psb-slot-x.sock-x1", e1);
+        Assert.Equal("/tmp/psb-slot-x.sock-x2", e2);
     }
 
     [Fact]
-    public void CurrentNestDepth_ZeroOutsideHost_PublishedDepthInside()
+    public void ResolveSlotEndpoint_OverlongBase_FallsBackToShortHashedName()
     {
-        var prior = Environment.GetEnvironmentVariable(IpcTransportFactory.InsideHostEnvVar);
-        var priorDepth = Environment.GetEnvironmentVariable(IpcTransportFactory.NestDepthEnvVar);
-        try
-        {
-            Environment.SetEnvironmentVariable(IpcTransportFactory.InsideHostEnvVar, null);
-            Environment.SetEnvironmentVariable(IpcTransportFactory.NestDepthEnvVar, "3");
-            Assert.Equal(0, IpcTransportFactory.CurrentNestDepth());
-            Environment.SetEnvironmentVariable(IpcTransportFactory.InsideHostEnvVar, "123");
-            Assert.Equal(3, IpcTransportFactory.CurrentNestDepth());
-            Environment.SetEnvironmentVariable(IpcTransportFactory.NestDepthEnvVar, null);
-            Assert.Equal(1, IpcTransportFactory.CurrentNestDepth()); // older host: marker only
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(IpcTransportFactory.InsideHostEnvVar, prior);
-            Environment.SetEnvironmentVariable(IpcTransportFactory.NestDepthEnvVar, priorDepth);
-        }
+        var longBase = "/tmp/" + new string('a', 400) + ".sock";
+        var (_, e1) = IpcTransportFactory.ResolveSlotEndpoint("unix", longBase, 1);
+        var (_, e2) = IpcTransportFactory.ResolveSlotEndpoint("unix", longBase, 2);
+        Assert.True(e1.Length <= IpcTransportFactory.UnixSocketPathBudget());
+        Assert.NotEqual(e1, e2);
+        Assert.EndsWith("-x1", e1);
     }
-
     [Fact]
     public void ResolveEndpoint_CliOverrideUnix_ReturnsParsedPair()
     {

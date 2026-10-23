@@ -28,7 +28,7 @@ public class SdkWorkerCmdletErrorTests : IAsyncLifetime
     public Task DisposeAsync() => _fixture.DisposeAsync();
 
     private static string MissingPath()
-        => Path.Combine(Path.GetTempPath(), $"psbash-missing-{Guid.NewGuid():N}.txt").Replace('\\', '/');
+        => Path.Combine(AppContext.BaseDirectory, $"psbash-missing-{Guid.NewGuid():N}.txt").Replace('\\', '/');
 
     private async Task<(List<string> Order, string Stderr, int Exit)> RunAsync(string command)
     {

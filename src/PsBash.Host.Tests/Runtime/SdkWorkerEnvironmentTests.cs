@@ -54,21 +54,18 @@ public class SdkWorkerEnvironmentTests : IAsyncLifetime
         return (exit, lines);
     }
 
-    // A command run for a launcher carries the "inside a host" marker (so a ps-bash it spawns
-    // goes to a private host instead of queueing behind this command on the exec gate), and the
-    // marker does not outlive the command.
+    // Executor slots replaced the "inside a host" marker: a ps-bash a command spawns is told the host is
+    // busy and moves to another slot, so nothing marks the nesting in the environment.
     [Fact]
-    public async Task LauncherFramedCommand_SeesInsideHostMarker_ClearedAfterwards()
+    public async Task LauncherFramedCommand_DoesNotSetTheRetiredNestingMarkers()
     {
         var worker = _fixture.CreateWorker();
-        var name = PsBash.Core.Runtime.Ipc.IpcTransportFactory.InsideHostEnvVar;
 
-        var run = await RunAsync(worker, $"Invoke-BashEcho $env:{name}",
-            Block(Array.Empty<KeyValuePair<string, string>>(), name));
+        var run = await RunAsync(worker, "Invoke-BashEcho \"[$env:PSBASH_INSIDE_HOST][$env:PSBASH_NEST_DEPTH]\"",
+            Block(Array.Empty<KeyValuePair<string, string>>()));
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains(run.Lines, l => l.Trim() == Environment.ProcessId.ToString());
-        Assert.False(PsBash.Core.Runtime.Ipc.IpcTransportFactory.IsInsideHostCommand());
+        Assert.Contains(run.Lines, l => l.Trim() == "[][]");
     }
 
     // bash `$HOME` / `~` emit PowerShell `$HOME` and the provider `~`, which a runspace captures

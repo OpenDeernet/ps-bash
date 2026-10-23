@@ -24,23 +24,9 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
     private readonly SemaphoreSlim _lock = new(1, 1);
     private int _disposed;
 
-    // PROCESS-WIDE command-execution gate. A bash command reads/writes its
-    // variables as `$env:NAME` and its working directory as
-    // `[System.Environment]::CurrentDirectory` — both PROCESS-GLOBAL, shared by
-    // every runspace in this host. The warm pool gives each connection its own
-    // runspace, but that does NOT isolate env vars or cwd, so two commands
-    // executing concurrently in the daemon corrupt each other (e.g. a
-    // `while` loop racing on `$env:i` drops/duplicates iterations). Serialize
-    // the actual execution so only one command mutates the shared process state
-    // at a time. The gate is held ONLY across RunCommand (CPU/runspace work);
-    // IPC output drains asynchronously after release, so a fast command is not
-    // blocked on a slow consumer — only on another command actively executing.
-    // Cost: concurrent `-c` launchers queue instead of truly running in
-    // parallel (parallelism in one process is unsound under shared env/cwd
-    // anyway; opt into real parallelism with PSBASH_PER_INVOCATION=1, which
-    // gives each launcher its own host process). Uncontended in the
-    // single-launcher, per-invocation, and interactive paths.
-    private static readonly SemaphoreSlim _globalExecGate = new(1, 1);
+    // Command execution is serialised per HOST by the execution lease in HostServer (env vars and cwd are
+    // process-global, so two commands in one process corrupt each other); concurrency comes from running several
+    // host processes (executor slots, docs/specs/executor-slots.md). This class only guards its own runspace.
 
     public Action<string>? OutputCallback { get; set; }
 
@@ -69,15 +55,13 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
     {
         ObjectDisposedException.ThrowIf(_disposed != 0, this);
         var callback = OutputCallback;
-        await _globalExecGate.WaitAsync(ct);
-        try
         {
             await _lock.WaitAsync(ct);
             try
             {
                 // When ct fires mid-command, stop the PS pipeline so RunCommand
-                // returns instead of running to completion while holding the gate.
-                // Without this a runaway command holds _globalExecGate forever
+                // returns instead of running to completion while holding the host's
+                // execution lease. Without this a runaway command holds it forever
                 // (Task.Run's ct only affects scheduling, not an in-flight delegate).
                 // The command's own token: ct, or the host outgrowing its memory limit
                 // (HostMemoryGuard), which stops this command rather than the host.
@@ -97,10 +81,6 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
             {
                 _lock.Release();
             }
-        }
-        finally
-        {
-            _globalExecGate.Release();
         }
     }
 
@@ -190,8 +170,6 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
         PsBash.Core.StdinCursor? stdin = null)
     {
         ObjectDisposedException.ThrowIf(_disposed != 0, this);
-        await _globalExecGate.WaitAsync(ct);
-        try
         {
             await _lock.WaitAsync(ct);
             try
@@ -215,10 +193,6 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
             {
                 _lock.Release();
             }
-        }
-        finally
-        {
-            _globalExecGate.Release();
         }
     }
 
@@ -250,20 +224,15 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
     {
         // R06: reset the process environment to the caller's block BEFORE running.
         // The environment is process-global and shared by every pooled runspace,
-        // so this is only safe because _globalExecGate serialises command
+        // so this is only safe because the host's execution lease serialises command
         // execution in this process (see the field's comment): no other command
         // is running while we swap the environment. A null block means the caller
         // does not manage the environment (in-process interactive/legacy paths) —
         // leave it untouched for back-compat.
-        // Mark the process environment as "a command is running inside a host" so a
-        // ps-bash this command spawns (nested `bash -c`, awk `"cmd" | getline`, xargs
-        // ...) can tell it must NOT connect to this host: we hold _globalExecGate for
-        // the command, so a child queued behind it would deadlock on its own parent.
-        // IpcWorker.StartAsync turns a Daemon request into a private host when it sees
-        // the marker. Set AFTER the reset (the launcher block never carries it) and
-        // cleared in the finally below; only for framed launcher requests (a non-null
-        // block), so in-process IWorker use never leaks it into a host process.
-        bool markedInsideHost = environment is not null;
+        // A ps-bash this command spawns (nested `bash -c`, awk `"cmd" | getline`, xargs ...) finds this
+        // host's execution lease taken, is told "busy" and runs on another executor slot; nothing in
+        // the environment marks the nesting (docs/specs/executor-slots.md).
+        bool framedLauncherRequest = environment is not null;
         if (environment is not null)
         {
             // A stateful session owns its environment: the launcher's block only carries PSBASH_*
@@ -271,15 +240,6 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
             // earlier call or replaces PATH.
             if (StatefulSession) ApplyControlEnvironment(environment);
             else ResetEnvironment(environment);
-            Environment.SetEnvironmentVariable(
-                PsBash.Core.Runtime.Ipc.IpcTransportFactory.InsideHostEnvVar,
-                Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            // Depth a ps-bash started by this command lives at: strictly deeper than this host,
-            // so the host it picks (warm, per depth) can never be the one blocked on its parent.
-            Environment.SetEnvironmentVariable(
-                PsBash.Core.Runtime.Ipc.IpcTransportFactory.NestDepthEnvVar,
-                (PsBash.Core.Runtime.Ipc.IpcTransportFactory.HostNestDepth + 1)
-                    .ToString(System.Globalization.CultureInfo.InvariantCulture));
             SyncHomeToEnvironment();
         }
 
@@ -324,7 +284,7 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
                 // rather than letting subsequent calls fire into a broken sink.
                 // Use BeginStop, not Stop: this runs on the pipeline's own DataAdded
                 // thread, and a synchronous Stop() there self-deadlocks (wedging the
-                // static _globalExecGate and hanging the whole daemon).
+                // the host and hanging the daemon).
                 _ps.BeginStop(null, null);
             }
         };
@@ -390,7 +350,7 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
                 // Stderr sink failed (e.g. IPC stream closed). Stop the pipeline
                 // rather than firing into a broken sink on every subsequent line.
                 // BeginStop (not Stop): a synchronous Stop() on this DataAdded thread
-                // self-deadlocks and wedges the static _globalExecGate.
+                // self-deadlocks and wedges the host's execution lease.
                 _ps.BeginStop(null, null);
             }
         };
@@ -754,14 +714,10 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
                 catch { /* runspace already closed */ }
             }
 
-            if (markedInsideHost)
+            if (framedLauncherRequest)
             {
-                Environment.SetEnvironmentVariable(
-                    PsBash.Core.Runtime.Ipc.IpcTransportFactory.InsideHostEnvVar, null);
-                Environment.SetEnvironmentVariable(
-                    PsBash.Core.Runtime.Ipc.IpcTransportFactory.NestDepthEnvVar, null);
                 // The invocation preamble moved the PROCESS cwd into the caller's directory; a
-                // persistent (daemon / nested daemon) host must not keep that directory open, or
+                // persistent (daemon / executor slot) host must not keep that directory open, or
                 // on Windows the caller cannot delete or rename it after the command finishes.
                 try { Environment.CurrentDirectory = Path.GetTempPath(); } catch { /* best effort */ }
             }
@@ -820,8 +776,6 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
         foreach (var entry in environment)
         {
             if (!entry.Key.StartsWith("PSBASH_", StringComparison.Ordinal)) continue;
-            if (entry.Key is PsBash.Core.Runtime.Ipc.IpcTransportFactory.InsideHostEnvVar
-                          or PsBash.Core.Runtime.Ipc.IpcTransportFactory.NestDepthEnvVar) continue;
             Environment.SetEnvironmentVariable(entry.Key, entry.Value);
         }
     }
@@ -831,7 +785,7 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
     /// Every variable currently set that is not in the block is removed, so a var
     /// unset in the launcher reads as unset here, and every entry in the block is
     /// set to the launcher's value (empty string is set-to-empty, distinct from
-    /// absent). Must be called while holding <see cref="_globalExecGate"/> — the
+    /// absent). Must be called while holding the host's execution lease — the
     /// environment is process-global and pooled runspaces share it.
     /// </summary>
     private static void ResetEnvironment(IReadOnlyList<KeyValuePair<string, string>> environment)

@@ -1,0 +1,54 @@
+# Executor slots: one command per host, launcher-side spill
+
+Status: IMPLEMENTED in the host (lease + BUSY) and the launcher (slot spill). Supersedes the global exec gate and the
+nested-host machinery (`PSBASH_INSIDE_HOST`, `PSBASH_NEST_DEPTH`, `-nested<d>` endpoints). Deviates from the hub/ACQUIRE
+broker sketched in `background-jobs.md` section 4.2: there is no broker process; the host itself arbitrates with a lease.
+
+## 1. Problem
+
+A bash command reads and writes variables as `$env:NAME` and the working directory as the process cwd, both
+process-global. So one host process can run only one command at a time. The old design enforced that with a static gate
+inside the host and queued everything behind it, which deadlocked when a command started a ps-bash of its own (the child
+queued behind its parent). The workaround was a marker env var plus a per-depth "nested" host.
+
+## 2. Design
+
+**Host lease.** `HostServer` owns a one-permit lease. For a framed command request that carries a launcher environment
+block, `Connection` tries the lease without waiting. If it is taken the host answers with a single EXIT frame,
+`HostProtocol.ExecBusyExitCode` (76), BEFORE the Started sentinel, before any output, and before any stdin frame is
+consumed. Nothing ran. Requests that cannot move to another host (queries and completion with no environment block,
+interactive sessions) wait for the lease instead.
+
+**Launcher spill.** `IpcWorker` treats exit 76 with no Started and no stdin frames delivered as "try another slot".
+Slot 0 is the normal endpoint; slot k is `ResolveSlotEndpoint(base, k)` (suffix `-x<k>`, hashed to a short name if the unix
+path would overflow). Slots are separate daemons started on demand and kept warm. Policy:
+
+- **Nested** (the launcher is a descendant of the busy host, found by walking the parent chain, bounded): the busy host is
+  waiting on us, so spill immediately to the next slot; if every slot (`MaxExecSlots` = 6) is busy, run on a private
+  per-invocation host.
+- **Contended** (an unrelated launcher): back off briefly and retry slot 0; after the spill delay (default 250 ms,
+  `PSBASH_EXEC_SPILL_MS`) move to a healthy slot, or start one.
+- **Stateful** hosts (named sessions with one pinned runspace) never receive spill from unrelated launchers; a nested
+  launcher still spills, because it cannot wait on its own parent.
+- The slot choice is sticky for the life of the launcher process.
+
+The sequential warm path is unchanged: slot 0, lease free, no extra round trip.
+
+## 3. Properties
+
+- No deadlock by construction: a command never waits on a lease held by its own ancestor.
+- No process-wide queue: a busy host costs a launcher one tiny round trip, not a wait.
+- Idle slots exit on the short idle timeout (`PSBASH_HOST_IDLE_SECS`), so burst parallelism does not leave daemons behind.
+- The spec suite runner (`spec-suite.md`) uses N slots for N-way parallel cases.
+
+## 4. Tests
+
+Host: a second concurrent framed command is answered with exit 76 and no output while the first runs; the lease is
+released when the first finishes (also on error and on cancellation). Launcher: slot endpoints derive and parse back;
+a nested launcher spills at once; a contended launcher spills only after the delay; a stateful host does not spill
+unrelated launchers. Behavioural: `NestedBashC_RepeatedCalls_ReuseOneWarmNestedHost` still holds (the nested slot is warm).
+
+## 5. Measured trade-off
+
+Process-mode background jobs still miss the cold-miss speed bars in `background-jobs.md` section 7.3 (`{ :; } & wait`
+3505 ms vs 935 ms in-process); the user approved proceeding anyway, and the default stays in-process.

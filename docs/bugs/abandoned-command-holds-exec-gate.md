@@ -3,6 +3,8 @@
 **Found:** 2026-07-26 (while diagnosing a test-suite flake family)
 **Severity:** High — one killed launcher stalls the whole session for the command's full duration
 **Fixed:** `Connection.WatchForClientDisconnectAsync` (per-connection client-disconnect watchdog)
+**Since then:** the process-wide gate named below was replaced by the per-host execution lease
+(`HostServer.TryEnterExecution`, `docs/specs/executor-slots.md`); the watchdog still releases it on disconnect.
 
 ## Symptom
 

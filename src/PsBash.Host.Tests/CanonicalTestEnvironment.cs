@@ -7,8 +7,7 @@ namespace PsBash.Host.Tests;
 /// Makes the suite independent of the shell that launches it, including ps-bash itself (the agent's Bash
 /// tool, a nested shell, a developer shell with a named session or compact output on).
 /// These tests drive a real host in-process, so any inherited <c>PSBASH_*</c> setting changes what they
-/// observe: <c>PSBASH_INSIDE_HOST</c>/<c>PSBASH_NEST_DEPTH</c> make <see cref="PsBash.Core.Runtime.IpcWorker"/>
-/// treat every call as nested (private host, "binary not found"), <c>PSBASH_COMPACT_OUTPUT</c> prepends a
+/// observe: <c>PSBASH_COMPACT_OUTPUT</c> prepends a
 /// summary line to every result, <c>PSBASH_SESSION</c> moves the endpoint. Everything is cleared except what
 /// the test harness itself passes in; a test that needs a setting sets it inside a try/finally.
 /// </summary>

@@ -92,6 +92,24 @@ public sealed class HostServer : IAsyncDisposable
         lock (_gate) _sessionWorker ??= _pool.AcquireAsync(CancellationToken.None);
     }
 
+    // The execution lease: a bash command reads and writes its variables as `$env:NAME` and its working
+    // directory as the process cwd, both PROCESS-global, so one host runs ONE command at a time. A launcher
+    // that finds the lease taken is told so (HostProtocol.ExecBusyExitCode) and runs on another executor
+    // slot; there is no process-wide queue any more (docs/specs/executor-slots.md).
+    private readonly SemaphoreSlim _execLease = new(1, 1);
+
+    /// <summary>Take the lease if free; false when a command is running.</summary>
+    internal bool TryEnterExecution() => _execLease.Wait(0);
+
+    /// <summary>Wait for the lease (requests that cannot be redirected to another host: queries, interactive).</summary>
+    internal Task EnterExecutionAsync(CancellationToken ct) => _execLease.WaitAsync(ct);
+
+    internal void ExitExecution()
+    {
+        try { _execLease.Release(); } catch (ObjectDisposedException) { }
+        catch (SemaphoreFullException) { }
+    }
+
     private static int MaxConcurrentConnections()
     {
         var raw = Environment.GetEnvironmentVariable("PSBASH_MAX_CONCURRENT_CONNECTIONS");
