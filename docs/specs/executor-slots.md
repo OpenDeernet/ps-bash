@@ -52,3 +52,12 @@ unrelated launchers. Behavioural: `NestedBashC_RepeatedCalls_ReuseOneWarmNestedH
 
 Process-mode background jobs still miss the cold-miss speed bars in `background-jobs.md` section 7.3 (`{ :; } & wait`
 3505 ms vs 935 ms in-process); the user approved proceeding anyway, and the default stays in-process.
+
+## 6. Concurrent-launcher test
+
+`ConcurrentLaunchersTests` (Differential.Tests) starts 4 real launchers at once against one private session (own
+`PSBASH_SESSION`, shared daemon, `PSBASH_HOST_IDLE_SECS=15` so its hosts exit on their own): each sets a variable, sleeps, and
+prints it. A first burst creates the slot daemons; the second is checked for the right output per launcher (no state shared
+across slots). The "they overlapped" timing check runs only with `PSBASH_PERF_TESTS=1`: on a memory-starved machine (3.8 GB
+free, hosts of 0.5 to 1 GB each) the six-slot burst measured SLOWER than serial (22 to 37 s for 8 launchers of a 2 s command),
+which is a property of the machine, not a slot bug, but it means slot spill has not been shown to give a speedup here.
