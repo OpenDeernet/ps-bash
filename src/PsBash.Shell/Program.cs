@@ -454,14 +454,25 @@ if (debug)
 // propagated a raw OperationCanceledException out of Main and the runtime
 // dumped a managed stack trace with exit code 82, which is what an embedding
 // parent (e.g. the Claude Code Bash tool) saw when the host wedged.
+// PSBASH_TIMING=1: print where the launcher's wall time goes (ms since process start) to stderr.
+bool timing = Environment.GetEnvironmentVariable("PSBASH_TIMING") == "1";
+void Stamp(string phase)
+{
+    if (timing)
+        Console.Error.WriteLine($"[ps-bash-timing] {phase}: {(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds:F0} ms");
+}
+Stamp("transpiled");
 int exitCode = await HostFailureGuard.RunAsync(async () =>
 {
     await using IWorker worker = await workerFactory();
+    Stamp("host connected");
     if (forwardStdin && worker is IpcWorker ipcWorker)
         ipcWorker.LauncherStdin = Console.OpenStandardInput();
-    return await worker.ExecuteAsync(
+    var rc = await worker.ExecuteAsync(
         BuildInvocationCwdPreamble() + pwshCommand,
         environment: CaptureLauncherEnvironment());
+    Stamp("executed");
+    return rc;
 });
 
 if (debug)

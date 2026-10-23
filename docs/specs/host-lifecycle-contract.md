@@ -509,3 +509,15 @@ Mean of 20 sequential launcher invocations from a shell, output discarded (2026-
 So a warm `ps-bash -c` costs about 280 ms over the spawn floor, and a second command adds only about 27 ms: the cost is per
 launcher invocation (launcher start, IPC connect, transpile, per-request setup), not per command. This is the number a
 latency optimization (the spec suite's in-host runner, a persistent client) must beat; it has not been profiled by phase yet.
+
+### Where the time goes (partial)
+
+`PSBASH_TIMING=1 ps-bash -c CMD` prints `[ps-bash-timing] transpiled | host connected | executed: N ms` (ms since process start) to stderr.
+Measured so far:
+
+- `ps-bash --version` (launcher start only, no parse of a command, no IPC) costs about 106 ms in the 20-run mean above,
+  so process start plus runtime init is roughly a third of a warm `-c`.
+- Through `tman dev` (a per-invocation host, so the connect phase includes a cold runspace and is not the warm number):
+  start to transpiled 90 to 115 ms, executed minus connected 75 to 90 ms.
+- The warm-daemon split between connect and execute has NOT been measured: the installed release predates the flag and a
+  dev build cannot be run against a shared daemon without `tman dev` forcing a per-invocation host. Measure it after the next release.
