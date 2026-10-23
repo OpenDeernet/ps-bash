@@ -51,7 +51,7 @@ rows prove only that the construct does not crash; rows that print an absolute p
 ### Missing builtins (command not found)
 
 `bind builtin caller compgen complete coproc disown enable fc help history-expansion (!!)
-logout select suspend times ulimit umask`. (`getopts` was the one scripts use most; it is now implemented.)
+logout select suspend ulimit`. (`getopts` was the one scripts use most; it is now implemented.)
 
 ### Semantics gaps (the construct runs but differs)
 
