@@ -6391,8 +6391,12 @@ public static class PsEmitter
         // negation tail below.
         // Inside a compound's stdin scope the first stage reads the shared queue (a feed the
         // compiled cores know nothing about), so the chain stays on the plain pipeline.
+        // Eval/source'd code is not terminal-bound: its output feeds the caller's pipes, redirects and
+        // substitutions, and a fused batch renders its record boundary as the platform newline (CRLF on
+        // Windows) — . f | wc -c counted the extra CR.
         if (_captureDepth == 0
             && !entryScope
+            && _context != TranspileContext.Eval
             && FusedLane.IsFusionEnabled(FusionEnabledOverride)
             && FusedLane.IsFusablePipeline(pipeline))
         {

@@ -1,0 +1,14 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 74
+stdout-length: 4
+stderr-length: 0
+==== SCRIPT ====
+eval 'seq 1 3 | tail -1' | wc -c; eval 'printf "a\nb\n" | sort -r' | wc -c
+==== STDOUT ====
+2
+4
+
+==== STDERR ====
+

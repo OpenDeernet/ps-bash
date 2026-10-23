@@ -1,0 +1,366 @@
+quote.single @@ echo 'a  b$x'
+quote.double @@ x=1; echo "a  $x \$ \" \\ b"
+quote.ansic @@ echo $'a\tb\n\x41é'
+quote.locale @@ echo $"hello"
+quote.escape-newline @@ echo a\
+b
+quote.backslash @@ echo a\ b\$c
+comment @@ echo a # comment
+simple.assign-prefix @@ A=1 B=2 env | grep -c '^[AB]='
+simple.assign-only @@ A=5; echo $A
+simple.assign-append @@ A=a; A+=b; echo $A
+simple.exit-status @@ false; echo $?
+simple.not @@ ! false; echo $?
+pipe.basic @@ printf 'a\nb\n' | wc -l
+pipe.stderr-pipe @@ { echo out; echo err >&2; } |& cat
+pipe.pipefail @@ set -o pipefail; false | true; echo $?
+pipe.PIPESTATUS @@ false | true | false; echo "${PIPESTATUS[@]}"
+pipe.time @@ time true 2>&1 | grep -c real
+list.and @@ true && echo y
+list.or @@ false || echo n
+list.seq @@ echo a; echo b
+list.group @@ { echo a; echo b; } | wc -l
+list.subshell @@ (x=1; echo $x); echo ${x-unset}
+list.subshell-exit @@ (exit 3); echo $?
+cmd.if @@ if true; then echo t; elif false; then echo e; else echo f; fi
+cmd.if-else @@ if false; then echo t; else echo f; fi
+cmd.for-in @@ for i in a b c; do echo $i; done
+cmd.for-arith @@ for ((i=0;i<3;i++)); do echo $i; done
+cmd.for-noin @@ set -- x y; for i; do echo $i; done
+cmd.while @@ i=0; while [ $i -lt 3 ]; do echo $i; i=$((i+1)); done
+cmd.until @@ i=0; until [ $i -ge 2 ]; do echo $i; i=$((i+1)); done
+cmd.break-continue @@ for i in 1 2 3 4; do [ $i = 2 ] && continue; [ $i = 4 ] && break; echo $i; done
+cmd.break-n @@ for i in 1 2; do for j in a b; do echo $i$j; break 2; done; done
+cmd.case @@ case foo in f*) echo m;; *) echo n;; esac
+cmd.case-fallthrough @@ case a in a) echo 1;& b) echo 2;; esac
+cmd.case-continue @@ case a in a) echo 1;;& a*) echo 2;; esac
+cmd.case-pattern-alt @@ case b in a|b) echo ab;; esac
+cmd.select @@ select x in a b; do echo $x; break; done <<< 2
+cmd.arith-cmd @@ (( 3 > 2 )) && echo yes
+cmd.arith-assign @@ (( x = 4 * 2 )); echo $x
+cmd.cond-test @@ [[ abc == a* ]] && echo m
+cmd.cond-regex @@ [[ abc123 =~ ^[a-z]+([0-9]+)$ ]]; echo ${BASH_REMATCH[1]}
+cmd.cond-and-or @@ [[ -n a && ( -z "" || -n b ) ]] && echo ok
+cmd.cond-lt @@ [[ 10 -gt 9 ]] && echo y; [[ 10 < 9 ]] || echo n
+cmd.coproc @@ coproc C { cat; }; echo hi >&${C[1]}; read -u ${C[0]} l; echo $l
+cmd.function-kw @@ function f { echo F; }; f
+cmd.function-parens @@ f() { echo $1; }; f arg
+cmd.function-return @@ f() { return 4; }; f; echo $?
+cmd.function-local @@ x=1; f() { local x=2; echo $x; }; f; echo $x
+cmd.function-recursion @@ f() { [ $1 -le 1 ] && echo 1 || echo $(( $1 * $(f $(($1-1))) )); }; f 5
+cmd.function-redir @@ f() { echo hi; } > /dev/null; f; echo done
+cmd.function-declare-f @@ f() { echo x; }; declare -f f | head -1
+cmd.function-unset @@ f() { :; }; unset -f f; type f 2>&1 | head -1
+param.default @@ unset x; echo ${x:-d}
+param.default-null @@ x=; echo ${x:-d} ${x-d}.
+param.assign-default @@ unset x; echo ${x:=v}; echo $x
+param.alt @@ x=1; echo ${x:+alt} ${y:+alt}.
+param.err @@ unset x; ( echo ${x:?missing} ) 2>&1 | head -1
+param.length @@ x=hello; echo ${#x}
+param.substr @@ x=hello; echo ${x:1:3} ${x: -2} ${x:2}
+param.rm-prefix @@ x=a/b/c; echo ${x#*/} ${x##*/}
+param.rm-suffix @@ x=a/b/c; echo ${x%/*} ${x%%/*}
+param.replace @@ x=aXbXc; echo ${x/X/-} ${x//X/-} ${x/#a/Z} ${x/%c/Z}
+param.case @@ x=hello; echo ${x^} ${x^^} ${x,,} ${x,}
+param.indirect @@ a=b; b=val; echo ${!a}
+param.names-prefix @@ ab1=1; ab2=2; echo ${!ab*}
+param.transform-Q @@ x='a b'; echo ${x@Q}
+param.transform-U @@ x=abc; echo ${x@U} ${x@u} ${x@L}
+param.transform-A @@ x=abc; echo ${x@A}
+param.transform-a @@ declare -i n=1; echo ${n@a}
+param.pos-all @@ set -- a b c; echo "$@" "$*" $# ; echo "${@:2}"
+param.pos-ifs @@ set -- a b; IFS=:; echo "$*"
+param.pos-shift @@ set -- a b c; shift; echo $@; shift 2; echo $#
+param.pos-slice @@ set -- a b c d; echo ${@:2:2} ${*: -1}
+param.dollar-zero @@ echo "${0##*/}" | grep -c .
+param.dollar-question @@ true; echo $?
+param.dollar-bang @@ sleep 0 & echo ${!:+set}
+param.dollar-dash @@ echo $- | grep -c .
+param.dollar-underscore @@ echo hi >/dev/null; echo $_
+param.unset-u @@ set -u; ( echo $nope ) 2>&1 | head -1
+array.index @@ a=(x y z); echo ${a[1]} ${a[-1]}
+array.all @@ a=(x y z); echo ${a[@]} ${#a[@]} ${!a[@]}
+array.quoted-all @@ a=("a b" c); printf '[%s]' "${a[@]}"; echo
+array.assign-elem @@ a=(); a[3]=x; echo ${#a[@]} ${!a[@]}
+array.append @@ a=(1); a+=(2 3); echo ${a[@]}
+array.slice @@ a=(a b c d); echo ${a[@]:1:2}
+array.unset-elem @@ a=(a b c); unset a[1]; echo ${a[@]} ${!a[@]}
+array.pattern-sub @@ a=(foo bar); echo ${a[@]/o/0}
+array.assoc @@ declare -A m; m[k]=v; m[j]=w; echo ${m[k]} ${#m[@]}
+array.assoc-keys @@ declare -A m=([a]=1 [b]=2); for k in $(printf '%s\n' "${!m[@]}" | sort); do echo $k=${m[$k]}; done
+array.assoc-literal @@ declare -A m=([x y]=1); echo ${m[x y]}
+array.mapfile @@ printf 'a\nb\n' | { mapfile -t arr; echo ${#arr[@]} ${arr[1]}; }
+array.readarray-cb @@ readarray -t a <<< $'p\nq'; echo ${a[0]}${a[1]}
+array.read-a @@ read -a a <<< "1 2 3"; echo ${a[2]}
+array.declare-p @@ a=(1 2); declare -p a
+array.negative-index-assign @@ a=(1 2 3); a[-1]=9; echo ${a[@]}
+brace.list @@ echo {a,b,c}
+brace.range @@ echo {1..5} {a..e} {5..1..2}
+brace.nested @@ echo {a,b{1,2}}c
+brace.prefix @@ echo pre{x,y}post
+brace.zero-pad @@ echo {01..03}
+tilde.home @@ echo ~ | grep -c .
+tilde.plus @@ cd /; echo ~+
+tilde.assign @@ x=~; echo "$x" | grep -c .
+cmdsub.dollar @@ echo $(echo hi)
+cmdsub.backtick @@ echo `echo hi`
+cmdsub.nested @@ echo $(echo $(echo deep))
+cmdsub.trailing-newlines @@ x=$(printf 'a\n\n\n'); echo "[$x]"
+cmdsub.status @@ x=$(false); echo $?
+arith.ops @@ echo $((7/2)) $((7%3)) $((2**10)) $((1<<4)) $((6&3)) $((6|3)) $((6^3)) $((~0))
+arith.ternary @@ echo $((1 ? 5 : 6))
+arith.vars @@ x=3; echo $((x+1)) $((x++)) $x $((--x))
+arith.base @@ echo $((16#ff)) $((8#17)) $((2#101))
+arith.comma @@ echo $((a=1, b=2, a+b))
+arith.compare @@ echo $((3>2)) $((3==3)) $((1&&0)) $((1||0)) $((!5))
+arith.compound-assign @@ x=5; ((x+=3)); ((x*=2)); echo $x
+arith.div-zero @@ ( echo $((1/0)) ) 2>&1 | head -1
+arith.let @@ let x=2+3; echo $x
+arith.declare-i @@ declare -i n; n=2+3; echo $n
+procsub.in @@ cat <(echo hi)
+procsub.diff @@ diff <(echo a) <(echo a) && echo same
+procsub.out @@ echo x > >(cat)
+wordsplit.default @@ x="a  b   c"; printf '[%s]' $x; echo
+wordsplit.ifs @@ IFS=,; x="a,b,,c"; printf '[%s]' $x; echo
+wordsplit.ifs-empty @@ IFS=; x="a b"; printf '[%s]' $x; echo
+glob.star @@ cd "$(mktemp -d)"; touch a.txt b.txt c.md; echo *.txt
+glob.question @@ cd "$(mktemp -d)"; touch a1 a2 ab; echo a?
+glob.bracket @@ cd "$(mktemp -d)"; touch a1 a2 b1; echo [ab]1 [!a]1
+glob.nomatch-literal @@ cd "$(mktemp -d)"; echo *.zzz
+glob.nullglob @@ shopt -s nullglob; cd "$(mktemp -d)"; echo [*.zzz]x
+glob.failglob @@ shopt -s failglob; cd "$(mktemp -d)"; ( echo *.zzz ) 2>&1 | head -1
+glob.dotglob @@ shopt -s dotglob; cd "$(mktemp -d)"; touch .h v; echo *
+glob.nocaseglob @@ shopt -s nocaseglob; cd "$(mktemp -d)"; touch A.TXT; echo *.txt
+glob.globstar @@ shopt -s globstar; cd "$(mktemp -d)"; mkdir -p d/e; touch d/e/f.t; echo **/*.t
+glob.extglob @@ shopt -s extglob; cd "$(mktemp -d)"; touch a b c; echo !(a) @(a|b) +(a) ?(z)a
+glob.posix-class @@ cd "$(mktemp -d)"; touch a1 b2 c; echo [[:digit:]]* [[:alpha:]]
+redir.out @@ cd "$(mktemp -d)"; echo hi > f; cat f
+redir.append @@ cd "$(mktemp -d)"; echo a > f; echo b >> f; cat f
+redir.in @@ cd "$(mktemp -d)"; echo hi > f; cat < f
+redir.stderr @@ ( echo err >&2 ) 2>&1
+redir.stderr-file @@ cd "$(mktemp -d)"; { echo err >&2; } 2> e; cat e
+redir.both @@ cd "$(mktemp -d)"; { echo o; echo e >&2; } &> f; sort f
+redir.both-append @@ cd "$(mktemp -d)"; { echo o; echo e >&2; } &>> f; sort f
+redir.merge @@ { echo o; echo e >&2; } 2>&1 | sort
+redir.swap @@ { echo o; echo e >&2; } 3>&1 1>&2 2>&3 | sort
+redir.noclobber @@ cd "$(mktemp -d)"; set -C; echo a > f; ( echo b > f ) 2>&1 | head -1; echo c >| f; cat f
+redir.rw @@ cd "$(mktemp -d)"; echo hi > f; exec 5<> f; read -u 5 l; echo $l
+redir.dup-close @@ exec 6>&1; echo viafd >&6; exec 6>&-
+redir.fd-var @@ cd "$(mktemp -d)"; exec {fd}> f; echo hi >&$fd; exec {fd}>&-; cat f
+redir.devnull @@ echo gone > /dev/null; echo ok
+redir.devstderr @@ echo x > /dev/stderr 2>&1
+redir.devfd @@ echo x > /dev/fd/1
+redir.herestring @@ cat <<< "hi there"
+redir.heredoc @@ cat <<EOF
+a $((1+1))
+EOF
+redir.heredoc-quoted @@ cat <<'EOF'
+a $((1+1))
+EOF
+redir.heredoc-dash @@ cat <<-EOF
+	tabbed
+	EOF
+redir.heredoc-pipe @@ cat <<EOF | tr a-z A-Z
+abc
+EOF
+redir.per-command-fd @@ cd "$(mktemp -d)"; echo hi > f; cat 3< f; echo done
+redir.exec-stdout @@ cd "$(mktemp -d)"; ( exec > f; echo hidden ); cat f
+redir.exec-stderr @@ ( exec 2>/dev/null; echo oops >&2; echo shown )
+redir.loop @@ cd "$(mktemp -d)"; printf 'a\nb\n' > f; while read l; do echo "<$l>"; done < f
+redir.group @@ cd "$(mktemp -d)"; { echo a; echo b; } > f; wc -l < f
+builtin.cd @@ cd /; pwd
+builtin.cd-dash @@ cd /; cd "$(mktemp -d)"; cd - >/dev/null; pwd
+builtin.cd-cdpath @@ cd /; CDPATH=/; cd tmp 2>/dev/null; pwd
+builtin.pushd @@ cd /; pushd "$(mktemp -d)" >/dev/null; popd >/dev/null; pwd
+builtin.dirs @@ cd /; dirs
+builtin.pwd-P @@ cd /; pwd -P
+builtin.echo-n @@ echo -n a; echo b
+builtin.echo-e @@ echo -e 'a\tb'
+builtin.printf @@ printf '%s|%5s|%-5s|%05d|%x|%o|%e|%c\n' a b c 42 255 8 1.5 xyz
+builtin.printf-v @@ printf -v v '%03d' 7; echo $v
+builtin.printf-q @@ printf '%q\n' 'a b$c'
+builtin.printf-b @@ printf '%b\n' 'a\tb'
+builtin.printf-reuse @@ printf '%s-' a b c; echo
+builtin.printf-time @@ printf '%(%Y)T\n' 0
+builtin.read @@ echo "a b c" | { read x y; echo "$x|$y"; }
+builtin.read-r @@ echo 'a\b' | { read -r x; echo $x; }
+builtin.read-d @@ printf 'a,b' | { read -d , x; echo $x; }
+builtin.read-n @@ echo abcdef | { read -n 3 x; echo $x; }
+builtin.read-p-t @@ echo | { read -t 1 -p prompt x; echo done; }
+builtin.read-ifs @@ echo "a:b" | { IFS=: read x y; echo "$x $y"; }
+builtin.read-eof @@ { read x; echo $?; } < /dev/null
+builtin.export @@ export ZZ=1; env | grep -c '^ZZ=1'
+builtin.export-n @@ export ZZ=1; export -n ZZ; env | grep -c '^ZZ='
+builtin.unset @@ x=1; unset x; echo ${x-gone}
+builtin.readonly @@ readonly R=1; ( R=2 ) 2>&1 | head -1
+builtin.declare-r @@ declare -r D=1; ( D=2 ) 2>&1 | head -1
+builtin.declare-x @@ declare -x DX=1; env | grep -c '^DX='
+builtin.declare-p-scalar @@ x=hi; declare -p x
+builtin.declare-g @@ f() { declare -g G=1; }; f; echo $G
+builtin.declare-n @@ x=1; declare -n r=x; r=2; echo $x
+builtin.declare-l-u @@ declare -l l=ABC; declare -u u=abc; echo $l $u
+builtin.local-dynamic @@ f() { local v=in; g; }; g() { echo $v; }; v=out; f
+builtin.typeset @@ typeset -i n=3; echo $((n+1))
+builtin.set-e @@ ( set -e; false; echo no ) ; echo $?
+builtin.set-e-andor @@ ( set -e; false || true; echo yes )
+builtin.set-e-if @@ ( set -e; if false; then :; fi; echo yes )
+builtin.set-x @@ ( set -x; echo hi ) 2>&1
+builtin.set-n @@ set -n; echo skipped
+builtin.set-f @@ set -f; cd "$(mktemp -d)"; touch a; echo *
+builtin.set-u-array @@ ( set -u; a=(); echo ${a[@]} ) 2>&1 | head -1
+builtin.set-o-list @@ set -o | grep -c errexit
+builtin.set-posix-args @@ set -- a b; echo $#
+builtin.shopt-s @@ shopt -s nullglob; shopt -q nullglob && echo on
+builtin.shopt-p @@ shopt -p nullglob
+builtin.shopt-expand-aliases @@ shopt -s expand_aliases; alias hi='echo aliased'; eval hi
+builtin.shopt-lastpipe @@ shopt -s lastpipe; echo x | read v; echo $v
+builtin.shift-err @@ set --; shift 2 2>&1; echo $?
+builtin.eval @@ x='echo hi'; eval "$x"
+builtin.eval-vars @@ a=b; b=c; eval echo \$$a
+builtin.source @@ cd "$(mktemp -d)"; echo 'X=sourced' > s.sh; . ./s.sh; echo $X
+builtin.source-args @@ cd "$(mktemp -d)"; echo 'echo $1 $#' > s.sh; source ./s.sh a b
+builtin.exec-cmd @@ ( exec echo replaced; echo no )
+builtin.exit-code @@ ( exit 7 ); echo $?
+builtin.return-source @@ cd "$(mktemp -d)"; echo 'return 3; echo no' > s.sh; . ./s.sh; echo $?
+builtin.test-file @@ cd "$(mktemp -d)"; touch f; mkdir d; [ -f f ] && [ -d d ] && [ -e f ] && [ -s f ] || echo notempty; [ -x f ] || echo nox
+builtin.test-str @@ [ -z "" ] && [ -n a ] && [ a = a ] && [ a != b ] && echo ok
+builtin.test-num @@ [ 1 -lt 2 ] && [ 2 -ge 2 ] && [ 3 -ne 4 ] && echo ok
+builtin.test-nt @@ cd "$(mktemp -d)"; touch a; sleep 1; touch b; [ b -nt a ] && [ a -ot b ] && echo ok
+builtin.test-symlink @@ cd "$(mktemp -d)"; touch f; ln -s f l; [ -L l ] && [ -h l ] && echo ok
+builtin.test-bracket-not @@ [ ! -e /nonexistent ] && echo ok
+builtin.test-and-or @@ [ 1 = 1 -a 2 = 2 ] && [ 1 = 2 -o 2 = 2 ] && echo ok
+builtin.test-v @@ x=1; [[ -v x ]] && [[ ! -v nope ]] && echo ok
+builtin.true-false @@ true; echo $?; false; echo $?
+builtin.colon @@ : anything; echo $?
+builtin.type @@ type echo | head -1
+builtin.type-t @@ type -t cd; type -t ls; f() { :; }; type -t f
+builtin.command-v @@ command -v cd; command -v nonexistent_zz || echo none
+builtin.command-bypass @@ echo() { printf 'fn\n'; }; command echo real; echo
+builtin.builtin @@ builtin echo hi
+builtin.hash @@ hash -r; echo $?
+builtin.alias @@ shopt -s expand_aliases; alias ll='echo LL'; alias ll
+builtin.unalias @@ alias z=x; unalias z; alias z 2>&1 | head -1
+builtin.getopts @@ set -- -a -b val rest; while getopts ab: o; do echo "$o=$OPTARG"; done; echo $OPTIND
+builtin.getopts-err @@ set -- -z; getopts a o 2>/dev/null; echo "$o"
+builtin.trap-exit @@ ( trap 'echo bye' EXIT; echo run )
+builtin.trap-err @@ ( trap 'echo err' ERR; false )
+builtin.trap-debug @@ trap 'echo D' DEBUG; true; trap - DEBUG
+builtin.trap-return @@ f() { trap 'echo R' RETURN; echo in; }; f
+builtin.trap-signal @@ ( trap 'echo got' USR1; kill -USR1 $BASHPID; sleep 0.2 )
+builtin.trap-l @@ trap -l | head -c 20 | wc -c
+builtin.kill-l @@ kill -l | head -c 10 | wc -c
+builtin.wait @@ (sleep 0.1; exit 3) & wait $!; echo $?
+builtin.jobs @@ sleep 0.3 & jobs | wc -l; wait
+builtin.bg-var @@ sleep 0.1 & echo ${!:+pid}; wait
+builtin.disown @@ sleep 0.1 & disown; echo ok
+builtin.umask @@ umask 022; umask
+builtin.ulimit @@ ulimit -n | grep -c '^[0-9]'
+builtin.times @@ times | wc -l
+builtin.let @@ let "a = 3 * 4"; echo $a
+builtin.enable @@ enable -n echo 2>/dev/null; echo $?
+builtin.help @@ help cd | head -1
+builtin.history @@ history | head -1; echo $?
+builtin.fc @@ fc -l 2>&1 | head -1; echo done
+builtin.compgen @@ compgen -b | grep -c '^cd$'
+builtin.complete @@ complete -W 'a b' cmd; complete -p cmd
+builtin.mapfile-n @@ printf '1\n2\n3\n' | { mapfile -t -n 2 a; echo ${#a[@]}; }
+builtin.caller @@ f() { caller 0; }; f | wc -w
+builtin.bind @@ bind -V 2>&1 | head -1; echo done
+builtin.suspend @@ suspend 2>&1 | head -1; echo done
+builtin.logout @@ logout 2>&1 | head -1; echo done
+builtin.shift-n @@ set -- 1 2 3 4; shift 2; echo "$@"
+builtin.dot-path @@ cd "$(mktemp -d)"; echo 'echo found' > ps.sh; PATH=.:$PATH . ps.sh
+var.RANDOM @@ [ $RANDOM -ge 0 ] && [ $RANDOM -le 32767 ] && echo ok
+var.SECONDS @@ [ $SECONDS -ge 0 ] && echo ok
+var.LINENO @@ echo $LINENO
+var.BASH_VERSION @@ echo ${BASH_VERSION%%.*}
+var.BASH_VERSINFO @@ echo ${BASH_VERSINFO[0]}
+var.BASH_SOURCE @@ echo "${#BASH_SOURCE[@]}"
+var.FUNCNAME @@ f() { echo $FUNCNAME; }; f
+var.FUNCNAME-stack @@ g() { echo "${FUNCNAME[@]}"; }; f() { g; }; f
+var.BASH_LINENO @@ f() { echo ${BASH_LINENO[0]}; }; f
+var.BASHPID @@ [ -n "$BASHPID" ] && echo ok
+var.PPID @@ [ -n "$PPID" ] && echo ok
+var.UID @@ [ -n "$UID" ] && echo ok
+var.EUID @@ [ -n "$EUID" ] && echo ok
+var.HOSTNAME @@ [ -n "$HOSTNAME" ] && echo ok
+var.HOSTTYPE @@ [ -n "$HOSTTYPE" ] && echo ok
+var.OSTYPE @@ [ -n "$OSTYPE" ] && echo ok
+var.MACHTYPE @@ [ -n "$MACHTYPE" ] && echo ok
+var.PWD-OLDPWD @@ cd /; cd "$(mktemp -d)"; [ "$OLDPWD" = / ] && echo ok
+var.PATH @@ [ -n "$PATH" ] && echo ok
+var.HOME @@ [ -n "$HOME" ] && echo ok
+var.IFS-default @@ printf '%s' "$IFS" | od -c | head -1
+var.REPLY @@ echo hi | { read; echo $REPLY; }
+var.OPTIND @@ echo $OPTIND
+var.PS4 @@ ( PS4='>> '; set -x; echo a ) 2>&1
+var.PS1 @@ [ -n "${PS1-}" ] || echo unset
+var.EPOCHSECONDS @@ [ ${EPOCHSECONDS:-0} -gt 1000000 ] && echo ok
+var.EPOCHREALTIME @@ [ -n "${EPOCHREALTIME}" ] && echo ok
+var.SHLVL @@ [ -n "$SHLVL" ] && echo ok
+var.BASH_ALIASES @@ shopt -s expand_aliases; alias q=w; echo ${BASH_ALIASES[q]}
+var.BASH_CMDS @@ echo ${#BASH_CMDS[@]} | grep -c '[0-9]'
+var.COMP_WORDS @@ echo ${#COMP_WORDS[@]}
+var.DIRSTACK @@ cd /; echo ${DIRSTACK[0]}
+var.GROUPS @@ [ -n "${GROUPS[0]}" ] && echo ok
+var.BASH_REMATCH @@ [[ ab =~ (a)(b) ]]; echo ${BASH_REMATCH[0]} ${BASH_REMATCH[2]}
+var.PIPESTATUS-single @@ true; echo ${PIPESTATUS[0]}
+var.TMOUT @@ echo ${TMOUT-unset}
+var.TIMEFORMAT @@ TIMEFORMAT=%R; time true 2>&1 | grep -c '^[0-9]'
+var.COLUMNS @@ echo ${COLUMNS-unset} | grep -c .
+var.READLINE @@ echo ${READLINE_LINE-unset}
+var.HISTFILE @@ echo ${HISTFILE+set}
+var.HISTSIZE @@ echo ${HISTSIZE-unset} | grep -c .
+var.IGNOREEOF @@ echo ${IGNOREEOF-unset}
+var.POSIXLY_CORRECT @@ echo ${POSIXLY_CORRECT-unset}
+var.SHELLOPTS @@ echo $SHELLOPTS | grep -c .
+var.BASHOPTS @@ echo $BASHOPTS | grep -c .
+var.UID-readonly @@ ( UID=5 ) 2>&1 | head -1
+exp.history-bang @@ set +H; echo !! 2>&1
+exp.dollar-paren-arith-nest @@ echo $(( $(echo 2) + 1 ))
+exp.quoted-empty @@ set -- "" a; echo $#
+exp.at-empty @@ set --; printf '[%s]' "$@"; echo
+exp.nested-param @@ x=abc; y=x; echo ${!y:1:1}
+exp.var-in-glob @@ cd "$(mktemp -d)"; touch ab; p='a*'; echo $p
+exp.quote-glob @@ cd "$(mktemp -d)"; touch ab; echo "a*"
+exp.assign-glob-noexpand @@ cd "$(mktemp -d)"; touch ab; x=a*; echo "$x"
+exp.escape-in-dq @@ echo "a\nb"
+exp.tilde-quoted @@ echo "~"
+exp.dollar-lone @@ echo $ "$"
+exp.unicode @@ x=héllo; echo ${#x} ${x:1:2}
+exp.null-byte @@ printf 'a\0b' | od -An -c | head -1
+exp.long-pipeline @@ seq 1 1000 | sort -n | tail -1
+exp.exit-trap-order @@ ( trap 'echo A' EXIT; trap 'echo B' EXIT )
+misc.sleep-fraction @@ sleep 0.01; echo ok
+misc.subshell-vars @@ x=1; ( x=2 ); echo $x
+misc.cmd-not-found @@ nosuchcmd_zz 2>&1 | head -1; echo ${PIPESTATUS[0]}
+misc.permission @@ cd "$(mktemp -d)"; echo x > f; ./f 2>&1 | head -1
+misc.here-fn @@ f() { cat; }; f <<< hi
+misc.process-env @@ A=1 bash -c 'echo $A' 2>/dev/null || echo nobash
+misc.xargs @@ printf 'a b\n' | xargs -n1 echo
+misc.find-exec @@ cd "$(mktemp -d)"; touch a b; find . -type f | sort
+misc.sort-uniq @@ printf 'b\na\nb\n' | sort | uniq -c
+misc.sed @@ echo abc | sed 's/b/X/'
+misc.awk @@ echo 'a b' | awk '{print $2}'
+misc.grep @@ printf 'a\nb\n' | grep -v a
+misc.tr @@ echo abc | tr a-c A-C
+misc.cut @@ echo a:b:c | cut -d: -f2
+misc.date @@ date +%Y | grep -c '^[0-9]\{4\}$'
+misc.stat @@ cd "$(mktemp -d)"; echo hi > f; stat -c %s f
+misc.readlink @@ cd "$(mktemp -d)"; touch f; ln -s f l; readlink l
+misc.mktemp @@ d=$(mktemp -d); [ -d "$d" ] && echo ok
+misc.wc @@ printf 'a b\n' | wc -w
+misc.head-tail @@ seq 1 5 | head -2; seq 1 5 | tail -1
+misc.tee @@ cd "$(mktemp -d)"; echo hi | tee f >/dev/null; cat f
+misc.env-i @@ env -i A=1 env
+misc.basename @@ basename /a/b.txt .txt; dirname /a/b.txt
+misc.realpath @@ cd /; realpath .
+misc.timeout @@ timeout 1 sleep 0.01; echo $?
+misc.nl-in-dq @@ echo "a
+b"
+misc.line-continuation-cmd @@ echo a \
+  b
+misc.long-and-or @@ true && false || echo rescued
+misc.negate-pipeline @@ ! true | false; echo $?
+misc.empty-cmd @@ ;; 2>&1 | head -1
+misc.semicolon-after-amp @@ sleep 0 & echo ok; wait

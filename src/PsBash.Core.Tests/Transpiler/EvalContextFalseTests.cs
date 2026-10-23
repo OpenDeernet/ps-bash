@@ -30,3 +30,23 @@ public class EvalContextFalseTests
         Assert.Contains("$global:LASTEXITCODE = 1", ps);
     }
 }
+
+/// <summary>Eval/source'd pipelines feed the caller's pipes, so they are never fused (CRLF batch frames).</summary>
+public class EvalContextFusionTests
+{
+    [Fact]
+    public void Eval_AllMappedPipeline_IsNotFused()
+    {
+        var ps = BashTranspiler.Transpile("seq 1 3 | tail -1", TranspileContext.Eval);
+
+        Assert.DoesNotContain("Invoke-BashFusedPipeline", ps);
+    }
+
+    [Fact]
+    public void Default_AllMappedPipeline_StaysFused()
+    {
+        var ps = BashTranspiler.Transpile("seq 1 3 | tail -1", TranspileContext.Default);
+
+        Assert.Contains("Invoke-BashFusedPipeline", ps);
+    }
+}

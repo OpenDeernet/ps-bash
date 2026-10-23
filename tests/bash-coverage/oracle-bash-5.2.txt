@@ -1,0 +1,344 @@
+arith.base|0|255 15 5
+arith.comma|0|3
+arith.compare|0|1 1 0 1 0
+arith.compound-assign|0|16
+arith.declare-i|0|5
+arith.div-zero|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/arith.div-zero.sh: line 1: 1/0: division by 0 (error token is "0")
+arith.let|0|5
+arith.ops|0|3 1 1024 16 2 7 5 -1
+arith.ternary|0|5
+arith.vars|0|4 3 4 3
+array.all|0|x y z 3 0 1 2
+array.append|0|1 2 3
+array.assign-elem|0|1 3
+array.assoc-keys|0|a=1~b=2
+array.assoc-literal|0|1
+array.assoc|0|v 2
+array.declare-p|0|declare -a a=([0]="1" [1]="2")
+array.index|0|y z
+array.mapfile|0|2 b
+array.negative-index-assign|0|1 2 9
+array.pattern-sub|0|f0o bar
+array.quoted-all|0|[a b][c]
+array.read-a|0|3
+array.readarray-cb|0|pq
+array.slice|0|b c
+array.unset-elem|0|a c 0 2
+brace.list|0|a b c
+brace.nested|0|ac b1c b2c
+brace.prefix|0|prexpost preypost
+brace.range|0|1 2 3 4 5 a b c d e 5 3 1
+brace.zero-pad|0|01 02 03
+builtin.alias|0|alias ll='echo LL'
+builtin.bg-var|0|pid
+builtin.bind|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/builtin.bind.sh: line 1: bind: warning: line editing not enabled~done
+builtin.builtin|0|hi
+builtin.caller|0|3
+builtin.cd-cdpath|0|/tmp~/tmp
+builtin.cd-dash|0|/
+builtin.cd|0|/
+builtin.colon|0|0
+builtin.command-bypass|0|real~fn
+builtin.command-v|0|cd~none
+builtin.compgen|0|1
+builtin.complete|0|complete -W 'a b' cmd
+builtin.declare-g|0|1
+builtin.declare-l-u|0|abc ABC
+builtin.declare-n|0|2
+builtin.declare-p-scalar|0|declare -- x="hi"
+builtin.declare-r|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/builtin.declare-r.sh: line 1: D: readonly variable
+builtin.declare-x|0|1
+builtin.dirs|0|/
+builtin.disown|0|ok
+builtin.dot-path|0|found
+builtin.echo-e|0|a	b
+builtin.echo-n|0|ab
+builtin.enable|0|0
+builtin.eval-vars|0|c
+builtin.eval|0|hi
+builtin.exec-cmd|0|replaced
+builtin.exit-code|0|7
+builtin.export-n|1|0
+builtin.export|0|1
+builtin.fc|0|done
+builtin.getopts-err|0|?
+builtin.getopts|0|a=~b=val~4
+builtin.hash|0|0
+builtin.help|0|cd: cd [-L|[-P [-e]] [-@]] [dir]
+builtin.history|0|0
+builtin.jobs|0|1
+builtin.kill-l|0|10
+builtin.let|0|12
+builtin.local-dynamic|0|in
+builtin.logout|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/builtin.logout.sh: line 1: logout: not login shell: use `exit'~done
+builtin.mapfile-n|0|2
+builtin.printf-b|0|a	b
+builtin.printf-q|0|a\ b\$c
+builtin.printf-reuse|0|a-b-c-
+builtin.printf-time|0|1969
+builtin.printf-v|0|007
+builtin.printf|0|a|    b|c    |00042|ff|10|1.500000e+00|x
+builtin.pushd|0|/
+builtin.pwd-P|0|/
+builtin.read-d|0|a
+builtin.read-eof|0|1
+builtin.read-ifs|0|a b
+builtin.read-n|0|abc
+builtin.read-p-t|0|done
+builtin.read-r|0|a\b
+builtin.read|0|a|b c
+builtin.readonly|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/builtin.readonly.sh: line 1: R: readonly variable
+builtin.return-source|0|3
+builtin.set-e-andor|0|yes
+builtin.set-e-if|0|yes
+builtin.set-e|0|1
+builtin.set-f|0|*
+builtin.set-n|0|
+builtin.set-o-list|0|1
+builtin.set-posix-args|0|2
+builtin.set-u-array|0|
+builtin.set-x|0|+++ echo hi~hi
+builtin.shift-err|0|1
+builtin.shift-n|0|3 4
+builtin.shopt-expand-aliases|0|aliased
+builtin.shopt-lastpipe|0|x
+builtin.shopt-p|1|shopt -u nullglob
+builtin.shopt-s|0|on
+builtin.source-args|0|a 2
+builtin.source|0|sourced
+builtin.suspend|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/builtin.suspend.sh: line 1: suspend: cannot suspend: no job control~done
+builtin.test-and-or|0|ok
+builtin.test-bracket-not|0|ok
+builtin.test-file|0|notempty~nox
+builtin.test-nt|0|ok
+builtin.test-num|0|ok
+builtin.test-str|0|ok
+builtin.test-symlink|0|ok
+builtin.test-v|0|ok
+builtin.times|0|2
+builtin.trap-debug|0|D~D
+builtin.trap-err|1|err
+builtin.trap-exit|0|run~bye
+builtin.trap-l|0|20
+builtin.trap-return|0|in~R~R
+builtin.trap-signal|0|got
+builtin.true-false|0|0~1
+builtin.type-t|0|builtin~file~function
+builtin.type|0|echo is a shell builtin
+builtin.typeset|0|4
+builtin.ulimit|0|1
+builtin.umask|0|0022
+builtin.unalias|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/builtin.unalias.sh: line 1: alias: z: not found
+builtin.unset|0|gone
+builtin.wait|0|3
+cmd.arith-assign|0|8
+cmd.arith-cmd|0|yes
+cmd.break-continue|0|1~3
+cmd.break-n|0|1a
+cmd.case-continue|0|1~2
+cmd.case-fallthrough|0|1~2
+cmd.case-pattern-alt|0|ab
+cmd.case|0|m
+cmd.cond-and-or|0|ok
+cmd.cond-lt|0|y
+cmd.cond-regex|0|123
+cmd.cond-test|0|m
+cmd.coproc|0|hi
+cmd.for-arith|0|0~1~2
+cmd.for-in|0|a~b~c
+cmd.for-noin|0|x~y
+cmd.function-declare-f|0|f () 
+cmd.function-kw|0|F
+cmd.function-local|0|2~1
+cmd.function-parens|0|arg
+cmd.function-recursion|0|120
+cmd.function-redir|0|done
+cmd.function-return|0|4
+cmd.function-unset|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/cmd.function-unset.sh: line 1: type: f: not found
+cmd.if-else|0|f
+cmd.if|0|t
+cmd.select|0|1) a~2) b~#? b
+cmd.until|0|0~1
+cmd.while|0|0~1~2
+cmdsub.backtick|0|hi
+cmdsub.dollar|0|hi
+cmdsub.nested|0|deep
+cmdsub.status|0|1
+cmdsub.trailing-newlines|0|[a]
+exp.assign-glob-noexpand|0|a*
+exp.at-empty|0|[]
+exp.dollar-lone|0|$ $
+exp.dollar-paren-arith-nest|0|3
+exp.escape-in-dq|0|a\nb
+exp.exit-trap-order|0|B
+exp.history-bang|0|!!
+exp.long-pipeline|0|1000
+exp.nested-param|0|b
+exp.null-byte|0|   a  \0   b
+exp.quote-glob|0|a*
+exp.quoted-empty|0|2
+exp.tilde-quoted|0|~
+exp.unicode|0|5 él
+exp.var-in-glob|0|ab
+glob.bracket|0|a1 b1 b1
+glob.dotglob|0|.h v
+glob.extglob|2|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/glob.extglob.sh: line 1: syntax error near unexpected token `('~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/glob.extglob.sh: line 1: `shopt -s extglob; cd "$(mktemp -d)"; touch a b c; echo !(a) @(a|b) +(a) ?(z)a'
+glob.failglob|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/glob.failglob.sh: line 1: no match: *.zzz
+glob.globstar|0|d/e/f.t
+glob.nocaseglob|0|A.TXT
+glob.nomatch-literal|0|*.zzz
+glob.nullglob|0|
+glob.posix-class|0|[[:digit:]]* c
+glob.question|0|a1 a2 ab
+glob.star|0|a.txt b.txt
+list.and|0|y
+list.group|0|2
+list.or|0|n
+list.seq|0|a~b
+list.subshell-exit|0|3
+list.subshell|0|1~unset
+misc.awk|0|b
+misc.basename|0|b~/a
+misc.cmd-not-found|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/misc.cmd-not-found.sh: line 1: nosuchcmd_zz: command not found~127
+misc.cut|0|b
+misc.date|0|1
+misc.empty-cmd|2|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/misc.empty-cmd.sh: line 1: syntax error near unexpected token `;;'~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/misc.empty-cmd.sh: line 1: `;; 2>&1 | head -1'
+misc.env-i|0|A=1
+misc.find-exec|0|./a~./b
+misc.grep|0|b
+misc.head-tail|0|1~2~5
+misc.here-fn|0|hi
+misc.line-continuation-cmd|0|a b
+misc.long-and-or|0|rescued
+misc.mktemp|0|ok
+misc.negate-pipeline|0|0
+misc.nl-in-dq|0|a~b
+misc.permission|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/misc.permission.sh: line 1: ./f: Permission denied
+misc.process-env|0|1
+misc.readlink|0|f
+misc.realpath|0|/
+misc.sed|0|aXc
+misc.semicolon-after-amp|0|ok
+misc.sleep-fraction|0|ok
+misc.sort-uniq|0|      1 a~      2 b
+misc.stat|0|3
+misc.subshell-vars|0|1
+misc.tee|0|hi
+misc.timeout|0|0
+misc.tr|0|ABC
+misc.wc|0|2
+misc.xargs|0|a~b
+param.alt|0|alt .
+param.assign-default|0|v~v
+param.case|0|Hello HELLO hello hello
+param.default-null|0|d .
+param.default|0|d
+param.dollar-bang|0|set
+param.dollar-dash|0|1
+param.dollar-question|0|0
+param.dollar-underscore|0|hi
+param.dollar-zero|0|1
+param.err|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/param.err.sh: line 1: x: missing
+param.indirect|0|val
+param.length|0|5
+param.names-prefix|0|ab1 ab2
+param.pos-all|0|a b c a b c 3~b c
+param.pos-ifs|0|a:b
+param.pos-shift|0|b c~0
+param.pos-slice|0|b c d
+param.replace|0|a-bXc a-b-c ZXbXc aXbXZ
+param.rm-prefix|0|b/c c
+param.rm-suffix|0|a/b a
+param.substr|0|ell lo llo
+param.transform-A|0|i
+param.transform-Q|0|'a b'
+param.transform-U|0|ABC Abc abc
+param.unset-u|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/param.unset-u.sh: line 1: nope: unbound variable
+pipe.PIPESTATUS|0|1 0 1
+pipe.basic|0|2
+pipe.pipefail|0|1
+pipe.stderr-pipe|0|out~err
+pipe.time|1|0~~real	0m0.006s~user	0m0.002s~sys	0m0.005s
+procsub.diff|0|same
+procsub.in|0|hi
+procsub.out|0|x
+quote.ansic|0|a	b~Aé
+quote.backslash|127|a b$c~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/quote.backslash.sh: line 2: comment: command not found
+quote.double|0|a  1 $ " \ b
+quote.escape-newline|0|ab
+quote.locale|0|hello
+quote.single|0|a  b$x
+redir.append|0|a~b
+redir.both-append|0|e~o
+redir.both|0|e~o
+redir.devfd|0|x
+redir.devnull|0|ok
+redir.devstderr|0|x
+redir.dup-close|0|viafd
+redir.exec-stderr|0|shown
+redir.exec-stdout|0|hidden
+redir.fd-var|0|hi
+redir.group|0|2
+redir.heredoc-dash|0|tabbed
+redir.heredoc-pipe|0|ABC
+redir.heredoc-quoted|0|a $((1+1))
+redir.heredoc|0|a 2
+redir.herestring|0|hi there
+redir.in|0|hi
+redir.loop|0|<a>~<b>
+redir.merge|0|e~o
+redir.noclobber|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/redir.noclobber.sh: line 1: f: cannot overwrite existing file~c
+redir.out|0|hi
+redir.per-command-fd|0|done
+redir.rw|0|hi
+redir.stderr-file|0|err
+redir.stderr|0|err
+redir.swap|0|o~e
+simple.assign-append|0|ab
+simple.assign-only|0|5
+simple.assign-prefix|0|2
+simple.exit-status|0|1
+simple.not|0|0
+tilde.assign|0|1
+tilde.home|0|1
+tilde.plus|0|/
+var.BASHOPTS|0|1
+var.BASHPID|0|ok
+var.COLUMNS|0|1
+var.DIRSTACK|0|/
+var.EPOCHREALTIME|0|ok
+var.EPOCHSECONDS|0|ok
+var.EUID|0|ok
+var.FUNCNAME-stack|2|g f source main~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.FUNCNAME-stack.sh: line 2: syntax error near unexpected token `('~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.FUNCNAME-stack.sh: line 2: `var.BASH_LINENO @@ f() { echo ${BASH_LINENO[0]}; }; f'
+var.FUNCNAME|0|f
+var.GROUPS|2|ok~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.GROUPS.sh: line 2: syntax error near unexpected token `('~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.GROUPS.sh: line 2: `var.BASH_REMATCH @@ [[ ab =~ (a)(b) ]]; echo ${BASH_REMATCH[0]} ${BASH_REMATCH[2]}'
+var.HISTFILE|0|
+var.HISTSIZE|0|1
+var.HOME|0|ok
+var.HOSTNAME|0|ok
+var.HOSTTYPE|0|ok
+var.IFS-default|0|0000000      \t  \n
+var.IGNOREEOF|127|unset~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.IGNOREEOF.sh: line 2: var.POSIXLY_CORRECT: command not found
+var.LINENO|127|1~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.LINENO.sh: line 2: var.BASH_VERSION: command not found~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.LINENO.sh: line 3: var.BASH_VERSINFO: command not found~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.LINENO.sh: line 4: var.BASH_SOURCE: command not found
+var.MACHTYPE|0|ok
+var.OPTIND|0|1
+var.OSTYPE|0|ok
+var.PATH|0|ok
+var.PIPESTATUS-single|0|0
+var.PPID|0|ok
+var.PS1|0|unset
+var.PS4|0|>>>> echo a~a
+var.PWD-OLDPWD|0|ok
+var.RANDOM|0|ok
+var.READLINE|0|unset
+var.REPLY|0|hi
+var.SECONDS|0|ok
+var.SHELLOPTS|0|1
+var.SHLVL|127|ok~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.SHLVL.sh: line 2: var.BASH_ALIASES: command not found~w~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.SHLVL.sh: line 3: var.BASH_CMDS: command not found~0~/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.SHLVL.sh: line 4: var.COMP_WORDS: command not found
+var.TIMEFORMAT|1|0~0.008
+var.TMOUT|0|unset
+var.UID-readonly|0|/mnt/c/Users/andyb/AppData/Local/Temp/claude/C--Users-andyb-work-core-ps-bash/0bd9035e-fc89-41ac-8685-2b91a1f5a22b/scratchpad/cov/s/var.UID-readonly.sh: line 1: UID: readonly variable
+var.UID|0|ok
+wordsplit.default|0|[a][b][c]
+wordsplit.ifs-empty|0|[a b]
+wordsplit.ifs|0|[a][b][][c]
