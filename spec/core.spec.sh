@@ -118,3 +118,25 @@ after
 trap 'echo err' ERR; trap - ERR; false; echo done
 ## stdout: done
 ## status: 0
+
+#### extglob alternation in case
+shopt -s extglob
+case abc in @(abc|x)) echo y;; *) echo n;; esac
+case abd in @(abc|x)) echo y;; *) echo n;; esac
+## STDOUT:
+y
+n
+## END
+## status: 0
+
+#### extglob negation and repetition in [[ ]]
+shopt -s extglob
+[[ foo.c == !(*.h) ]] && echo notheader
+[[ aaa == +(a) ]] && echo plus
+[[ ab == ?(a)b ]] && echo opt
+## STDOUT:
+notheader
+plus
+opt
+## END
+## status: 0

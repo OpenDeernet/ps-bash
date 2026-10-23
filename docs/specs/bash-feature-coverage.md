@@ -65,7 +65,7 @@ logout select suspend times ulimit umask`. (`getopts` was the one scripts use mo
   status, `shopt -p`, `test -v`, `unalias` error, `trap` for DEBUG/RETURN/EXIT-ordering/signals (`trap ... ERR` now runs after a failing statement).
 - Pipelines: `pipefail`, `PIPESTATUS` (deferred on purpose, see the memory note), `time` formatting.
 - Redirection: `exec N>file` for fd 1/2, `/dev/fd/N`, `{var}>file`, `<>`, `noclobber`, swapping `3>&1 1>&2 2>&3`.
-- Globbing: `extglob`, `globstar`, `nocaseglob`, `failglob`. (`set -f`/`set -o noglob` now work; `printf %q` and `%(fmt)T` are implemented.)
+- Globbing: `extglob` in pathname expansion (works in `case` and `[[ ]]`), `globstar`, `nocaseglob`, `failglob`. (`set -f`/`set -o noglob` now work; `printf %q` and `%(fmt)T` are implemented.)
 - Misc: command-not-found status (127), `function-unset`, empty-command syntax errors, here-document into a function.
 
 ### Windows-environment differences (not counted as bugs)

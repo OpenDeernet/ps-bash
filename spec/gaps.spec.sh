@@ -22,12 +22,6 @@ a=(); a[3]=x; echo ${#a[@]} ${!a[@]}
 ## status: 0
 ## XFAIL ps-bash sparse-array PowerShell arrays are dense
 
-#### extglob pattern
-shopt -s extglob; case abc in @(abc|x)) echo y;; *) echo n;; esac
-## stdout:
-## status: 2
-## XFAIL ps-bash extglob extglob patterns unsupported
-
 #### trap ERR
 trap 'echo err' ERR; false; echo done
 ## STDOUT:
@@ -35,3 +29,16 @@ err
 done
 ## END
 ## status: 0
+
+#### extglob in pathname expansion
+shopt -s extglob
+d=$(mktemp -d); cd "$d"; touch a.c b.h c.c
+echo !(*.h)
+echo @(a|b).*
+cd /; rm -rf "$d"
+## STDOUT:
+a.c c.c
+a.c b.h
+## END
+## status: 0
+## XFAIL ps-bash extglob-pathname extglob works in case and [[ ]] but not in pathname expansion
