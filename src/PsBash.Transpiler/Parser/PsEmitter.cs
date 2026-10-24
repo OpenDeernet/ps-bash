@@ -1307,6 +1307,20 @@ public static class PsEmitter
         return $"'{SqEsc(emitted)}'";
     }
 
+    /// <summary>The non-constant aliases PowerShell 7 defines on Windows; each shadows a same-named function.</summary>
+    private static readonly HashSet<string> PsDefaultAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ac", "clc", "clhy", "cli", "clp", "cls", "clv", "cnsn", "compare", "copy",
+        "cpi", "cpp", "cvpa", "dbp", "del", "dnsn", "ebp", "epal", "epcsv", "erase", "etsn", "exsn",
+        "fc", "fhx", "fl", "foreach", "ft", "fw", "gal", "gbp", "gc", "gci", "gcm", "gcs", "gdr", "gerr", "ghy", "gi", "gjb",
+        "gl", "gm", "gmo", "gp", "gps", "gpv", "group", "gsn", "gsv", "gu", "gv", "h", "icm", "iex", "ihy", "ii",
+        "ipal", "ipcsv", "ipmo", "irm", "iwr", "measure", "mi", "move", "mp", "nal",
+        "ndr", "ni", "nmo", "nsn", "nv", "ogv", "oh", "r", "rbp", "rcjb", "rcsn", "rd", "rdr",
+        "ren", "ri", "rjb", "rmo", "rni", "rnp", "rp", "rsn", "rv", "rvpa", "sajb", "sal", "saps", "sasv", "sbp",
+        "shcm", "si", "sl", "sls", "sp", "spjb", "spps", "spsv", "start", "sv",
+        "where", "wjb", "write",
+    };
+
     private static string EmitFunction(Command.ShFunction func)
     {
         (_unitFunctions ??= new HashSet<string>(StringComparer.Ordinal)).Add(func.Name);
@@ -1338,8 +1352,12 @@ public static class PsEmitter
             // that recursive calls each see their own positional args ($1, $2, $@, $#)
             // rather than the top-level caller's args. Without this, a recursive call
             // overwrites the global and the outer frame sees the inner frame's values.
-            var sb = new StringBuilder("function ");
-            sb.Append(func.Name);
+            var sb = new StringBuilder();
+            // A PowerShell alias outranks a function of the same name (`r`, `h`, `diff`), so a bash function
+            // that shares its name would never run; drop the alias first.
+            if (PsDefaultAliases.Contains(func.Name))
+                sb.Append("Remove-Item -LiteralPath ").Append(PsBuild.SingleQuote("Alias:" + func.Name)).Append(" -Force -ErrorAction SilentlyContinue; ");
+            sb.Append("function ").Append(func.Name);
             sb.Append(" {").Append(PsBuild.FunctionPrologue);
             if (dynLocals.Count > 0)
             {

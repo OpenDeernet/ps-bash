@@ -6015,6 +6015,14 @@ public class PsEmitterTests
         Assert.Contains("Invoke-BashPipeStage -Slot $__pf -Index 1 -Script { & { Out-Null; $($global:LASTEXITCODE = 1", result);
     }
 
+    [Theory]
+    [InlineData("r() { echo x; }", true)]
+    [InlineData("h() { echo x; }", true)]
+    [InlineData("greet() { echo x; }", false)]
+    [InlineData("cd() { echo x; }", false)] // a bash command: the emitter maps it, never the alias
+    public void Transpile_FunctionNamedLikeAPsAlias_DropsTheAliasFirst(string bash, bool dropsAlias)
+        => Assert.Equal(dropsAlias, PsEmitter.Transpile(bash).Contains("Remove-Item -LiteralPath 'Alias:", StringComparison.Ordinal));
+
     [Fact]
     public void Transpile_PipelineWithoutPipefail_IsUnchanged()
         => Assert.DoesNotContain("Invoke-BashPipeStage", PsEmitter.Transpile("false | true"));
