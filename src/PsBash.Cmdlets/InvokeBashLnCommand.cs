@@ -334,6 +334,20 @@ public sealed class InvokeBashLnCommand : PSCmdlet
             }
         }
 
+        // The link name already IS the source (`ln -f file file`, `ln -f file ./file`, or another hard link
+        // of it): -f/backup would remove the only copy before the link could be made. GNU refuses first.
+        if ((plan.BackupEnabled || plan.Existing != LnExisting.Fail) && File.Exists(linkAbsolute) && File.Exists(targetPath)
+            && (symbolic
+                ? FileIdentity.SameFileNotFollowing(linkAbsolute, targetPath)
+                // A distinct name for the same inode survives a backup (it is renamed, not deleted), as in GNU.
+                : plan.BackupEnabled
+                    ? string.Equals(Path.GetFullPath(linkAbsolute), Path.GetFullPath(targetPath), StringComparison.Ordinal)
+                    : FileIdentity.SameEntryNotFollowing(targetPath, linkAbsolute)))
+        {
+            FileSystemHelpers.WriteBashError(this, $"ln: '{target}' and '{linkName}' are the same file");
+            return false;
+        }
+
         // -r: the stored text is the path from the link's directory, with both ends canonicalized.
         var linkText = target;
         if (plan.Relative)
@@ -358,7 +372,7 @@ public sealed class InvokeBashLnCommand : PSCmdlet
             try
             {
                 string? suffix = plan.BackupEnabled
-                    ? BackupControl.MakeBackup(linkAbsolute, plan.Backup, plan.BackupSuffix)
+                    ? BackupControl.MakeBackup(linkAbsolute, plan.Backup, plan.BackupSuffix, targetPath)
                     : null;
                 if (suffix is not null)
                     backupNote = $"'{FileSystemHelpers.ToBashPath(linkName)}{suffix}' ~ ";

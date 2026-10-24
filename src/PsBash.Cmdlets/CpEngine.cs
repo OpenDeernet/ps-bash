@@ -140,7 +140,7 @@ internal sealed class CpEngine
         {
             if (_plan.BackupEnabled)
             {
-                var suffix = BackupControl.MakeBackup(dest, _plan.Backup, _plan.BackupSuffix);
+                var suffix = BackupControl.MakeBackup(dest, _plan.Backup, _plan.BackupSuffix, src);
                 if (suffix is not null) backupNote = $" (backup: '{FileSystemHelpers.ToBashPath(destDisplay)}{suffix}')";
             }
             // Still there after a backup (or none was asked): --remove-destination unlinks it first, and so
@@ -240,7 +240,7 @@ internal sealed class CpEngine
             if (_plan.Existing == CpExisting.Ask && !_confirm($"cp: overwrite '{destDisplay}'? ")) return false;
             if (_plan.BackupEnabled)
             {
-                var suffix = BackupControl.MakeBackup(dest, _plan.Backup, _plan.BackupSuffix);
+                var suffix = BackupControl.MakeBackup(dest, _plan.Backup, _plan.BackupSuffix, src);
                 if (suffix is not null) backupNote = $" (backup: '{FileSystemHelpers.ToBashPath(destDisplay)}{suffix}')";
             }
             if (File.Exists(dest) || FileSystemHelpers.IsReparsePoint(dest))

@@ -101,11 +101,13 @@ public sealed class InvokeBashEnvCommand : PSCmdlet
                 return;
             }
 
+            // `env NAME` for a set variable keeps the legacy NAME=VALUE print; anything else is
+            // `env COMMAND [ARG]...` and runs the command (GNU).
             var varName = args[0];
-            var val = BashVariableStore.Get(varName);
+            var val = args.Length == 1 ? BashVariableStore.Get(varName) : null;
             if (val == null)
             {
-                FileSystemHelpers.WriteBashError(this, $"env: '{varName}': not set");
+                HandleEnvModForm(args, false);
                 return;
             }
             WriteObject(BuildEntry(varName, val));

@@ -154,6 +154,7 @@ public sealed class InvokeBashXargsCommand : PSCmdlet
         bool nullDelim = false;
         bool noRunIfEmpty = false;
         bool traceCmd = false;
+        bool interactive = false;
         string? customDelim = D;  // -d DELIM (also set by -dDELIM / --delimiter=)
         // P is accepted via parameter binding but otherwise unused.
         _ = P;
@@ -207,8 +208,10 @@ public sealed class InvokeBashXargsCommand : PSCmdlet
             if (string.Equals(arg, "-p", System.StringComparison.Ordinal) ||
                 string.Equals(arg, "--interactive", System.StringComparison.Ordinal))
             {
-                // Interactive prompt — accepted but ignored (the oracle had
-                // no concept of it and a PS runspace cannot prompt).
+                // Each command line must be confirmed from the terminal. There is no terminal to ask
+                // here, so (as GNU does when /dev/tty cannot be opened) nothing is run: executing
+                // unconfirmed would defeat the protection the flag exists for.
+                interactive = true;
                 i++;
                 continue;
             }
@@ -423,6 +426,13 @@ public sealed class InvokeBashXargsCommand : PSCmdlet
 
         if (noRunIfEmpty && inputLines.Count == 0)
         {
+            return;
+        }
+
+        if (interactive && inputLines.Count > 0)
+        {
+            FileSystemHelpers.WriteBashError(this, "xargs: failed to open /dev/tty for reading: No such device or address");
+            FileSystemHelpers.SetLastExitCode(this, 1);
             return;
         }
 

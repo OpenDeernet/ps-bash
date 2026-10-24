@@ -103,12 +103,24 @@ internal static class BackupControl
     /// Moves the existing <paramref name="path"/> to its backup name and returns the suffix used (null
     /// when the type makes none). Throws on I/O failure; the caller reports it.
     /// </summary>
-    public static string? MakeBackup(string path, BackupKind kind, string simpleSuffix)
+    public static string? MakeBackup(string path, BackupKind kind, string simpleSuffix, string? source = null)
     {
         var suffix = SuffixFor(path, kind, simpleSuffix, ListDirectory);
         if (suffix is null) return null;
         var backup = path + suffix;
-        if (Directory.Exists(backup)) FileSystemHelpers.DeleteDirectoryForce(backup);
+        // The backup name can BE the operand being copied / moved / linked (`cp -b file~ file`):
+        // clearing it would delete the source before the transfer reads it. GNU refuses, touching nothing.
+        if (source is not null && (File.Exists(backup) || Directory.Exists(backup))
+            && FileIdentity.SameFileNotFollowing(backup, source))
+            throw new IOException($"backing up '{path}' would destroy source '{source}'");
+        // rename(2) semantics: a file replaces a file, an empty directory an empty directory; anything
+        // else is an error, never a recursive delete of what is already there.
+        if (Directory.Exists(backup))
+        {
+            if (!Directory.Exists(path)) throw new IOException($"cannot backup '{path}': '{backup}' is a directory");
+            if (Directory.EnumerateFileSystemEntries(backup).Any()) throw new IOException($"cannot backup '{path}': Directory not empty");
+            Directory.Delete(backup, false);
+        }
         else if (File.Exists(backup)) FileSystemHelpers.DeleteFileForce(backup);
         if (Directory.Exists(path)) Directory.Move(path, backup);
         else File.Move(path, backup);

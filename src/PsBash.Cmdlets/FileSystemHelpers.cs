@@ -47,13 +47,13 @@ internal static class FileSystemHelpers
         catch (System.Management.Automation.DriveNotFoundException) { return psPath; }
     }
 
-    public static IEnumerable<string> ResolveOperandPaths(PSCmdlet cmdlet, string raw)
+    public static IEnumerable<string> ResolveOperandPaths(PSCmdlet cmdlet, string raw, bool expandWildcards = true)
     {
         string typed = raw;
         raw = NormalizeOperandPath(raw);
         // *, ?, or a [..] character class → wildcard. A lone unmatched '[' matches
         // nothing and falls through to literal passthrough (bash-literal semantics).
-        if (raw.IndexOf('*') < 0 && raw.IndexOf('?') < 0 && raw.IndexOf('[') < 0)
+        if (!expandWildcards || (raw.IndexOf('*') < 0 && raw.IndexOf('?') < 0 && raw.IndexOf('[') < 0))
         {
             string resolved = FileSystemHelpers.ProviderPath(cmdlet, raw);
             OperandDisplay.Remember(cmdlet, resolved, typed);
@@ -109,10 +109,10 @@ internal static class FileSystemHelpers
     /// the shell would have expanded it — relative to the working directory for a relative pattern,
     /// full path for an absolute one — with forward slashes.
     /// </summary>
-    public static IEnumerable<OperandPath> ResolveOperands(PSCmdlet cmdlet, string raw)
+    public static IEnumerable<OperandPath> ResolveOperands(PSCmdlet cmdlet, string raw, bool expandWildcards = true)
     {
-        bool wildcard = raw.IndexOf('*') >= 0 || raw.IndexOf('?') >= 0 || raw.IndexOf('[') >= 0;
-        var paths = new List<string>(ResolveOperandPaths(cmdlet, raw));
+        bool wildcard = expandWildcards && (raw.IndexOf('*') >= 0 || raw.IndexOf('?') >= 0 || raw.IndexOf('[') >= 0);
+        var paths = new List<string>(ResolveOperandPaths(cmdlet, raw, expandWildcards));
         string? cwd = null;
         try { cwd = cmdlet.SessionState.Path.CurrentFileSystemLocation.ProviderPath; } catch { /* non-filesystem location */ }
 

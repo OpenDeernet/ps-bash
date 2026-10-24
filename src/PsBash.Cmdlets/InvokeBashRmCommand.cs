@@ -230,7 +230,7 @@ public sealed class InvokeBashRmCommand : PSCmdlet
         var resolved = new List<FileSystemHelpers.OperandPath>();
         foreach (var op in operands)
         {
-            foreach (var expanded in FileSystemHelpers.ResolveOperands(this, op))
+            foreach (var expanded in FileSystemHelpers.ResolveOperands(this, op, expandWildcards: false))
             {
                 resolved.Add(expanded);
             }

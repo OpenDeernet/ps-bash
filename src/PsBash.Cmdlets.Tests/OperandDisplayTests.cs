@@ -64,10 +64,10 @@ public class OperandDisplayTests : IDisposable, IClassFixture<SharedPwshFixture>
     }
 
     [Fact]
-    public void Rm_WildcardMatch_DisplaysTheExpandedRelativeName()
+    public void Rm_WildcardOperand_IsLiteral_TheShellDoesTheGlobbing()
     {
         Write("subdir1/f");
-        AssertStderr(InTmp("Invoke-BashRm sub*"), "rm: cannot remove 'subdir1': Is a directory");
+        AssertStderr(InTmp("Invoke-BashRm 'sub*'"), "rm: cannot remove 'sub*': No such file or directory");
     }
 
     [Fact]

@@ -249,7 +249,7 @@ public sealed class InvokeBashMvCommand : PSCmdlet
         var sources = new List<FileSystemHelpers.OperandPath>();
         foreach (var s in sourceOperands)
         {
-            foreach (var expanded in FileSystemHelpers.ResolveOperands(this, s))
+            foreach (var expanded in FileSystemHelpers.ResolveOperands(this, s, expandWildcards: false))
                 sources.Add(expanded);
         }
 
@@ -357,7 +357,7 @@ public sealed class InvokeBashMvCommand : PSCmdlet
                 string note = "";
                 if (targetExists && !caseOnlyRename && plan.BackupEnabled)
                 {
-                    var suffix = BackupControl.MakeBackup(targetPath, plan.Backup, plan.BackupSuffix);
+                    var suffix = BackupControl.MakeBackup(targetPath, plan.Backup, plan.BackupSuffix, src);
                     if (suffix is not null)
                     {
                         backupPath = targetPath + suffix;

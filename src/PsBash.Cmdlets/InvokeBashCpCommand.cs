@@ -190,7 +190,7 @@ public sealed class InvokeBashCpCommand : PSCmdlet
             // --strip-trailing-slashes applies when the destination is a directory (GNU do_copy's directory
             // branch); a single `cp -r --strip a/ b` leaves the slash, as GNU does.
             var typed = plan.StripSlashes && destIsDirectoryMode ? StripSlashes(s) : s;
-            foreach (var expanded in FileSystemHelpers.ResolveOperands(this, typed)) sources.Add(expanded);
+            foreach (var expanded in FileSystemHelpers.ResolveOperands(this, typed, expandWildcards: false)) sources.Add(expanded);
         }
 
         var destAbs = FileSystemHelpers.ProviderPath(this, destRaw);
