@@ -45,7 +45,7 @@ public class OptSpecSharedIdGuardTests
         "InvokeBashExpandCommand.ExpandSpec initial: initial first-only",           // --first-only is a ps-bash extension (GNU expand: unrecognized)
         "InvokeBashGrepCommand.GrepSpec recursive: recursive dereference-recursive",
         "InvokeBashGzipCommand.GzipSpec version: license version",
-        "InvokeBashSedCommand.SedSpec noop: unbuffered binary posix sandbox follow-symlinks", // oracle: sed --s ambiguous (silent/sandbox/separate: other ids)
+        "InvokeBashSedCommand.SedSpec noop: unbuffered binary posix sandbox", // oracle: sed --s ambiguous (silent/sandbox/separate: other ids)
     };
 
     private static readonly string[] NoAbbreviationTools = new[]

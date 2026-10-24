@@ -236,7 +236,7 @@ public sealed class InvokeBashSedCommand : PSCmdlet
 
     internal const string OptQuiet = "quiet", OptExpr = "expression", OptFile = "file",
         OptExtended = "extended", OptInPlace = "in-place", OptSeparate = "separate",
-        OptNullData = "null-data", OptLineLen = "line-length", OptNoop = "noop", OptDebug = "debug";
+        OptNullData = "null-data", OptLineLen = "line-length", OptNoop = "noop", OptDebug = "debug", OptFollowSymlinks = "follow-symlinks";
 
     /// <summary>GNU sed options ps-bash refuses (exit 2): none left — <c>--debug</c> is implemented.</summary>
     private static readonly string[] SedValidButUnsupported = Array.Empty<string>();
@@ -265,7 +265,7 @@ public sealed class InvokeBashSedCommand : PSCmdlet
             new OptSpec(OptNoop, 'b', "binary"),
             new OptSpec(OptNoop, '\0', "posix"),
             new OptSpec(OptNoop, '\0', "sandbox"),
-            new OptSpec(OptNoop, '\0', "follow-symlinks"),
+            new OptSpec(OptFollowSymlinks, '\0', "follow-symlinks"),
             new OptSpec(OptDebug, '\0', "debug"),
         },
         SedValidButUnsupported,
@@ -285,7 +285,7 @@ public sealed class InvokeBashSedCommand : PSCmdlet
     internal sealed class SedArgs
     {
         public ParsedArgs Parsed = null!;
-        public bool Quiet, Extended, Separate, NullData, InPlace, Debug;
+        public bool Quiet, Extended, Separate, NullData, InPlace, Debug, FollowSymlinks;
 
         /// <summary>The <c>-l N</c> wrap width of the <c>l</c> command (GNU default 70, 0 = never wrap).</summary>
         public int LineLength = 70;
@@ -330,6 +330,7 @@ public sealed class InvokeBashSedCommand : PSCmdlet
                     s.Suffix = string.IsNullOrEmpty(tok.Value) ? null : tok.Value;
                     break;
                 case OptDebug: s.Debug = true; break;
+                case OptFollowSymlinks: s.FollowSymlinks = true; break;
                 case OptLineLen:
                     if (int.TryParse(tok.Value, out int ll) && ll >= 0) s.LineLength = ll;
                     break;
@@ -811,7 +812,7 @@ public sealed class InvokeBashSedCommand : PSCmdlet
                 if (plan.InPlace && path != null)
                 {
                     _debugSink = null;
-                    if (!EditInPlace(path, lines, term, commands, suppressDefault, ref readError)) return;
+                    if (!EditInPlace(path, lines, term, commands, suppressDefault, plan.FollowSymlinks, ref readError)) return;
                     continue;
                 }
 
@@ -837,16 +838,16 @@ public sealed class InvokeBashSedCommand : PSCmdlet
 
     /// <summary>
     /// <c>-i</c>: stream the edited records into a temp file beside the original and replace it (GNU's own
-    /// strategy), keeping the original's mode and following a symlink to its target. False aborts the run
+    /// strategy), keeping the original's mode. A symlink is REPLACED by the edited regular file unless <c>--follow-symlinks</c> asks to edit its target (GNU). False aborts the run
     /// (the write failed, reported GNU-style); a backup failure is the caller's, before this runs.
     /// </summary>
     private bool EditInPlace(string path, IEnumerable<BashFileSystem.TextLine> lines, char term,
-        List<SedCommand> commands, bool suppressDefault, ref bool readError)
+        List<SedCommand> commands, bool suppressDefault, bool followSymlinks, ref bool readError)
     {
         string target = path;
         try
         {
-            if (File.ResolveLinkTarget(path, returnFinalTarget: true) is { } link) target = link.FullName;
+            if (followSymlinks && File.ResolveLinkTarget(path, returnFinalTarget: true) is { } link) target = link.FullName;
         }
         catch (Exception ex) when (!FileSystemHelpers.IsPipelineStop(ex)) { target = path; }
 
