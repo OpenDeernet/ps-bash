@@ -35,6 +35,9 @@ public static class PsEmitter
     // The script being emitted mentions `pipefail`: every multi-stage pipeline records per-stage status.
     [ThreadStatic]
     private static bool _pipefailMode;
+    // The script can turn nounset on: simple `$x` / `${x}` reads then check the flag at runtime.
+    [ThreadStatic]
+    private static bool _nounsetMode;
     [ThreadStatic]
     private static HashSet<string>? _collectScalarLocals;
 
@@ -503,6 +506,9 @@ public static class PsEmitter
         var priorUnitFunctions = _unitFunctions;
         _unitFunctions = null;
         var priorPipefail = _pipefailMode;
+        var priorNounset = _nounsetMode;
+        _nounsetMode = bash.Contains("nounset", StringComparison.Ordinal)
+            || System.Text.RegularExpressions.Regex.IsMatch(bash, @"\bset\s+(?:-[a-zA-Z]+\s+)*-[a-zA-Z]*u");
         _pipefailMode = bash.Contains("pipefail", StringComparison.Ordinal) || bash.Contains("PIPESTATUS", StringComparison.Ordinal);
         try
         {
@@ -520,6 +526,7 @@ public static class PsEmitter
             _errexitMode = priorErrexit;
             _errexitExemptDepth = priorExempt;
             _pipefailMode = priorPipefail;
+            _nounsetMode = priorNounset;
             _unitFunctions = priorUnitFunctions;
         }
     }
@@ -3442,44 +3449,53 @@ public static class PsEmitter
     /// <paramref name="args"/>: <paramref name="on"/> is the new setting, <paramref name="rest"/> the other
     /// options, ready for the ordinary option handling.
     /// </summary>
-    private static bool TrySplitPipefail(List<string?> args, out bool on, out List<string?> rest)
+    /// <summary>
+    /// Pulls the options ps-bash tracks at runtime (<c>pipefail</c>, <c>nounset</c>/<c>-u</c>) out of a
+    /// <c>set</c> argument list, in any bundling (<c>-eu</c>, <c>-euo pipefail</c>, <c>-o nounset</c>);
+    /// the remaining options go back through the normal <c>set</c> handling.
+    /// </summary>
+    private static bool TrySplitRuntimeOptions(List<string?> args, out List<(string Flag, bool On)> effects, out List<string?> rest)
     {
-        on = false;
+        effects = new List<(string, bool)>();
         rest = new List<string?>();
-        var norm = new List<string?>();
-        foreach (var a in args)
+        for (int i = 0; i < args.Count; i++)
         {
-            if (a is { Length: > 2 } && (a[0] is '-' or '+') && a[1] != '-' && a.EndsWith('o')
-                && a.Skip(1).All(char.IsAsciiLetter))
+            var a = args[i];
+            if (a is null || a == "--")
             {
-                if (a.Length > 2) norm.Add(a[..^1]);
-                norm.Add(a[0] + "o");
+                for (; i < args.Count; i++) rest.Add(args[i]);
+                break;
             }
-            else norm.Add(a);
-        }
-        bool found = false;
-        for (int i = 0; i < norm.Count; i++)
-        {
-            if (norm[i] == "--") return false;
-            if (!found && norm[i] is "-o" or "+o" && i + 1 < norm.Count && norm[i + 1] == "pipefail")
+            if (a.Length < 2 || (a[0] != '-' && a[0] != '+') || a[1] == '-' || !a.Skip(1).All(char.IsAsciiLetter))
             {
-                on = norm[i] == "-o";
-                found = true;
-                i++;
+                rest.Add(a);
                 continue;
             }
-            rest.Add(norm[i]);
+            bool on = a[0] == '-';
+            var letters = new StringBuilder();
+            for (int k = 1; k < a.Length; k++)
+            {
+                char c = a[k];
+                if (c == 'u') { effects.Add(("__BashNounset", on)); continue; }
+                if (c == 'o' && k == a.Length - 1 && i + 1 < args.Count && args[i + 1] is "pipefail" or "nounset")
+                {
+                    effects.Add((args[i + 1] == "pipefail" ? "__BashPipefail" : "__BashNounset", on));
+                    i++;
+                    continue;
+                }
+                letters.Append(c);
+            }
+            if (letters.Length > 0) rest.Add(a[0] + letters.ToString());
         }
-        return found;
+        return effects.Count > 0;
     }
-
     private static string? EmitSet(Command.Simple cmd, List<string?>? argsOverride = null)
     {
         string? specialResult = null;
         var literalArgs = argsOverride ?? cmd.Words.Skip(1).Select(TryGetStaticArgValue).ToList();
-        if (argsOverride is null && TrySplitPipefail(literalArgs, out var pipefailOn, out var otherOptions))
+        if (argsOverride is null && TrySplitRuntimeOptions(literalArgs, out var runtimeEffects, out var otherOptions))
         {
-            var setFlag = "$global:__BashPipefail = " + (pipefailOn ? "$true" : "$false");
+            var setFlag = string.Join("; ", runtimeEffects.Select(e => "$global:" + e.Flag + " = " + (e.On ? "$true" : "$false")));
             if (otherOptions.Count == 0) return setFlag + "; " + PsBuild.SetStatus(0);
             var otherText = EmitSet(cmd, otherOptions);
             return otherText is null ? setFlag + "; " + PsBuild.SetStatus(0) : setFlag + "; " + otherText;
@@ -3984,7 +4000,7 @@ public static class PsEmitter
                     if (IsSimpleHereDocVarName(content))
                     {
                         // Plain ${VAR} -> $env:VAR (cheap, known-good).
-                        sb.Append(EmitSimpleVar(content));
+                        sb.Append(EmitSimpleVar(content, strict: true));
                     }
                     else
                     {
@@ -4014,7 +4030,7 @@ public static class PsEmitter
                 while (pos < len && IsHereDocVarChar(body[pos]))
                     pos++;
                 string name = body[start..pos];
-                sb.Append(EmitSimpleVar(name));
+                sb.Append(EmitSimpleVar(name, strict: true));
             }
             else
             {
@@ -4587,7 +4603,7 @@ public static class PsEmitter
             // Same suffix-less-${name} drive-reference guard as AppendDoubleQuotedInner.
             else if (part is WordPart.BracedVarSub { Suffix: null } plainNbvs
                 && i + 1 < parts.Length && NextPartNeedsBracing(parts[i + 1]))
-                sb.Append(EmitSimpleVarBraced(plainNbvs.Name));
+                sb.Append(EmitSimpleVarBraced(plainNbvs.Name, strict: true));
             else if (part is WordPart.BracedVarSub nbvs)
                 sb.Append(EmitBracedVar(nbvs, inDoubleQuote: true));
             else if (part is WordPart.SimpleVarSub nvs)
@@ -4598,8 +4614,8 @@ public static class PsEmitter
                 // flatten path was missing the bracing its double-quoted sibling applies.
                 bool needsBracing = i + 1 < parts.Length && NextPartNeedsBracing(parts[i + 1]);
                 sb.Append(needsBracing
-                    ? EmitSimpleVarBraced(nvs.Name)
-                    : EmitSimpleVar(nvs.Name, inDoubleQuote: true));
+                    ? EmitSimpleVarBraced(nvs.Name, strict: true)
+                    : EmitSimpleVar(nvs.Name, inDoubleQuote: true, strict: true));
             }
             else if (part is WordPart.CommandSub ncs)
                 // Assignment/flatten context (x=$(cmd)) preserves internal newlines and
@@ -4854,7 +4870,7 @@ public static class PsEmitter
         WordPart.SingleQuoted sq => $"'{sq.Value}'",
         WordPart.AnsiCQuoted aq => EmitAnsiCQuoted(aq),
         WordPart.DoubleQuoted dq => EmitDoubleQuoted(dq),
-        WordPart.SimpleVarSub vs => EmitSimpleVar(vs.Name),
+        WordPart.SimpleVarSub vs => EmitSimpleVar(vs.Name, strict: true),
         WordPart.BracedVarSub bvs => EmitBracedVar(bvs),
         // RC-8d: wrap user command-substitution output so the captured value is
         // always the bash text payload, never a typed BashObject's default
@@ -5373,7 +5389,7 @@ public static class PsEmitter
     private static string ZeroDefault(string valueExpr) =>
         $"$(\"$({valueExpr})\" -replace '^$','0')";
 
-    private static string EmitSimpleVar(string name, bool inDoubleQuote = false)
+    private static string EmitSimpleVar(string name, bool inDoubleQuote = false, bool strict = false)
     {
         // An EMPTY name is never a valid bash variable. It arises from a
         // substitution this parser does not model — in practice ZSH-only syntax
@@ -5394,8 +5410,15 @@ public static class PsEmitter
         if (_loopVars is not null && _loopVars.Contains(name))
             return $"${name}";
 
-        return PsBuild.TryMapSpecialVar(name, braced: false, inDoubleQuote) ?? $"$env:{EnvShadowName(name) ?? name}";
+        var special = PsBuild.TryMapSpecialVar(name, braced: false, inDoubleQuote);
+        if (special is not null) return special;
+        var plain = $"$env:{EnvShadowName(name) ?? name}";
+        return strict && _nounsetMode && EnvShadowName(name) is null ? StrictRead(name, plain) : plain;
     }
+
+    /// <summary>A read of <paramref name="name"/> that ends the script ("unbound variable") when nounset is on and it is unset.</summary>
+    private static string StrictRead(string name, string plain)
+        => $"$(if ($global:__BashNounset -and $null -eq {plain}) {{ throw [PsBash.Cmdlets.BashParamErrorException]::new({PsBuild.SingleQuote(name + ": ")}, 'unbound variable') }} else {{ {plain} }})";
 
     // -- RC-7: unquoted variable word-splitting -------------------------------
     //
@@ -5861,7 +5884,7 @@ public static class PsEmitter
     {
         NestingGuard.EnsureStack(); // ${x:-${x:-…}} recurses here without passing Emit(Command)
         if (bvs.Suffix is null)
-            return EmitSimpleVar(bvs.Name);
+            return EmitSimpleVar(bvs.Name, strict: true);
 
         // Positional-parameter SLICE: ${@:offset[:length]} / ${*:…}. Unhandled, this
         // fell through to the ordinary-variable path and emitted the bare `$env:`
@@ -6310,7 +6333,7 @@ public static class PsEmitter
             if (part is WordPart.BracedVarSub { Suffix: null } plainBvs
                 && i + 1 < parts.Length && NextPartNeedsBracing(parts[i + 1]))
             {
-                sb.Append(EmitSimpleVarBraced(plainBvs.Name));
+                sb.Append(EmitSimpleVarBraced(plainBvs.Name, strict: true));
             }
             else if (part is WordPart.BracedVarSub bvs)
                 sb.Append(EmitBracedVar(bvs, inDoubleQuote: true));
@@ -6320,9 +6343,9 @@ public static class PsEmitter
                 // Use ${name} bracing to prevent this.
                 bool needsBracing = i + 1 < parts.Length && NextPartNeedsBracing(parts[i + 1]);
                 if (needsBracing)
-                    sb.Append(EmitSimpleVarBraced(vs.Name));
+                    sb.Append(EmitSimpleVarBraced(vs.Name, strict: true));
                 else
-                    sb.Append(EmitSimpleVar(vs.Name, inDoubleQuote: true));
+                    sb.Append(EmitSimpleVar(vs.Name, inDoubleQuote: true, strict: true));
             }
             else if (part is WordPart.CommandSub qcs)
                 // Quoted `"$(cmd)"` preserves internal newlines (see EmitCommandSubString);
@@ -6429,14 +6452,17 @@ public static class PsEmitter
         return false;
     }
 
-    private static string EmitSimpleVarBraced(string name)
+    private static string EmitSimpleVarBraced(string name, bool strict = false)
     {
         // Emit ${name} or ${env:name} with braces to prevent PS drive-reference misparse.
         name = ResolveNameref(name);
         if (_loopVars is not null && _loopVars.Contains(name))
             return $"${{{name}}}";
 
-        return PsBuild.TryMapSpecialVar(name, braced: true, inDoubleQuote: true) ?? $"${{env:{EnvShadowName(name) ?? name}}}";
+        var special = PsBuild.TryMapSpecialVar(name, braced: true, inDoubleQuote: true);
+        if (special is not null) return special;
+        var plain = $"${{env:{EnvShadowName(name) ?? name}}}";
+        return strict && _nounsetMode && EnvShadowName(name) is null ? StrictRead(name, plain) : plain;
     }
 
     private static string EmitCommandList(Command.CommandList list)

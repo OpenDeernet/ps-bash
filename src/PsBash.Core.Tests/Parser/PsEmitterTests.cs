@@ -4812,17 +4812,31 @@ public class PsEmitterTests
     }
 
     [Theory]
-    [InlineData("set -u")]
-    [InlineData("set -o nounset")]
-    [InlineData("set -eu")]
-    [InlineData("set -euo pipefail")]
+    [InlineData("set -u", "$global:__BashNounset = $true")]
+    [InlineData("set +u", "$global:__BashNounset = $false")]
+    [InlineData("set -o nounset", "$global:__BashNounset = $true")]
+    [InlineData("set -eu", "$global:__BashNounset = $true")]
+    [InlineData("set -euo pipefail", "$global:__BashPipefail = $true")]
+    public void Transpile_SetNounset_TogglesTheRuntimeFlag(string bash, string expected)
+        => Assert.Contains(expected, PsEmitter.Transpile(bash));
+
+    [Fact]
+    public void Transpile_Nounset_PlainReadsCheckTheFlagButDefaultsDoNot()
+    {
+        var result = PsEmitter.Transpile("set -u; echo \"$a\" \"${b:-d}\" \"${c-d}\"");
+        Assert.Contains("unbound variable", result);
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(result, "unbound variable").Count);
+    }
+
+    [Fact]
+    public void Transpile_WithoutNounset_PlainReadsAreUnchanged()
+        => Assert.DoesNotContain("unbound variable", PsEmitter.Transpile("echo \"$a\""));
+
+    [Theory]
     [InlineData("set -C")]
     [InlineData("set -o noclobber")]
     [InlineData("set -eo noclobber")]
-    [InlineData("set -u -- value")]
-    [InlineData("set '-u'")]
     [InlineData("set -o 'noclobber'")]
-    [InlineData("set \"-o\" \"nounset\"")]
     [InlineData("set -o no'clobber'")]
     [InlineData("set \"$flags\"")]
     [InlineData("set -o \"$option\"")]
@@ -4830,7 +4844,6 @@ public class PsEmitterTests
     [InlineData("set -o noexec")]
     [InlineData("set -o unknown")]
     [InlineData("set -e -- value")]
-    [InlineData("set +u")]
     public void Transpile_SetUnsupportedSafetyOption_RefusesBeforeExecution(string bash)
     {
         var error = Assert.Throws<ParseException>(() => PsEmitter.Transpile(bash + "; echo unsafe"));

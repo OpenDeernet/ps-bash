@@ -536,7 +536,8 @@ records become stdout TEXT, so an enclosing stage no longer reads them as stderr
 - `set -e` / `set -o errexit` -> `$ErrorActionPreference = 'Stop'; $global:__BashErrexit = $true` (+ create `$global:__BashErrexitSuppress` if absent)
 - `set +e` / `set +o errexit` -> `$ErrorActionPreference = 'Continue'; $global:__BashErrexit = $false`
 - `set -x` / `set -o xtrace` -> `Set-PSDebug -Trace 1`
-- `set -u` / `set -o nounset`, `set -C` / `set -o noclobber` -> unsupported-option `ParseException` (exit 2). PowerShell StrictMode does not check ordinary Bash environment-variable reads.
+- `set -u` / `set -o nounset` (any bundling) -> `$global:__BashNounset = $true`. A script that mentions nounset emits plain `$x` / `${x}` reads as a runtime check that throws `BashParamErrorException` ("x: unbound variable") when the flag is on and the variable is unset; `${x:-d}`-style forms and positional parameters are not checked. The check is per command string: a later `-c` does not inherit it.
+- `set -C` / `set -o noclobber` -> unsupported-option `ParseException` (exit 2).
 - Combined flags (e.g., `set -euo pipefail`) are decomposed.
 
 **errexit checks** (`PsEmitter.EmitStatement`, `PsBuild.Errexit*`). Emitted only when the script itself
