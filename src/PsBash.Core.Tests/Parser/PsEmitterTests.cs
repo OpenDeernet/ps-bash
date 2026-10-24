@@ -3336,7 +3336,25 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("function add { local result=42; echo $result }");
 
-        Assert.Equal($"function add {{ {FnPre}$result = \"42\"; Invoke-BashEcho $result{FnPost} }}", result);
+        // A scalar local is dynamically scoped: it lives in the shell variable, parked on the first `local`
+        // and put back when the function ends, so a function it calls reads the local value.
+        Assert.Contains("if ($null -eq $__lsd_result) { $__lsd_result = @{ v = $env:result } }; $env:result = \"42\"", result);
+        Assert.Contains("finally { if ($null -ne $__lsd_result) { $env:result = $__lsd_result.v }", result);
+        Assert.DoesNotContain("$result = ", result);
+    }
+
+    [Fact]
+    public void Transpile_UnsetLocal_LeavesTheVariableUnset()
+    {
+        var result = PsEmitter.Transpile("f() { local y; echo done; }");
+        Assert.Contains("$env:y = $null", result);
+    }
+
+    [Fact]
+    public void Transpile_LocalArray_StaysLexical()
+    {
+        var result = PsEmitter.Transpile("f() { local a=(1 2); echo done; }");
+        Assert.DoesNotContain("__lsd_a", result);
     }
 
     [Fact]
@@ -4811,7 +4829,6 @@ public class PsEmitterTests
     [InlineData("set -n")]
     [InlineData("set -o noexec")]
     [InlineData("set -o unknown")]
-    [InlineData("set -o pipefail -e")]
     [InlineData("set -e -- value")]
     [InlineData("set +u")]
     public void Transpile_SetUnsupportedSafetyOption_RefusesBeforeExecution(string bash)
@@ -5946,13 +5963,67 @@ public class PsEmitterTests
     }
 
     [Theory]
-    [InlineData("set -o pipefail")]
-    [InlineData("set +o pipefail")]
-    public void Transpile_SetUnsupportedLongOption_IsAStatusZeroNoOp(string bash)
+    [InlineData("set -o pipefail", "$true")]
+    [InlineData("set +o pipefail", "$false")]
+    public void Transpile_SetPipefail_TogglesTheRuntimeFlag(string bash, string value)
     {
-        // Fell through to a bare `set …` — PowerShell's Set-Variable alias ("Cannot bind parameter 'Option'").
-        Assert.Equal(PsBuild.SetStatus(0), PsEmitter.Transpile(bash));
+        // Used to fall through to a bare `set …` (PowerShell's Set-Variable alias), then to a silent no-op.
+        Assert.Equal($"$global:__BashPipefail = {value}; " + PsBuild.SetStatus(0), PsEmitter.Transpile(bash));
     }
+
+    [Theory]
+    [InlineData("set -o pipefail -e")]
+    [InlineData("set -e -o pipefail")]
+    [InlineData("set -eo pipefail")]
+    public void Transpile_SetPipefailWithOtherOptions_AppliesBoth(string bash)
+    {
+        var result = PsEmitter.Transpile(bash);
+        Assert.Contains("$global:__BashPipefail = $true", result);
+        Assert.Contains("$global:__BashErrexit = $true", result);
+    }
+
+    [Fact]
+    public void Transpile_PipelineInPipefailScript_RecordsEveryStageAndFoldsTheStatus()
+    {
+        var result = PsEmitter.Transpile("set -o pipefail; false | true");
+        Assert.Contains("$__pf = [int[]]::new(2);", result);
+        Assert.Contains("Invoke-BashPipeStage -Slot $__pf -Index 0 -Script {", result);
+        Assert.Contains("Invoke-BashPipeStage -Slot $__pf -Index 1 -Script {", result);
+        Assert.Contains("if ($global:__BashPipefail)", result);
+        Assert.DoesNotContain("Invoke-BashFusedPipeline", result);
+    }
+
+    [Fact]
+    public void Transpile_PipelineWithoutPipefail_IsUnchanged()
+        => Assert.DoesNotContain("Invoke-BashPipeStage", PsEmitter.Transpile("false | true"));
+
+    [Theory]
+    [InlineData("x=old; x=new echo \"$x\"", "Invoke-BashEcho \"$env:__psbash_ea_x\"")]
+    [InlineData("a=2 b=$a env", "$env:b = \"$env:__psbash_ea_a\"")]
+    public void Transpile_EnvPrefix_ArgumentsExpandBeforeTheAssignment(string bash, string expected)
+    {
+        var result = PsEmitter.Transpile(bash);
+        Assert.Contains(expected, result);
+        Assert.Contains("$env:__psbash_ea_", result);
+    }
+
+    [Fact]
+    public void Transpile_EnvPrefixNotReadByTheCommand_KeepsTheOriginalText()
+        => Assert.DoesNotContain("__psbash_ea_", PsEmitter.Transpile("x=1 env"));
+
+    [Theory]
+    [InlineData("sleep 1 &", false)]
+    [InlineData("make all &", false)]
+    [InlineData("{ cat f | wc -l; } &", false)]
+    [InlineData("x=1 &", true)]
+    [InlineData("{ x=1; sleep 1; } &", true)]
+    [InlineData("cd other &", true)]
+    [InlineData("(cd other && make) &", true)]
+    [InlineData("FOO=1 prog &", true)]
+    [InlineData("f() { :; }; f &", true)]
+    [InlineData("for i in 1 2; do echo $i; done &", true)]
+    public void Transpile_Background_IsolatedOnlyWhenItCanChangeShellState(string bash, bool isolated)
+        => Assert.Equal(isolated, PsEmitter.Transpile(bash).Contains("Invoke-BashBackground -Isolated"));
 
     [Fact]
     public void Transpile_SetPlusOXtrace_TurnsTracingOffAndClearsTheFlag()

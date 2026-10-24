@@ -136,6 +136,9 @@ CmdletsToExport = @(
     # launcher in a few large batched frames instead of one IPC frame per line
     # (the phase-1 profile's dominant bottleneck). Not a bash command alias.
     'Invoke-BashFusedPipeline',
+    # One stage of a pipeline in a `set -o pipefail` script: runs the stage as a steppable pipeline and
+    # records its own exit status so the emitter can fold the stages afterwards. Not a bash command alias.
+    'Invoke-BashPipeStage',
     # Command-substitution capture: pipeline records -> the lines of their byte stream, gluing
     # exact (NoTrailingNewline) records so a streaming producer like tr joins correctly inside $(...).
     # Emitted by the transpiler for $( ); not a bash command alias.

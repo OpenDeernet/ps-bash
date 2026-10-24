@@ -2612,13 +2612,18 @@ function Invoke-BashBackground {
     #>
     param(
         [Parameter(Mandatory)]
-        [scriptblock]$Command
+        [scriptblock]$Command,
+        # The emitter found the job able to change shell state (assignments, cd, options, functions): it
+        # must not share this process's environment and cwd, so it gets a host of its own.
+        [switch]$Isolated
     )
 
-    # PSBASH_BG_MODE=process: run the job in its own ps-bash-host process (private env/cwd, real pid). Opt-in until it meets the latency bars (docs/specs/background-jobs.md section 11).
+    # PSBASH_BG_MODE=process: run the job in its own ps-bash-host process (private env/cwd, real pid).
+    # -Isolated jobs take it unless PSBASH_BG_MODE=inproc; other jobs stay in-process until it meets the
+    # latency bars (docs/specs/background-jobs.md section 11).
     # Only where the host exposes the launcher type; the module (no daemon) and PSBASH_BG_MODE=inproc keep
     # the runspace-pool path below.
-    if ($env:PSBASH_BG_MODE -eq 'process' -and ('PsBash.Host.Runtime.BashJobProcess' -as [type])) {
+    if (($env:PSBASH_BG_MODE -eq 'process' -or ($Isolated -and $env:PSBASH_BG_MODE -ne 'inproc')) -and ('PsBash.Host.Runtime.BashJobProcess' -as [type])) {
         if ($script:BashBgJobs.Count -ge $script:BashBgMaxJobs) { Remove-BashBgFinished }
         $prelude = [PsBash.Cmdlets.BashStateSnapshot]::BuildPrelude($ExecutionContext.SessionState)
         $bjp = [PsBash.Host.Runtime.BashJobProcess]::Start($prelude, $Command.ToString(), [PsBash.Cmdlets.BashStateSnapshot]::EnvironmentBlock())
@@ -2648,18 +2653,20 @@ function Invoke-BashBackground {
     # The job shares this process's environment (bash scalars are env vars), so a plain run would leak
     # the child's assignments into the parent. The wrapper records the environment at job start and, when
     # the body ends, puts back every variable the job changed (unless the parent has since written a
-    # different value). It also reports the body's exit status for `wait`.
+    # different value) — only for an -Isolated job that found no host of its own to run in: the environment is
+    # process-wide, so the diff cannot tell the job's writes from the parent's, and applying it to a job that
+    # changes nothing undid the parent's assignments. It also reports the body's exit status for `wait`.
     $status = [hashtable]::Synchronized(@{ Code = 0 })
     $wrapped = @'
-param($__bgStatus)
-$__bgBefore = [Environment]::GetEnvironmentVariables()
+param($__bgStatus, $__bgRestore)
+$__bgBefore = if ($__bgRestore) { [Environment]::GetEnvironmentVariables() } else { @{} }
 $__bgOk = $false
 try {
 '@ + "`n" + $Command.ToString() + "`n" + @'
     $__bgOk = $true
 } finally {
     $__bgCode = if ($__bgOk) { $x = $global:LASTEXITCODE; if ($null -eq $x) { 0 } else { [int]$x } } else { 1 }
-    $__bgAfter = [Environment]::GetEnvironmentVariables()
+    $__bgAfter = if ($__bgRestore) { [Environment]::GetEnvironmentVariables() } else { @{} }
     foreach ($__bgKey in @($__bgAfter.Keys) + @($__bgBefore.Keys)) {
         $__bgNew = $__bgAfter[$__bgKey]
         $__bgOld = $__bgBefore[$__bgKey]
@@ -2671,7 +2678,7 @@ try {
     $__bgStatus.Code = $__bgCode
 }
 '@
-    [void]$ps.AddScript($wrapped).AddArgument($status)
+    [void]$ps.AddScript($wrapped).AddArgument($status).AddArgument([bool]$Isolated)
 
     $async = $ps.BeginInvoke()
 

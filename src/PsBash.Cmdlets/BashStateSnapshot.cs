@@ -41,7 +41,9 @@ public static class BashStateSnapshot
     {
         var sb = new StringBuilder();
 
-        sb.Append("Set-Location -LiteralPath ").Append(PsBuild.SingleQuote(session.Path.CurrentFileSystemLocation.ProviderPath)).Append('\n');
+        // Set-Location moves the PowerShell location only; a relative path handed to .NET (cd, redirects, children) resolves against the process cwd, which a warm spare host still has from its own start.
+        var cwd = PsBuild.SingleQuote(session.Path.CurrentFileSystemLocation.ProviderPath);
+        sb.Append("Set-Location -LiteralPath ").Append(cwd).Append("; [System.Environment]::CurrentDirectory = ").Append(cwd).Append('\n');
 
         foreach (var name in BashShellState.InheritedGlobalNames)
         {

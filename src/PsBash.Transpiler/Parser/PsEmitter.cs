@@ -21,6 +21,41 @@ public static class PsEmitter
     [ThreadStatic]
     private static HashSet<string>? _loopVars;
 
+    // Names of a `VAR=val cmd` prefix being emitted: the command's own words expand BEFORE the prefix
+    // takes effect (`x=old; x=new echo "$x"` prints old), so a reference to such a name reads the
+    // pre-assignment copy `$env:__psbash_ea_NAME`, which WrapEnvPairs fills.
+    [ThreadStatic]
+    private static HashSet<string>? _envPrefixShadow;
+
+    // Scalar `local` names of the function being emitted (see EmitFunction); _collectScalarLocals is the
+    // sink CollectLocalVars fills while scanning the body.
+    [ThreadStatic]
+    private static HashSet<string>? _dynLocals;
+
+    // The script being emitted mentions `pipefail`: every multi-stage pipeline records per-stage status.
+    [ThreadStatic]
+    private static bool _pipefailMode;
+    [ThreadStatic]
+    private static HashSet<string>? _collectScalarLocals;
+
+    private static bool IsDynamicLocalName(string name)
+        => name != "IFS" && !_psBuiltins.Contains(name) && PsBuild.TryMapSpecialVar(name, braced: false, inDoubleQuote: false) is null
+           && !(_loopVars?.Contains(name) ?? false);
+    private const string EnvShadowPrefix = "__psbash_ea_";
+
+    private static string? EnvShadowName(string name)
+        => _envPrefixShadow is not null && _envPrefixShadow.Contains(name) ? EnvShadowPrefix + name : null;
+
+    private static T WithEnvShadow<T>(ImmutableArray<EnvPair> pairs, Func<T> emit)
+    {
+        var prior = _envPrefixShadow;
+        var set = prior is null ? new HashSet<string>(StringComparer.Ordinal) : new HashSet<string>(prior, StringComparer.Ordinal);
+        foreach (var p in pairs) set.Add(p.Name);
+        _envPrefixShadow = set;
+        try { return emit(); }
+        finally { _envPrefixShadow = prior; }
+    }
+
     /// <summary>
     /// Tracks nesting depth for generating unique loop iteration counter variable names.
     /// </summary>
@@ -464,6 +499,11 @@ public static class PsEmitter
         // its caller's `set -e` does not — see intentional-differences.md).
         _errexitMode = EnablesErrexit(bash);
         _errexitExemptDepth = 0;
+        // Only a script that mentions pipefail pays for per-stage status capture (it also leaves the fused lane).
+        var priorUnitFunctions = _unitFunctions;
+        _unitFunctions = null;
+        var priorPipefail = _pipefailMode;
+        _pipefailMode = bash.Contains("pipefail", StringComparison.Ordinal);
         try
         {
             var cmd = BashParser.Parse(bash);
@@ -479,6 +519,8 @@ public static class PsEmitter
             _namerefs = priorNamerefs;
             _errexitMode = priorErrexit;
             _errexitExemptDepth = priorExempt;
+            _pipefailMode = priorPipefail;
+            _unitFunctions = priorUnitFunctions;
         }
     }
 
@@ -662,22 +704,44 @@ public static class PsEmitter
 
     private static void PopLoopLabel() => _loopLabels!.RemoveAt(_loopLabels.Count - 1);
 
+    /// <summary>A non-numeric loop-control count ends the script with status 128, as in bash.</summary>
+    private static string NumericArgExit => _subshellDepth > 0 ? "$global:LASTEXITCODE = 128; return" : "exit 128";
+
     /// <summary><c>break [N]</c> / <c>continue [N]</c> → the labelled PowerShell keyword.</summary>
     private static string EmitLoopControl(string keyword, Command.Simple cmd)
     {
         if (_loopLabels is not { Count: > 0 } labels)
             return keyword; // no lexical loop (a function body): bash's dynamic scope, as before
         int n = 1;
+        string? check = null;
         if (cmd.Words.Length >= 2)
         {
-            // A literal count only. `break $n` is rare and not modelled: it leaves the innermost.
-            if (TryGetPureLiteralText(cmd.Words[1].Parts, out var countText)
-                && int.TryParse(countText, System.Globalization.NumberStyles.None,
-                       System.Globalization.CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
-                n = parsed;
+            // A literal count is resolved here. A non-literal one (`break $n`) is checked at run time:
+            // anything but a positive number is bash's "numeric argument required" (status 128) and still
+            // leaves the innermost loop.
+            if (TryGetPureLiteralText(cmd.Words[1].Parts, out var countText))
+            {
+                if (int.TryParse(countText, System.Globalization.NumberStyles.None,
+                        System.Globalization.CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
+                    n = parsed;
+                else
+                    check = $"Write-Error {PsBuild.SingleQuote($"{keyword}: {countText}: numeric argument required")} -ErrorAction Continue; {NumericArgExit}; ";
+            }
+            else
+            {
+                string argText = EmitWord(cmd.Words[1]);
+                check = $"$__psb_n = [string]({argText}); if ($__psb_n -notmatch '^[1-9][0-9]*$') {{ Write-Error ({PsBuild.SingleQuote(keyword + ": ")} + $__psb_n + ': numeric argument required') -ErrorAction Continue; {NumericArgExit} }}; ";
+            }
+        }
+        // `break 1 2 3`: bash reports "too many arguments", sets status 1 and leaves the innermost loop
+        // (a `continue` with too many arguments breaks too).
+        if (cmd.Words.Length > 2)
+        {
+            check = $"Write-Error {PsBuild.SingleQuote($"{keyword}: too many arguments")} -ErrorAction Continue; {PsBuild.SetStatus(1)}; ";
+            keyword = "break";
         }
         var target = labels[Math.Max(0, labels.Count - n)];
-        return keyword + " " + (keyword == "break" ? target.Break : target.Continue);
+        return check + keyword + " " + (keyword == "break" ? target.Break : target.Continue);
     }
 
     private static string EmitForIn(Command.ForIn forIn)
@@ -1238,7 +1302,18 @@ public static class PsEmitter
 
     private static string EmitFunction(Command.ShFunction func)
     {
-        var localVars = CollectLocalVars(func.Body);
+        (_unitFunctions ??= new HashSet<string>(StringComparer.Ordinal)).Add(func.Name);
+        // A scalar `local` is dynamically scoped (bash): a function this one calls sees the local value.
+        // So it lives in the shell variable itself (`$env:x`), saved on first `local` and restored when the
+        // function exits — not in a lexical PowerShell variable the callee could never read.
+        var dynLocals = new HashSet<string>(StringComparer.Ordinal);
+        var priorCollect = _collectScalarLocals;
+        _collectScalarLocals = dynLocals;
+        List<string> localVars;
+        try { localVars = CollectLocalVars(func.Body); }
+        finally { _collectScalarLocals = priorCollect; }
+        var priorDyn = _dynLocals;
+        _dynLocals = dynLocals;
         var vars = _loopVars ??= new HashSet<string>();
         var added = new List<string>();
         foreach (var v in localVars)
@@ -1259,12 +1334,23 @@ public static class PsEmitter
             var sb = new StringBuilder("function ");
             sb.Append(func.Name);
             sb.Append(" {").Append(PsBuild.FunctionPrologue);
-            sb.Append(body);
+            if (dynLocals.Count > 0)
+            {
+                // Each name's saved slot starts $null in THIS call (a bare read would see the caller's).
+                foreach (var v in dynLocals) sb.Append($"$__lsd_{v} = $null; ");
+                sb.Append("try { ").Append(body).Append(" } finally { ");
+                foreach (var v in dynLocals)
+                    sb.Append($"if ($null -ne $__lsd_{v}) {{ $env:{v} = $__lsd_{v}.v }}; ");
+                sb.Append('}');
+            }
+            else
+                sb.Append(body);
             sb.Append(PsBuild.FunctionEpilogue).Append('}');
             return sb.ToString();
         }
         finally
         {
+            _dynLocals = priorDyn;
             _loopLabels = outerLabels;
             foreach (var v in added) vars.Remove(v);
         }
@@ -1288,6 +1374,12 @@ public static class PsEmitter
                 foreach (var pair in assign.Pairs)
                 {
                     int bracketIdx = pair.Name.IndexOf('[');
+                    if (bracketIdx < 0 && pair.ArrayValue is null && _collectScalarLocals is not null
+                        && IsDynamicLocalName(pair.Name))
+                    {
+                        _collectScalarLocals.Add(pair.Name);
+                        continue;
+                    }
                     result.Add(bracketIdx >= 0 ? pair.Name[..bracketIdx] : pair.Name);
                 }
                 break;
@@ -1439,8 +1531,45 @@ public static class PsEmitter
     private static string EmitBackground(Command.Background bg)
     {
         string inner = Emit(bg.Inner);
-        return $"Invoke-BashBackground {{ {inner} }}";
+        // A job that can change shell state (variables, cwd, options, functions) must not share this
+        // process's environment and cwd: it runs in a host of its own (-Isolated). A job that only runs
+        // programs keeps the cheap in-process path, whose text is unchanged.
+        return MayMutateShellState(bg.Inner)
+            ? $"Invoke-BashBackground -Isolated {{ {inner} }}"
+            : $"Invoke-BashBackground {{ {inner} }}";
     }
+
+    private static readonly HashSet<string> _stateBuiltins = new(StringComparer.Ordinal)
+    {
+        "cd", "pushd", "popd", "export", "unset", "declare", "typeset", "local", "readonly", "set", "shopt",
+        "read", "source", ".", "eval", "exec", "alias", "unalias", "trap", "umask", "mapfile", "readarray",
+        "getopts", "let", "shift", "enable", "hash", "builtin", "command", "ulimit", "wait", "fg", "bg",
+    };
+
+    // Function names defined so far in the unit being emitted: calling one can do anything.
+    [ThreadStatic] private static HashSet<string>? _unitFunctions;
+
+    /// <summary>True when running <paramref name="cmd"/> could change variables, cwd, options or functions of the shell.</summary>
+    private static bool MayMutateShellState(Command cmd) => cmd switch
+    {
+        Command.Simple s => !s.EnvPairs.IsEmpty
+            || s.Words.IsDefaultOrEmpty
+            || GetLiteralValue(s.Words[0]) is not { } name
+            || _stateBuiltins.Contains(name)
+            || (_unitFunctions?.Contains(name) ?? false),
+        Command.Pipeline p => p.Commands.Any(MayMutateShellState),
+        Command.AndOrList a => a.Commands.Any(MayMutateShellState),
+        Command.CommandList l => l.Commands.Any(MayMutateShellState),
+        Command.If i => i.Arms.Any(arm => MayMutateShellState(arm.Cond) || MayMutateShellState(arm.Body))
+            || (i.ElseBody is not null && MayMutateShellState(i.ElseBody)),
+        Command.While w => MayMutateShellState(w.Cond) || MayMutateShellState(w.Body),
+        Command.Case c => c.Arms.Any(arm => MayMutateShellState(arm.Body)),
+        Command.Subshell sub => MayMutateShellState(sub.Body),
+        Command.BraceGroup bg => MayMutateShellState(bg.Body),
+        Command.BoolExpr => false,
+        // Assignments, loops (they set their variable), (( )), functions, select, anything new: assume it can.
+        _ => true,
+    };
 
     /// <summary>
     /// Standalone <c>(( expr ))</c> statement. Bash evaluates the expression for
@@ -1862,7 +1991,7 @@ public static class PsEmitter
             return "$" + name;
         if (_loopVars is not null && _loopVars.Contains(name))
             return "$" + name;
-        return "$env:" + name;
+        return "$env:" + (EnvShadowName(name) ?? name);
     }
 
     private static bool IsEnvVar(string varRef) => varRef.StartsWith("$env:");
@@ -2512,6 +2641,23 @@ public static class PsEmitter
                 continue;
             }
 
+            if (cmd.IsLocal && pair.ArrayValue is null && !pair.Name.Contains('[')
+                && _dynLocals?.Contains(pair.Name) == true)
+            {
+                // Park the caller's value once per call (restored by EmitFunction's finally), then assign.
+                // `local x` alone leaves x unset, as in bash.
+                sb.Append($"if ($null -eq $__lsd_{pair.Name}) {{ $__lsd_{pair.Name} = @{{ v = $env:{pair.Name} }} }}; $env:{pair.Name} = ");
+                if (pair.Value is null) sb.Append("$null");
+                else
+                {
+                    string localAssigned = EmitAssignmentValue(pair.Value);
+                    sb.Append(pair.Op == AssignOp.Equal && _intVars?.Contains(pair.Name) == true
+                        ? "[string](Invoke-BashArith ([string](" + localAssigned + ")))"
+                        : localAssigned);
+                }
+                continue;
+            }
+
             string varPrefix = cmd.IsLocal ? "$" : "$env:";
 
             // Array assignment: arr=(a b c) -> $arr = @('a','b','c')
@@ -2632,7 +2778,7 @@ public static class PsEmitter
         }
 
         var bare = cmd with { EnvPairs = ImmutableArray<EnvPair>.Empty };
-        result = WrapEnvPairs(cmd.EnvPairs, EmitSimple(bare));
+        result = WrapEnvPairs(cmd.EnvPairs, WithEnvShadow(cmd.EnvPairs, () => EmitSimple(bare)));
         return true;
     }
 
@@ -3291,10 +3437,53 @@ public static class PsEmitter
     /// </summary>
     private const string SetXtraceOn = "Set-PSDebug -Trace 1; $global:__BashXtrace = $true";
 
-    private static string? EmitSet(Command.Simple cmd)
+    /// <summary>
+    /// Splits <c>-o pipefail</c> / <c>+o pipefail</c> (also the clustered <c>-eo pipefail</c>) out of
+    /// <paramref name="args"/>: <paramref name="on"/> is the new setting, <paramref name="rest"/> the other
+    /// options, ready for the ordinary option handling.
+    /// </summary>
+    private static bool TrySplitPipefail(List<string?> args, out bool on, out List<string?> rest)
+    {
+        on = false;
+        rest = new List<string?>();
+        var norm = new List<string?>();
+        foreach (var a in args)
+        {
+            if (a is { Length: > 2 } && (a[0] is '-' or '+') && a[1] != '-' && a.EndsWith('o')
+                && a.Skip(1).All(char.IsAsciiLetter))
+            {
+                if (a.Length > 2) norm.Add(a[..^1]);
+                norm.Add(a[0] + "o");
+            }
+            else norm.Add(a);
+        }
+        bool found = false;
+        for (int i = 0; i < norm.Count; i++)
+        {
+            if (norm[i] == "--") return false;
+            if (!found && norm[i] is "-o" or "+o" && i + 1 < norm.Count && norm[i + 1] == "pipefail")
+            {
+                on = norm[i] == "-o";
+                found = true;
+                i++;
+                continue;
+            }
+            rest.Add(norm[i]);
+        }
+        return found;
+    }
+
+    private static string? EmitSet(Command.Simple cmd, List<string?>? argsOverride = null)
     {
         string? specialResult = null;
-        var literalArgs = cmd.Words.Skip(1).Select(TryGetStaticArgValue).ToList();
+        var literalArgs = argsOverride ?? cmd.Words.Skip(1).Select(TryGetStaticArgValue).ToList();
+        if (argsOverride is null && TrySplitPipefail(literalArgs, out var pipefailOn, out var otherOptions))
+        {
+            var setFlag = "$global:__BashPipefail = " + (pipefailOn ? "$true" : "$false");
+            if (otherOptions.Count == 0) return setFlag + "; " + PsBuild.SetStatus(0);
+            var otherText = EmitSet(cmd, otherOptions);
+            return otherText is null ? setFlag + "; " + PsBuild.SetStatus(0) : setFlag + "; " + otherText;
+        }
         int dashDashIdx = literalArgs.IndexOf("--");
         var optionWords = literalArgs.TakeWhile(a => a != "--" &&
             (a is null || a.StartsWith('-') || a.StartsWith('+'))).ToList();
@@ -3550,16 +3739,31 @@ public static class PsEmitter
     /// </summary>
     private static string WrapEnvPairs(ImmutableArray<EnvPair> pairs, string inner)
     {
+        // Every value is evaluated against the PRE-assignment environment (`a=1 b=$a cmd` gives b the old a).
+        var values = WithEnvShadow(pairs, () => pairs.Select(p => EmitAssignmentValue(p.Value)).ToArray());
         var sb = new StringBuilder();
         foreach (var p in pairs)
             sb.Append($"$__saved_{p.Name} = $env:{p.Name}; ");
-        sb.Append("try { ");
+        // A word that read a prefixed name (emitted as the shadow) needs the old value parked first.
+        var parked = new List<string>();
         foreach (var p in pairs)
-            sb.Append($"$env:{p.Name} = {EmitAssignmentValue(p.Value)}; ");
+        {
+            var shadow = EnvShadowPrefix + p.Name;
+            if (!inner.Contains(shadow, StringComparison.Ordinal)
+                && !values.Any(v => v.Contains(shadow, StringComparison.Ordinal)))
+                continue;
+            sb.Append($"$env:{shadow} = $env:{p.Name}; ");
+            parked.Add(shadow);
+        }
+        sb.Append("try { ");
+        for (int i = 0; i < pairs.Length; i++)
+            sb.Append($"$env:{pairs[i].Name} = {values[i]}; ");
         sb.Append(inner);
         sb.Append(" } finally { ");
         foreach (var p in pairs)
             sb.Append($"$env:{p.Name} = $__saved_{p.Name}; ");
+        foreach (var shadow in parked)
+            sb.Append($"$env:{shadow} = $null; ");
         sb.Append('}');
         return sb.ToString();
     }
@@ -5190,7 +5394,7 @@ public static class PsEmitter
         if (_loopVars is not null && _loopVars.Contains(name))
             return $"${name}";
 
-        return PsBuild.TryMapSpecialVar(name, braced: false, inDoubleQuote) ?? $"$env:{name}";
+        return PsBuild.TryMapSpecialVar(name, braced: false, inDoubleQuote) ?? $"$env:{EnvShadowName(name) ?? name}";
     }
 
     // -- RC-7: unquoted variable word-splitting -------------------------------
@@ -6232,7 +6436,7 @@ public static class PsEmitter
         if (_loopVars is not null && _loopVars.Contains(name))
             return $"${{{name}}}";
 
-        return PsBuild.TryMapSpecialVar(name, braced: true, inDoubleQuote: true) ?? $"${{env:{name}}}";
+        return PsBuild.TryMapSpecialVar(name, braced: true, inDoubleQuote: true) ?? $"${{env:{EnvShadowName(name) ?? name}}}";
     }
 
     private static string EmitCommandList(Command.CommandList list)
@@ -6492,6 +6696,9 @@ public static class PsEmitter
     {
         if (TryEmitLazyProducerStage(pipeline, out var lazy)) return lazy;
         var sb = new StringBuilder();
+        // pipefail script: each stage reports its own status (Invoke-BashPipeStage) into $__pf.
+        bool perStage = _pipefailMode && pipeline.Commands.Length > 1;
+        int stageStart = 0;
         for (int i = 0; i < pipeline.Commands.Length; i++)
         {
             // Only the FIRST stage reads the enclosing compound's stdin; every later stage reads
@@ -6505,6 +6712,7 @@ public static class PsEmitter
                 else
                     sb.Append(" | ");
             }
+            stageStart = sb.Length;
 
             var cmd = pipeline.Commands[i];
             if (i > 0 && cmd is Command.Simple simple)
@@ -6518,7 +6726,7 @@ public static class PsEmitter
                     // wrap it in the save/set/restore block (which has to forward the stage's input).
                     var bare = simple with { EnvPairs = ImmutableArray<EnvPair>.Empty };
                     sb.Append(WrapEnvPairsForPipeStage(
-                        simple.EnvPairs, EmitSimplePipeStage(bare, isLastStage)));
+                        simple.EnvPairs, WithEnvShadow(simple.EnvPairs, () => EmitSimplePipeStage(bare, isLastStage))));
                 }
             }
             else if (pipeline.Commands.Length > 1 && IsCompoundPipelineStage(cmd))
@@ -6547,9 +6755,26 @@ public static class PsEmitter
                 sb.Append(WrapPipelineStageIfStatementList(Emit(cmd)));
             else
                 sb.Append(Emit(cmd));
+
+            if (perStage)
+            {
+                // The stage as emitted may be a statement list (the first stage is not wrapped above); a
+                // steppable pipeline holds ONE pipeline, so such a stage becomes `& { … }` first.
+                var stageText = sb.ToString(stageStart, sb.Length - stageStart);
+                // The first stage may be an expression (`$(false)`), which no steppable pipeline can hold.
+                stageText = i == 0 && !stageText.StartsWith("& {", StringComparison.Ordinal)
+                    ? $"& {{ {stageText} }}"
+                    : WrapPipelineStageIfStatementList(stageText);
+                sb.Length = stageStart;
+                sb.Append($"Invoke-BashPipeStage -Slot $__pf -Index {i} -Script {{ {stageText} }}");
+            }
         }
 
         var body = sb.ToString();
+        if (perStage)
+            // The pipeline's status under pipefail: the last stage that failed (0 when none did).
+            body = $"$__pf = [int[]]::new({pipeline.Commands.Length}); {body}; "
+                 + "if ($global:__BashPipefail) { $global:LASTEXITCODE = 0; foreach ($__s in $__pf) { if ($__s -ne 0) { $global:LASTEXITCODE = $__s } } }";
 
         // Fused lane: an all-mapped, terminal-bound, plain-`|` pipeline runs inside
         // Invoke-BashFusedPipeline so its output returns to the launcher in a few
@@ -6562,6 +6787,7 @@ public static class PsEmitter
         // substitutions, and a fused batch renders its record boundary as the platform newline (CRLF on
         // Windows) — . f | wc -c counted the extra CR.
         if (_captureDepth == 0
+            && !perStage
             && !entryScope
             && _context != TranspileContext.Eval
             && FusedLane.IsFusionEnabled(FusionEnabledOverride)

@@ -4755,7 +4755,7 @@ Describe 'Invoke-BashEnv — Filter by Name' {
 
     It 'returns error for nonexistent variable' {
         $result = Invoke-BashEnv 'PSBASH_NONEXISTENT_VAR_12345' 2>&1
-        $result | Should -Match 'not set'
+        $result | Should -Match 'No such file or directory'
     }
 }
 
@@ -7005,7 +7005,7 @@ Describe 'Invoke-BashWait' {
         It 'does not leak a background job''s variable writes into the parent after wait' {
             $env:PSB_BG_LEAK = 'parent'
             try {
-                Invoke-BashBackground { $env:PSB_BG_LEAK = 'child' }
+                Invoke-BashBackground -Isolated { $env:PSB_BG_LEAK = 'child' }
                 Invoke-BashWait
                 $env:PSB_BG_LEAK | Should -Be 'parent'
             } finally { Remove-Item Env:PSB_BG_LEAK -ErrorAction SilentlyContinue }
