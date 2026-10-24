@@ -65,9 +65,10 @@ stream with a single `$LASTEXITCODE` and record-interleaved stages — there is 
 per-stage process status to collect, and "stage N's exit code" is not
 well-defined mid-stream. The following three are one knot:
 
-- **`set -o pipefail` / `$PIPESTATUS`** — standalone `set -o pipefail` maps only
-  to a documented no-op; per-stage exit codes are not tracked.
-  `false | true; echo $?` prints `0` (last-command-wins), not `1`.
+- **`$PIPESTATUS`** — per-stage exit codes are tracked only under `set -o pipefail`
+  (each stage runs through `Invoke-BashPipeStage`; the pipeline status is the last non-zero stage, as in bash).
+  `PIPESTATUS` itself is not populated. pipefail does not yet cross `source`d files,
+  and a producer killed by SIGPIPE does not report 141.
 - **Broken pipe / SIGPIPE** — `cmd | head -1` does not deliver SIGPIPE to the
   producer; exit-141 semantics do not exist. Mapped cmdlets get partial
   early-stop via `StopUpstreamCommandsException` (from `-First N`), but that is

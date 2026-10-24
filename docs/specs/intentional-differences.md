@@ -124,3 +124,11 @@ subsystem; each fails loudly.
 An unset `${x:?msg}` outside a subshell ends the script like bash, but with exit status 1 where bash 5.2 gives 127
 for a non-interactive shell, and the message is `ps-bash: x: msg` rather than `bash: line N: x: msg`. Inside a
 subshell it ends only the subshell (status 1), as bash does.
+
+## `xargs -P`, background-job isolation, `sed -i` links, literal operands
+
+`xargs -P N` is accepted but runs serially (one single-threaded runspace), so output order equals input order. `xargs -p` runs nothing when there is no `/dev/tty` to confirm on, as GNU does.
+
+A background job (`cmd &`) runs in-process unless it can change shell state (assignments, `cd`, state builtins, functions, loops). Those get `Invoke-BashBackground -Isolated`, which uses a private host process so the job cannot alter the parent's variables or cwd. `PSBASH_BG_MODE=inproc|process` overrides the choice.
+
+`sed -i` replaces a symlink with a regular file unless `--follow-symlinks` is given, as GNU does. `rm`/`cp`/`mv` operands are literal: only the shell expands wildcards, so a quoted `'*.txt'` names a file called `*.txt`.
