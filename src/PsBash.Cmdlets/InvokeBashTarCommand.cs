@@ -470,7 +470,8 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                 DoCreate(stdio ? null : archiveFile, sources, gzipFilter, plan.Verbose, filter);
                 break;
             case OptExtract:
-                DoExtract(archiveFile, stdio, gzipFilter, plan.Verbose, changeDir, plan.StripComponents, plan.ToStdout, plan.Keep, filter);
+                DoExtract(archiveFile, stdio, gzipFilter, plan.Verbose, changeDir, plan.StripComponents, plan.ToStdout, plan.Keep, filter,
+                    plan.Parsed.Has(OptNoOp + ":touch"), plan.Parsed.Has(OptNoOp + ":preserve-permissions"));
                 break;
             default:
                 DoList(archiveFile, stdio, gzipFilter, filter);
@@ -751,7 +752,7 @@ public sealed class InvokeBashTarCommand : PSCmdlet
     }
 
     private void DoExtract(string? archiveFile, bool stdio, bool gzipFilter, bool verbose, string? changeDir,
-        int stripComponents, bool toStdout, bool keepOldFiles, TarMemberFilter filter)
+        int stripComponents, bool toStdout, bool keepOldFiles, TarMemberFilter filter, bool touch = false, bool samePerms = false)
     {
         string destDir = !string.IsNullOrEmpty(changeDir)
             ? changeDir!
@@ -848,8 +849,11 @@ public sealed class InvokeBashTarCommand : PSCmdlet
                 // Replace the directory entry, never the bytes behind it: File.Create would truncate the
                 // shared file of an existing hard link whose other name lies outside the destination.
                 if (File.Exists(targetPath)) { FileSystemHelpers.DeleteFileForce(targetPath); }
-                using var fs = File.Create(targetPath);
-                entry.DataStream.CopyTo(fs);
+                using (var fs = File.Create(targetPath))
+                {
+                    entry.DataStream.CopyTo(fs);
+                }
+                RestoreMetadata(targetPath, entry, touch, samePerms);
             }
             if (!DrainCompressed(tarStream)) { return; }
             ReportUnmatched(filter);
@@ -962,6 +966,28 @@ public sealed class InvokeBashTarCommand : PSCmdlet
     /// refused. Symlinks that can't be created (e.g. Windows without the
     /// privilege) warn and continue rather than aborting the whole archive.
     /// </summary>
+    /// <summary>
+    /// Restores the archived mtime (unless <c>-m</c>) and, off Windows, the archived permission bits:
+    /// masked by the umask unless <c>-p</c>, as GNU tar does for a non-root user.
+    /// </summary>
+    private static void RestoreMetadata(string path, TarEntry entry, bool touch, bool samePerms)
+    {
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                int mode = (int)entry.Mode & 0xFFF;
+                if (!samePerms) mode &= ~FileModeSpec.CurrentUmask() & 0x1FF;
+                File.SetUnixFileMode(path, (UnixFileMode)mode);
+            }
+            if (!touch) File.SetLastWriteTimeUtc(path, entry.ModificationTime.UtcDateTime);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or PlatformNotSupportedException)
+        {
+            // Metadata is best-effort; the content is already written.
+        }
+    }
+
     private void ExtractLink(string destDir, string linkPath, string name, string? linkName, bool symbolic)
     {
         if (string.IsNullOrEmpty(linkName))
@@ -1013,9 +1039,11 @@ public sealed class InvokeBashTarCommand : PSCmdlet
             }
             else
             {
-                // No portable hardlink API — copy the already-extracted target's
-                // bytes, which preserves the data (loses inode sharing).
-                File.Copy(resolvedTarget, linkPath, overwrite: true);
+                // Share the inode like GNU tar; fall back to a byte copy where hard links are unavailable.
+                if (FileLinks.TryCreateHardLink(linkPath, resolvedTarget) is not null)
+                {
+                    File.Copy(resolvedTarget, linkPath, overwrite: true);
+                }
             }
         }
         catch (Exception ex)
