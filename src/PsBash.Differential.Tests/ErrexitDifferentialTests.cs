@@ -107,16 +107,23 @@ public class ErrexitDifferentialTests
     public Task Errexit_SetPlusE_TurnsItOff() => Eq($"set -e; set +e; {F}; echo after");
 
     [SkippableFact]
-    public async Task UnsupportedNounset_IsRejectedBeforeExecution()
+    public async Task Nounset_UnsetRead_EndsTheScript()
     {
-        // Explicit rejection is ps-bash's supported contract until Bash nounset exists.
+        // GNU bash 5.2: prints "before", reports `bash: line 1: x: unbound variable`, exits 1. The message prefix
+        // differs by design (intentional-differences.md), so stdout and status are asserted directly.
         var fixture = new BashOracleFixture();
         Skip.If(fixture.PsBashPath is null, "ps-bash binary not built");
-        var result = await fixture.RunPsBashAsync($"set -u; set -e; {F}; echo never", TimeSpan.FromSeconds(30));
-        Assert.Equal(2, result.ExitCode);
-        Assert.Contains("not supported", result.Stderr);
-        Assert.DoesNotContain("never", result.Stdout);
+        var result = await fixture.RunPsBashAsync("set -eu; echo before; echo [$undefined_var_x]; echo never", TimeSpan.FromSeconds(30));
+        Assert.Equal(1, result.ExitCode);
+        Assert.Equal("before", result.Stdout.Trim());
+        Assert.Contains("undefined_var_x: unbound variable", result.Stderr);
     }
+
+    [SkippableFact]
+    public Task Nounset_DefaultForms_AreNotChecked() => Eq("set -u; echo [${u1:-d}] [${u2-d}] [${u3+x}]; echo after");
+
+    [SkippableFact]
+    public Task Nounset_PlusU_TurnsItOff() => Eq("set -u; set +u; echo [$undefined_var_x]; echo after");
 
     [SkippableFact]
     public Task Errexit_BackgroundJob_IsExempt() => Eq($"set -e; {F} & wait; echo after");
