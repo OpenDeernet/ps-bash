@@ -498,8 +498,8 @@ public static class PsBuild
     /// The cmdlet opens its target in <c>BeginProcessing</c> (truncate, or create for <c>-Append</c>)
     /// whether or not a record arrives, which is exactly bash's "a redirection creates the file".
     /// </summary>
-    public static string TouchRedirectTarget(string target, bool append) =>
-        "@() | Invoke-BashRedirect -Path " + target + (append ? " -Append" : "");
+    public static string TouchRedirectTarget(string target, bool append, bool force = false) =>
+        "@() | Invoke-BashRedirect -Path " + target + (append ? " -Append" : "") + (force ? " -Force" : "");
 
     /// <summary>
     /// The <c> | Invoke-BashRedirect …</c> stage that applies a command's final stdout/stderr
@@ -510,18 +510,21 @@ public static class PsBuild
     /// </summary>
     public static string RedirectStage(
         string? stdoutPath, bool append, string? errorPath, bool errorAppend, bool passErrors,
-        IReadOnlyList<string> truncate, IReadOnlyList<string> touch)
+        IReadOnlyList<string> truncate, IReadOnlyList<string> touch,
+        bool force = false, bool errorForce = false)
     {
         var sb = new System.Text.StringBuilder(" | Invoke-BashRedirect");
         if (stdoutPath is not null)
         {
             sb.Append(" -Path ").Append(stdoutPath);
             if (append) sb.Append(" -Append");
+            if (force) sb.Append(" -Force");
         }
         if (errorPath is not null)
         {
             sb.Append(" -ErrorPath ").Append(errorPath);
             if (errorAppend) sb.Append(" -ErrorAppend");
+            if (errorForce) sb.Append(" -ErrorForce");
         }
         if (passErrors) sb.Append(" -PassErrors");
         if (truncate.Count > 0) sb.Append(" -Truncate ").Append(ArgWordArray(truncate));

@@ -172,12 +172,12 @@ public static class BashLexer
                     continue;
                 }
 
-                // `>|` (force-clobber): ps-bash ignores noclobber, so emit a plain Great
-                // with op text ">" so downstream emitters match.
+                // `>|` (force-clobber): a Great token whose text ">|" tells the parser to mark the
+                // redirect Force (it is a plain `>` except under noclobber).
                 if (c == '>' && c2 == '|')
                 {
                     TryReclassifyIoNumber(tokens, pos);
-                    tokens.Add(new BashToken(BashTokenKind.Great, ">", pos));
+                    tokens.Add(new BashToken(BashTokenKind.Great, ">|", pos));
                     pos += 2;
                     continue;
                 }

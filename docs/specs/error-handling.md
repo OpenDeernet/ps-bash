@@ -194,7 +194,7 @@ The emitter translates `set` flags to PowerShell equivalents:
 |------|-----------|--------|
 | `set -e` / `set -o errexit` | `$ErrorActionPreference = 'Stop'` + per-statement status checks (emitter-strategy.md `set`) | Terminate on first failing command, with bash's exemptions |
 | `set -u` / `set -o nounset` | `$global:__BashNounset` + checked plain variable reads | "x: unbound variable", script ends with status 1 (positional parameters are not checked) |
-| `set -C` / `set -o noclobber` | Clean unsupported-option rejection | Exit 2 before script execution; not implemented |
+| `set -C` / `set -o noclobber` | Supported | `>` onto an existing file: `cannot overwrite existing file`, status 1; `>|`/`>>` allowed |
 | `set -x` / `set -o xtrace` | `Set-PSDebug -Trace 1` | Print commands before execution |
 
 Combined flags are decomposed: `set -euo pipefail` extracts `-e`, `-u`, and

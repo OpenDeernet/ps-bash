@@ -47,6 +47,14 @@ public sealed class InvokeBashRedirectCommand : PSCmdlet
     [Parameter]
     public SwitchParameter ErrorAppend { get; set; }
 
+    /// <summary><c>&gt;|</c>: truncate even under <c>set -C</c> (noclobber).</summary>
+    [Parameter]
+    public SwitchParameter Force { get; set; }
+
+    /// <summary><c>2&gt;|</c>: the stderr target's noclobber override.</summary>
+    [Parameter]
+    public SwitchParameter ErrorForce { get; set; }
+
     /// <summary>Error records go on as output (stderr dup'd to the original stdout).</summary>
     [Parameter]
     public SwitchParameter PassErrors { get; set; }
@@ -86,11 +94,11 @@ public sealed class InvokeBashRedirectCommand : PSCmdlet
         _stderrToFile = MyInvocation.BoundParameters.ContainsKey(nameof(ErrorPath));
 
         foreach (var t in Truncate ?? [])
-            if (!TryOpen(t, append: false, out var s)) return; else s?.Dispose();
+            if (!TryOpen(t, append: false, force: false, out var s)) return; else s?.Dispose();
         foreach (var t in Touch ?? [])
-            if (!TryOpen(t, append: true, out var s)) return; else s?.Dispose();
-        if (Path is not null && !TryOpen(Path, Append, out _stream)) return;
-        if (ErrorPath is not null && !TryOpen(ErrorPath, ErrorAppend, out _errorStream)) return;
+            if (!TryOpen(t, append: true, force: false, out var s)) return; else s?.Dispose();
+        if (Path is not null && !TryOpen(Path, Append, Force, out _stream)) return;
+        if (ErrorPath is not null && !TryOpen(ErrorPath, ErrorAppend, ErrorForce, out _errorStream)) return;
     }
 
     /// <summary>
@@ -108,13 +116,17 @@ public sealed class InvokeBashRedirectCommand : PSCmdlet
     /// Open one target; false (after reporting and stopping upstream) when it cannot be opened.
     /// <paramref name="stream"/> is null for the null device (writes are discarded).
     /// </summary>
-    private bool TryOpen(string raw, bool append, out FileStream? stream)
+    private bool TryOpen(string raw, bool append, bool force, out FileStream? stream)
     {
         stream = null;
         string? target = ResolveTarget(raw);
         if (target is null) return true;
         try
         {
+            // `set -C`: a truncating `>` never overwrites an existing regular file (`>|` and `>>` do).
+            if (!append && !force && File.Exists(target)
+                && SessionState.PSVariable.GetValue("__BashNoclobber") is true)
+                throw new IOException("cannot overwrite existing file");
             stream = new FileStream(target, append ? FileMode.Append : FileMode.Create,
                 FileAccess.Write, FileShare.ReadWrite, bufferSize: 64 * 1024);
             return true;

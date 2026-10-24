@@ -4856,16 +4856,26 @@ public class PsEmitterTests
         }
     }
 
+    [Theory]
+    [InlineData("set -C", "__BashNoclobber = $true")]
+    [InlineData("set +C", "__BashNoclobber = $false")]
+    [InlineData("set -o noclobber", "__BashNoclobber = $true")]
+    [InlineData("set -eC", "__BashNoclobber = $true")]
+    public void Transpile_SetNoclobber_TogglesTheRuntimeFlag(string bash, string expected)
+        => Assert.Contains(expected, PsEmitter.Transpile(bash));
+
+    [Fact]
+    public void Transpile_ForceClobberRedirect_PassesForce()
+    {
+        Assert.Contains("-Force", PsEmitter.Transpile("echo a >| f"));
+        Assert.DoesNotContain("-Force", PsEmitter.Transpile("echo a > f"));
+    }
+
     [Fact]
     public void Transpile_WithoutNounset_PlainReadsAreUnchanged()
         => Assert.DoesNotContain("unbound variable", PsEmitter.Transpile("echo \"$a\""));
 
     [Theory]
-    [InlineData("set -C")]
-    [InlineData("set -o noclobber")]
-    [InlineData("set -eo noclobber")]
-    [InlineData("set -o 'noclobber'")]
-    [InlineData("set -o no'clobber'")]
     [InlineData("set \"$flags\"")]
     [InlineData("set -o \"$option\"")]
     [InlineData("set -n")]

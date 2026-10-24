@@ -14,6 +14,7 @@ namespace PsBash.Core.Parser.Ast;
 /// <c>Command.Simple.HereDocs</c> instead; compound commands have no such list, so the
 /// already-parsed body rides along on the redirect. <c>Target</c> is the raw word.
 /// </param>
+/// <param name="Force">True for <c>&gt;|</c>: a truncating write that <c>set -C</c> (noclobber) does not refuse.</param>
 // NOTE: every parameter must keep a <param> tag. Documenting only SOME of them triggers
 // CS1573, which is a harmless warning locally but a hard ERROR in publish.yml's
 // build-binaries leg (/warnaserror) — it failed all three RIDs of the v0.10.23 attempt and
@@ -24,7 +25,8 @@ public sealed record Redirect(
     int Fd,
     CompoundWord Target,
     string? FdVar = null,
-    HereDoc? Here = null) : BashNode;
+    HereDoc? Here = null,
+    bool Force = false) : BashNode;
 
 /// <summary>
 /// A here-document redirect, e.g. <c>&lt;&lt;EOF\ntext\nEOF</c>.

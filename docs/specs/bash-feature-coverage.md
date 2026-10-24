@@ -64,7 +64,7 @@ logout select suspend ulimit`. (`getopts` was the one scripts use most; it is no
 - Builtins: `printf %q` and `%(...)T`, `read -d`, `set -o` listing, `set -x` trace output, `shift` error
   status, `shopt -p`, `test -v`, `unalias` error, `trap` for DEBUG/RETURN/EXIT-ordering/signals (`trap ... ERR` now runs after a failing statement).
 - Pipelines: `pipefail`, `PIPESTATUS` (deferred on purpose, see the memory note), `time` formatting.
-- Redirection: `exec N>file` for fd 1/2, `/dev/fd/N`, `{var}>file`, `<>`, `noclobber`, swapping `3>&1 1>&2 2>&3`.
+- Redirection: `exec N>file` for fd 1/2, `/dev/fd/N`, `{var}>file`, `<>`, swapping `3>&1 1>&2 2>&3`.
 - Globbing: (`globstar` and `nocaseglob` now work; `failglob` already did. `set -f`/`set -o noglob` now work; `printf %q` and `%(fmt)T` are implemented.)
 - Misc: command-not-found status (127), `function-unset`, empty-command syntax errors, here-document into a function.
 

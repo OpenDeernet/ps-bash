@@ -10,7 +10,7 @@ upgrade backups and works without HOME. Unavailable history storage permits a wo
 prompt. Terminal brokers hold one endpoint lease and bound client replay writes.
 
 `set -u`/`nounset` is supported for `$x`, `${x}` and `$1`..`$N` reads (not arithmetic);
-`set -C`/`noclobber` is explicitly unsupported and rejected before execution.
+`set -C`/`set -o noclobber` is supported for `>` onto an existing file (`>|` and `>>` still write); the check runs when the redirect stage opens the file, so the command itself has already run.
 Unsupported launcher flags also exit 2; use `set -e` inside the script for errexit.
 
 Still open: Windows environment-backed variables are case-insensitive (see

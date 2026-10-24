@@ -494,7 +494,7 @@ public sealed partial class BashParser
         var targetParts = DecomposeWord(targetToken.Value);
         var target = new CompoundWord(targetParts);
 
-        return new Redirect(op, fd, target, fdVar);
+        return new Redirect(op, fd, target, fdVar, Force: opToken.Value == ">|");
     }
 
     /// <summary>True for a <c>{varname}</c> named-fd prefix token (the lexer only

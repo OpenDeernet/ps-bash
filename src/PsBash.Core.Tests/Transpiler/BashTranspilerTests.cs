@@ -212,10 +212,10 @@ public class BashTranspilerTests
     }
 
     [Fact]
-    public void ForceClobberRedirect_TreatedAsPlainStdoutRedirect()
+    public void ForceClobberRedirect_IsAStdoutRedirectThatOverridesNoclobber()
     {
         var result = BashTranspiler.Transpile("echo hi >| out.txt");
-        Assert.Equal("Invoke-BashEcho hi | Invoke-BashRedirect -Path out.txt", result);
+        Assert.Equal("Invoke-BashEcho hi | Invoke-BashRedirect -Path out.txt -Force", result);
     }
 
     [Fact]

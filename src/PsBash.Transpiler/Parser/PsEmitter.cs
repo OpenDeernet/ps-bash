@@ -3139,7 +3139,7 @@ public static class PsEmitter
                 stderrSilenced |= redirect.Fd == 2 && target == "$null";
                 continue;
             }
-            sb.Append(PsBuild.TouchRedirectTarget(target, append));
+            sb.Append(PsBuild.TouchRedirectTarget(target, append, redirect.Force));
             if (stderrSilenced) sb.Append(" 2>$null");
             sb.Append("; ");
         }
@@ -3504,9 +3504,10 @@ public static class PsEmitter
             {
                 char c = a[k];
                 if (c == 'u') { effects.Add(("__BashNounset", on)); continue; }
-                if (c == 'o' && k == a.Length - 1 && i + 1 < args.Count && args[i + 1] is "pipefail" or "nounset")
+                if (c == 'C') { effects.Add(("__BashNoclobber", on)); continue; }
+                if (c == 'o' && k == a.Length - 1 && i + 1 < args.Count && args[i + 1] is "pipefail" or "nounset" or "noclobber")
                 {
-                    effects.Add((args[i + 1] == "pipefail" ? "__BashPipefail" : "__BashNounset", on));
+                    effects.Add((args[i + 1] switch { "pipefail" => "__BashPipefail", "noclobber" => "__BashNoclobber", _ => "__BashNounset" }, on));
                     i++;
                     continue;
                 }
@@ -3536,8 +3537,7 @@ public static class PsEmitter
             (optionWords.Any(a => a is "-o" or "+o") && literalArgs.Count != 2) ||
             (optionWords.Any(a => a?.StartsWith('+') == true) && optionWords.Count > 1))
             throw new ParseException("set: combined shell option forms are not supported; use separate set commands", 1, 1, "shell-option");
-        // StrictMode does not police $env: reads, and redirects do not implement
-        // noclobber. Refuse every unsupported option before any part of the script runs.
+        // Refuse every unsupported option before any part of the script runs.
         for (int i = 0; i < literalArgs.Count && literalArgs[i] != "--"; i++)
         {
             var arg = literalArgs[i];
@@ -3553,8 +3553,7 @@ public static class PsEmitter
             }
             if (arg is "+e" or "+x" or "+f") continue;
             if (arg.StartsWith('-') && arg.Length > 1 && arg.Skip(1).All(c => c is 'e' or 'x' or 'f')) continue;
-            string unsupported = arg.Contains('u') ? "nounset" : arg.Contains('C') ? "noclobber" : arg;
-            throw new ParseException($"set: option '{unsupported}' is not supported by ps-bash", 1, 1, "shell-option");
+            throw new ParseException($"set: option '{arg}' is not supported by ps-bash", 1, 1, "shell-option");
         }
         if (dashDashIdx >= 0)
         {
@@ -7046,13 +7045,13 @@ public static class PsEmitter
         if (redirects.Count == 0)
             return true;
 
-        var opened = new List<(string Target, bool Append)>();
+        var opened = new List<(string Target, bool Append, bool Force)>();
         var fd1 = new FdDest(FdDestKind.Default);
         var fd2 = new FdDest(FdDestKind.Default);
-        FdDest Open(string target, bool append)
+        FdDest Open(string target, bool append, bool force = false)
         {
             if (target == "$null") return new FdDest(FdDestKind.Null);
-            opened.Add((target, append));
+            opened.Add((target, append, force));
             return new FdDest(FdDestKind.File, opened.Count - 1);
         }
 
@@ -7065,7 +7064,7 @@ public static class PsEmitter
             {
                 case ">" or ">|" or ">>":
                 {
-                    var dest = Open(target, r.Op == ">>");
+                    var dest = Open(target, r.Op == ">>", r.Force);
                     if (r.Fd == 1) fd1 = dest; else fd2 = dest;
                     break;
                 }
@@ -7153,7 +7152,9 @@ public static class PsEmitter
             stdoutPath, fd1.Kind == FdDestKind.File && opened[fd1.File].Append,
             errorPath, errorAppend,
             passErrors: fd2.Kind == FdDestKind.StdoutDefault,
-            truncate, touch));
+            truncate, touch,
+            force: fd1.Kind == FdDestKind.File && opened[fd1.File].Force,
+            errorForce: errorPath is not null && opened[fd2.File].Force));
         // `>f >&2`, `2>f >&2`-style lists: the stage (no -Path) passes stdout on to stderr.
         if (fd1.Kind == FdDestKind.StderrDefault) sb.Append(PsBuild.StdoutToStderrStage);
         return true;
@@ -7208,6 +7209,8 @@ public static class PsEmitter
             sb.Append(target);
             if (fileRedirect.Op == ">>")
                 sb.Append(" -Append");
+            if (fileRedirect.Force)
+                sb.Append(" -Force");
         }
     }
 

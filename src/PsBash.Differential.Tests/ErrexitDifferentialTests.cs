@@ -125,6 +125,15 @@ public class ErrexitDifferentialTests
     [SkippableFact]
     public Task Nounset_PlusU_TurnsItOff() => Eq("set -u; set +u; echo [$undefined_var_x]; echo after");
 
+    // noclobber: `>` refuses an existing file (status 1, command output dropped), `>|` and `>>` do not.
+    // The refusal message prefix differs by design, so stderr is silenced around the group.
+    [SkippableFact]
+    public Task Noclobber_RefusesOverwriteButAllowsForceAndAppend()
+        => Eq("cd \"$(mktemp -d)\"; echo a > f; set -C; { echo b > f; } 2>/dev/null; echo s=$?; echo c >| f; echo d >> f; echo n > g; cat f g; set +C; echo e > f; cat f");
+
+    [SkippableFact]
+    public Task Noclobber_OptionNameForm_And_NewFileAllowed()
+        => Eq("cd \"$(mktemp -d)\"; set -o noclobber; echo a > f; { echo b > f; } 2>/dev/null; echo s=$?; cat f");
     [SkippableFact]
     public Task Errexit_BackgroundJob_IsExempt() => Eq($"set -e; {F} & wait; echo after");
 }
