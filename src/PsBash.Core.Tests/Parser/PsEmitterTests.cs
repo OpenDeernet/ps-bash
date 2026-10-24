@@ -5994,6 +5994,15 @@ public class PsEmitterTests
     }
 
     [Fact]
+    public void Transpile_PipeStatusReference_RecordsPerStageStatus()
+    {
+        var result = PsEmitter.Transpile("true | false | true; echo ${PIPESTATUS[1]}");
+        Assert.Contains("$global:PIPESTATUS = $__pf", result);
+        // A failing `false` in the MIDDLE of the pipeline must still report its own status.
+        Assert.Contains("Invoke-BashPipeStage -Slot $__pf -Index 1 -Script { & { Out-Null; $($global:LASTEXITCODE = 1", result);
+    }
+
+    [Fact]
     public void Transpile_PipelineWithoutPipefail_IsUnchanged()
         => Assert.DoesNotContain("Invoke-BashPipeStage", PsEmitter.Transpile("false | true"));
 

@@ -503,7 +503,7 @@ public static class PsEmitter
         var priorUnitFunctions = _unitFunctions;
         _unitFunctions = null;
         var priorPipefail = _pipefailMode;
-        _pipefailMode = bash.Contains("pipefail", StringComparison.Ordinal);
+        _pipefailMode = bash.Contains("pipefail", StringComparison.Ordinal) || bash.Contains("PIPESTATUS", StringComparison.Ordinal);
         try
         {
             var cmd = BashParser.Parse(bash);
@@ -6773,7 +6773,7 @@ public static class PsEmitter
         var body = sb.ToString();
         if (perStage)
             // The pipeline's status under pipefail: the last stage that failed (0 when none did).
-            body = $"$__pf = [int[]]::new({pipeline.Commands.Length}); {body}; "
+            body = $"$__pf = [int[]]::new({pipeline.Commands.Length}); {body}; $global:PIPESTATUS = $__pf; "
                  + "if ($global:__BashPipefail) { $global:LASTEXITCODE = 0; foreach ($__s in $__pf) { if ($__s -ne 0) { $global:LASTEXITCODE = $__s } } }";
 
         // Fused lane: an all-mapped, terminal-bound, plain-`|` pipeline runs inside
@@ -6837,7 +6837,7 @@ public static class PsEmitter
             {
                 var noop = new StringBuilder("Out-Null");
                 EmitPipeTargetRedirects(simple, noop);
-                if (isLastStage)
+                if (isLastStage || _pipefailMode)
                 {
                     // Consume all piped input; `true` / `:` succeed (exit 0), `false` fails (exit 1).
                     // Out-Null is a valid pipeline cmdlet; the status is set after the pipeline.

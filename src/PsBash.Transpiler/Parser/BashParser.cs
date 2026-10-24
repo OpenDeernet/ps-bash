@@ -783,7 +783,9 @@ public sealed partial class BashParser
         // The loop variable must be a bare identifier. `for $i in ...` is a bash
         // syntax error; without this guard the `$i` word passed straight through
         // and the emitter produced the broken `foreach ($$i ...)`.
-        if (!IsValidVariableName(varName))
+        // `for - in a b c`: bash reports the bad name when the loop runs (status 1) and carries on.
+        bool badName = !IsValidVariableName(varName) && !varName.StartsWith('$');
+        if (!badName && !IsValidVariableName(varName))
             throw MakeError($"`for': `{varName}' is not a valid variable name", varToken.Position, "for");
 
         var list = ImmutableArray.CreateBuilder<CompoundWord>();
@@ -813,7 +815,10 @@ public sealed partial class BashParser
         var body = ParseCompoundBody("done");
         Expect("done");
 
-        return new Command.ForIn(varName, list.ToImmutable(), body, ParseTrailingRedirects(), explicitIn);
+        var trailing = ParseTrailingRedirects();
+        if (badName)
+            return Parse("printf 'bash: line 1: `%s'\\'': not a valid identifier\n' " + "'" + varName.Replace("'", "'\\''") + "' >&2; false")!;
+        return new Command.ForIn(varName, list.ToImmutable(), body, trailing, explicitIn);
     }
 
     /// <summary>
