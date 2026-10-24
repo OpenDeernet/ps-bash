@@ -77,7 +77,8 @@ public sealed class InvokeBashEvalCommand : PSCmdlet
         TranspileResult result;
         try
         {
-            result = BashTranspiler.TranspileWithMap(source, TranspileContext.Eval);
+            using (RuntimeOptionHints.Apply(SessionState))
+                result = BashTranspiler.TranspileWithMap(source, TranspileContext.Eval);
         }
         catch (PsBash.Core.Parser.ParseException ex)
         {

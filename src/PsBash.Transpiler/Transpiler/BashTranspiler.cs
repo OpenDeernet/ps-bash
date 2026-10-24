@@ -78,10 +78,14 @@ public static class BashTranspiler
     private static T Guarded<T>(Func<T> work)
     {
         var fusion = PsEmitter.FusionEnabledOverride;
+        var inheritedPipefail = PsEmitter.InheritedPipefail;
+        var inheritedNounset = PsEmitter.InheritedNounset;
         return NestingGuard.WithStackFallback(() =>
         {
             var prior = PsEmitter.FusionEnabledOverride;
             PsEmitter.FusionEnabledOverride = fusion;
+            PsEmitter.InheritedPipefail = inheritedPipefail;
+            PsEmitter.InheritedNounset = inheritedNounset;
             try { return work(); }
             finally { PsEmitter.FusionEnabledOverride = prior; }
         });

@@ -98,7 +98,9 @@ public sealed class InvokeBashSourceCommand : PSCmdlet
             return null;
         }
 
-        var result = BashTranspiler.Transpile(content, TranspileContext.Eval);
+        string result;
+        using (RuntimeOptionHints.Apply(SessionState))
+            result = BashTranspiler.Transpile(content, TranspileContext.Eval);
         if (string.IsNullOrEmpty(result))
         {
             SessionState.PSVariable.Set("global:LASTEXITCODE", 0);

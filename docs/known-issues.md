@@ -66,7 +66,7 @@ per-stage process status to collect, and "stage N's exit code" is not
 well-defined mid-stream. The following three are one knot:
 
 - **`PIPESTATUS`** — populated (${PIPESTATUS[@]}) when the script mentions it or `pipefail`: each stage runs through `Invoke-BashPipeStage`.
-  It is set only by multi-stage pipelines (a later simple command does not reset it to one element), and pipefail does not yet cross `source`d files.
+  It is set only by multi-stage pipelines (a later simple command does not reset it to one element). `source`d and `eval`ed text inherits the caller's live `pipefail` and `set -u`.
 - **Broken pipe / SIGPIPE** — `cmd | head -1` does not deliver SIGPIPE to the
   producer; exit-141 semantics do not exist. Mapped cmdlets get partial
   early-stop via `StopUpstreamCommandsException` (from `-First N`), but that is

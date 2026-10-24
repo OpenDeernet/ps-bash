@@ -4829,6 +4829,34 @@ public class PsEmitterTests
     }
 
     [Fact]
+    public void Transpile_Nounset_PositionalReadsCheckTheParameterCount()
+    {
+        var result = PsEmitter.Transpile("set -u; echo $1 $@ $# $0");
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(result, "unbound variable").Count);
+        Assert.Contains("Count -lt 1)", result);
+    }
+
+    [Fact]
+    public void Transpile_InheritedOptions_ApplyToTextThatNeverMentionsThem()
+    {
+        const string text = "false | true; echo $x";
+        Assert.DoesNotContain("Invoke-BashPipeStage", PsEmitter.Transpile(text));
+        PsEmitter.InheritedPipefail = true;
+        PsEmitter.InheritedNounset = true;
+        try
+        {
+            var result = PsEmitter.Transpile(text, PsBash.Core.Transpiler.TranspileContext.Eval);
+            Assert.Contains("Invoke-BashPipeStage", result);
+            Assert.Contains("unbound variable", result);
+        }
+        finally
+        {
+            PsEmitter.InheritedPipefail = false;
+            PsEmitter.InheritedNounset = false;
+        }
+    }
+
+    [Fact]
     public void Transpile_WithoutNounset_PlainReadsAreUnchanged()
         => Assert.DoesNotContain("unbound variable", PsEmitter.Transpile("echo \"$a\""));
 

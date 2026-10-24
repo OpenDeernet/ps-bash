@@ -38,6 +38,15 @@ public static class PsEmitter
     // The script can turn nounset on: simple `$x` / `${x}` reads then check the flag at runtime.
     [ThreadStatic]
     private static bool _nounsetMode;
+
+    /// <summary>
+    /// Set by <c>source</c> / <c>eval</c> from the caller's LIVE option state: the sourced text may never mention
+    /// <c>pipefail</c> or <c>set -u</c> itself, yet bash applies the options it inherits.
+    /// </summary>
+    [ThreadStatic]
+    public static bool InheritedPipefail;
+    [ThreadStatic]
+    public static bool InheritedNounset;
     [ThreadStatic]
     private static HashSet<string>? _collectScalarLocals;
 
@@ -507,9 +516,9 @@ public static class PsEmitter
         _unitFunctions = null;
         var priorPipefail = _pipefailMode;
         var priorNounset = _nounsetMode;
-        _nounsetMode = bash.Contains("nounset", StringComparison.Ordinal)
+        _nounsetMode = priorNounset || InheritedNounset || bash.Contains("nounset", StringComparison.Ordinal)
             || System.Text.RegularExpressions.Regex.IsMatch(bash, @"\bset\s+(?:-[a-zA-Z]+\s+)*-[a-zA-Z]*u");
-        _pipefailMode = bash.Contains("pipefail", StringComparison.Ordinal) || bash.Contains("PIPESTATUS", StringComparison.Ordinal);
+        _pipefailMode = priorPipefail || InheritedPipefail || bash.Contains("pipefail", StringComparison.Ordinal) || bash.Contains("PIPESTATUS", StringComparison.Ordinal);
         try
         {
             var cmd = BashParser.Parse(bash);
@@ -5429,10 +5438,16 @@ public static class PsEmitter
             return $"${name}";
 
         var special = PsBuild.TryMapSpecialVar(name, braced: false, inDoubleQuote);
-        if (special is not null) return special;
+        if (special is not null) return strict && _nounsetMode ? StrictPositional(name, special) : special;
         var plain = $"$env:{EnvShadowName(name) ?? name}";
         return strict && _nounsetMode && EnvShadowName(name) is null ? StrictRead(name, plain) : plain;
     }
+
+    /// <summary>`$1`..`$N` past the last positional parameter is unbound under nounset (`$@` `$*` `$#` `$0` never are).</summary>
+    private static string StrictPositional(string name, string special)
+        => name.Length > 0 && name[0] != '0' && name.All(char.IsAsciiDigit)
+            ? $"$(if ($global:__BashNounset -and @(if ($global:BashPositional) {{ $global:BashPositional }} else {{ $args }}).Count -lt {name}) {{ throw [PsBash.Cmdlets.BashParamErrorException]::new('{name}: ', 'unbound variable') }} else {{ {special} }})"
+            : special;
 
     /// <summary>A read of <paramref name="name"/> that ends the script ("unbound variable") when nounset is on and it is unset.</summary>
     private static string StrictRead(string name, string plain)
@@ -5526,8 +5541,8 @@ public static class PsEmitter
     {
         string varRef = word.Parts[0] switch
         {
-            WordPart.SimpleVarSub vs => EmitSimpleVar(vs.Name),
-            WordPart.BracedVarSub bvs => EmitSimpleVar(bvs.Name),
+            WordPart.SimpleVarSub vs => EmitSimpleVar(vs.Name, strict: true),
+            WordPart.BracedVarSub bvs => EmitSimpleVar(bvs.Name, strict: true),
             _ => throw new InvalidOperationException(
                 "EmitUnquotedVarSplitArray requires a pure unquoted variable " +
                 "word; guard with IsPureUnquotedVarWord."),
@@ -6478,7 +6493,7 @@ public static class PsEmitter
             return $"${{{name}}}";
 
         var special = PsBuild.TryMapSpecialVar(name, braced: true, inDoubleQuote: true);
-        if (special is not null) return special;
+        if (special is not null) return strict && _nounsetMode ? StrictPositional(name, special) : special;
         var plain = $"${{env:{EnvShadowName(name) ?? name}}}";
         return strict && _nounsetMode && EnvShadowName(name) is null ? StrictRead(name, plain) : plain;
     }
