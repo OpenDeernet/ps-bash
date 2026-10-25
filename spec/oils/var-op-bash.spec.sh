@@ -1,0 +1,373 @@
+## Imported from the Oils spec tests (var-op-bash.test.sh, Apache-2.0, https://github.com/oils-for-unix/oils).
+## Names and scripts only; expectations are recorded from bash 5.2, not taken from Oils.
+## Cases using the Oils harness ($SH, $REPO_ROOT, ...) are omitted.
+#### Lower Case with , and ,,
+x='ABC DEF'
+echo ${x,}
+echo ${x,,}
+echo empty=${empty,}
+echo empty=${empty,,}
+## STDOUT:
+aBC DEF
+abc def
+empty=
+empty=
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Upper Case with ^ and ^^
+x='abc def'
+echo ${x^}
+echo ${x^^}
+echo empty=${empty^}
+echo empty=${empty^^}
+## STDOUT:
+Abc def
+ABC DEF
+empty=
+empty=
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Case folding - Unicode characters
+
+# https://www.utf8-chartable.de/unicode-utf8-table.pl
+
+x=$'\u00C0\u00C8'  # upper grave
+y=$'\u00E1\u00E9'  # lower acute
+
+echo u ${x^}
+echo U ${x^^}
+
+echo l ${x,}
+echo L ${x,,}
+
+echo u ${y^}
+echo U ${y^^}
+
+echo l ${y,}
+echo L ${y,,}
+## STDOUT:
+u ÀÈ
+U ÀÈ
+l àÈ
+L àè
+u Áé
+U ÁÉ
+l áé
+L áé
+## END
+## status: 0
+## timeout: 10
+
+#### Case folding - multi code point
+
+echo shell
+small=$'\u00DF'
+echo u ${small^}
+echo U ${small^^}
+
+echo l ${small,}
+echo L ${small,,}
+echo
+
+echo python2
+python2 -c '
+small = u"\u00DF"
+print(small.upper().encode("utf-8"))
+print(small.lower().encode("utf-8"))
+'
+echo
+
+# Not in the container images, but python 3 DOES support it!
+# This is moved to demo/survey-case-fold.sh
+
+if false; then
+echo python3
+python3 -c '
+import sys
+small = u"\u00DF"
+sys.stdout.buffer.write(small.upper().encode("utf-8") + b"\n")
+sys.stdout.buffer.write(small.lower().encode("utf-8") + b"\n")
+'
+fi
+
+if false; then
+  # Yes, supported
+  echo node.js
+
+  nodejs -e '
+  var small = "\u00DF"
+  console.log(small.toUpperCase())
+  console.log(small.toLowerCase())
+  '
+fi
+## STDOUT:
+shell
+u ß
+U ß
+l ß
+L ß
+
+python2
+
+## END
+## status: 0
+## timeout: 10
+
+#### Case folding that depends on locale (not enabled, requires Turkish locale)
+
+# Hm this works in demo/survey-case-fold.sh
+# Is this a bash 4.4 thing?
+
+#export LANG='tr_TR.UTF-8'
+#echo $LANG
+
+x='i'
+
+echo u ${x^}
+echo U ${x^^}
+
+echo l ${x,}
+echo L ${x,,}
+## STDOUT:
+u I
+U I
+l i
+L i
+## END
+## status: 0
+## timeout: 10
+
+#### Lower Case with constant string (VERY WEIRD)
+x='AAA ABC DEF'
+echo ${x,A}
+echo ${x,,A}  # replaces every A only?
+## STDOUT:
+aAA ABC DEF
+aaa aBC DEF
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Lower Case glob
+
+# Hm with C.UTF-8, this does no case folding?
+export LC_ALL=en_US.UTF-8
+
+x='ABC DEF'
+echo ${x,[d-f]}
+echo ${x,,[d-f]}  # bash 4.4 fixed in bash 5.2.21
+## STDOUT:
+ABC DEF
+ABC DEF
+## END
+## status: 0
+## timeout: 10
+
+#### ${x@u} U L - upper / lower case (bash 5.1 feature)
+
+# https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
+
+x='abc DEF'
+
+echo "${x@u}"
+
+echo "${x@U}"
+
+echo "${x@L}"
+## STDOUT:
+Abc DEF
+ABC DEF
+abc def
+## END
+## status: 0
+## timeout: 10
+
+#### ${x@Q}
+x="FOO'BAR spam\"eggs"
+eval "new=${x@Q}"
+test "$x" = "$new" && echo OK
+## stdout: OK
+## status: 0
+## timeout: 10
+
+#### ${array@Q} and ${array[@]@Q}
+array=(x 'y\nz')
+echo ${array[@]@Q}
+echo ${array@Q}
+echo ${array@Q}
+## STDOUT:
+'x' 'y\nz'
+'x'
+'x'
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### ${!prefix@} ${!prefix*} yields sorted array of var names
+ZOO=zoo
+ZIP=zip
+ZOOM='one two'
+Z='three four'
+
+z=lower
+
+argv.py ${!Z*}
+argv.py ${!Z@}
+argv.py "${!Z*}"
+argv.py "${!Z@}"
+for i in 1 2; do argv.py ${!Z*}  ; done
+for i in 1 2; do argv.py ${!Z@}  ; done
+for i in 1 2; do argv.py "${!Z*}"; done
+for i in 1 2; do argv.py "${!Z@}"; done
+## stdout:
+## status: 127
+## timeout: 10
+
+#### ${!prefix@} matches var name (regression)
+hello1=1 hello2=2 hello3=3
+echo ${!hello@}
+hello=()
+echo ${!hello@}
+## STDOUT:
+hello1 hello2 hello3
+hello hello1 hello2 hello3
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### ${var@a} for attributes
+array=(one two)
+echo ${array@a}
+declare -r array=(one two)
+echo ${array@a}
+declare -rx PYTHONPATH=hi
+echo ${PYTHONPATH@a}
+
+# bash and osh differ here
+#declare -rxn x=z
+#echo ${x@a}
+## STDOUT:
+a
+ar
+rx
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### ${var@a} error conditions
+echo [${?@a}]
+## stdout: []
+## status: 0
+## timeout: 10
+
+#### ${!A@a} and ${!A[@]@a}
+declare -A A=(["x"]=y)
+echo x=${!A[@]@a}
+echo invalid=${!A@a}
+
+# OSH prints 'a' for indexed array because the AssocArray with ! turns into
+# it.  Disallowing it would be the other reasonable behavior.
+
+
+# Bash succeeds with ${!A@a}, which references the variable named as $A (i.e.,
+# '').  This must be a Bash bug since the behavior is inconsistent with the
+# fact that ${!undef@a} and ${!empty@a} fail.
+## STDOUT:
+x=
+invalid=
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### undef vs. empty string in var ops
+
+empty=''
+x=x
+
+echo ${x@Q} ${empty@Q} ${undef@Q} ${x@Q}
+
+echo ${x@K} ${empty@K} ${undef@K} ${x@K}
+
+echo ${x@k} ${empty@k} ${undef@k} ${x@k}
+
+echo ${x@A} ${empty@A} ${undef@A} ${x@A}
+
+declare -r x
+echo ${x@a} ${empty@a} ${undef@a} ${x@a}
+
+# x x
+#echo ${x@E} ${empty@E} ${undef@E} ${x@E}
+# x x
+#echo ${x@P} ${empty@P} ${undef@P} ${x@P}
+## STDOUT:
+'x' '' 'x'
+'x' '' 'x'
+'x' '' 'x'
+x='x' empty='' x='x'
+r r
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### -o nounset with var ops
+
+set -u
+(echo ${undef@Q}); echo "stat: $?"
+(echo ${undef@P}); echo "stat: $?"
+(echo ${undef@a}); echo "stat: $?"
+## STDOUT:
+stat: 1
+stat: 1
+stat: 1
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### ${a[0]@a} and ${a@a}
+
+a=(1 2 3)
+echo "attr = '${a[0]@a}'"
+echo "attr = '${a@a}'"
+## STDOUT:
+attr = 'a'
+attr = 'a'
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### ${!r@a} with r='a[0]' (attribute for indirect expansion of an array element)
+
+a=(1 2 3)
+r='a'
+echo ${!r@a}
+r='a[0]'
+echo ${!r@a}
+
+declare -A d=([0]=foo [1]=bar)
+r='d'
+echo ${!r@a}
+r='d[0]'
+echo ${!r@a}
+## STDOUT:
+a
+a
+A
+A
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10

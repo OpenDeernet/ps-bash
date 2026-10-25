@@ -1,0 +1,744 @@
+## Imported from the Oils spec tests (array.test.sh, Apache-2.0, https://github.com/oils-for-unix/oils).
+## Names and scripts only; expectations are recorded from bash 5.2, not taken from Oils.
+## Cases using the Oils harness ($SH, $REPO_ROOT, ...) are omitted.
+#### nounset / set -u with empty array (bug in bash 4.3, fixed in 4.4)
+
+# http://lists.gnu.org/archive/html/help-bash/2017-09/msg00005.html
+
+set -o nounset
+empty=()
+argv.py "${empty[@]}"
+echo status=$?
+## stdout: status=127
+## status: 0
+## timeout: 10
+
+#### local array
+# mksh support local variables, but not local arrays, oddly.
+f() {
+  local a=(1 '2 3')
+  argv.py "${a[0]}"
+}
+f
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Command with with word splitting in array
+array=('1 2' $(echo '3 4'))
+argv.py "${array[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### space before ( in array initialization
+# NOTE: mksh accepts this, but bash doesn't
+a= (1 '2 3')
+echo $a
+## stdout:
+## status: 2
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### array over multiple lines
+a=(
+1
+'2 3'
+)
+argv.py "${a[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### array with invalid token
+a=(
+1
+&
+'2 3'
+)
+argv.py "${a[@]}"
+## stdout:
+## status: 2
+## timeout: 10
+
+#### array with empty string
+empty=('')
+argv.py "${empty[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Retrieve index
+a=(1 '2 3')
+argv.py "${a[1]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Retrieve out of bounds index
+a=(1 '2 3')
+argv.py "${a[3]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Negative index
+a=(1 '2 3')
+argv.py "${a[-1]}" "${a[-2]}" "${a[-5]}"  # last one out of bounds
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Negative index and sparse array
+a=(0 1 2 3 4)
+unset a[1]
+unset a[4]
+echo "${a[@]}"
+echo -1 ${a[-1]}
+echo -2 ${a[-2]}
+echo -3 ${a[-3]}
+echo -4 ${a[-4]}
+echo -5 ${a[-5]}
+
+a[-1]+=0  # append 0 on the end
+echo ${a[@]}
+(( a[-1] += 42 ))
+echo ${a[@]}
+## STDOUT:
+0 2 3
+-1 3
+-2 2
+-3
+-4 0
+-5
+0 2 30
+0 2 72
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Negative index and sparse array
+a=(0 1)
+unset 'a[-1]'  # remove last element
+a+=(2 3)
+echo ${a[0]} $((a[0]))
+echo ${a[1]} $((a[1]))
+echo ${a[2]} $((a[2]))
+echo ${a[3]} $((a[3]))
+## STDOUT:
+0 0
+2 2
+3 3
+0
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Length after unset
+a=(0 1 2 3)
+unset a[-1]
+echo len=${#a[@]}
+unset a[-1]
+echo len=${#a[@]}
+## STDOUT:
+len=3
+len=2
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Retrieve index that is a variable
+a=(1 '2 3')
+i=1
+argv.py "${a[$i]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Retrieve index that is a variable without $
+a=(1 '2 3')
+i=5
+argv.py "${a[i-4]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Retrieve index that is a command sub
+a=(1 '2 3')
+argv.py "${a[$(echo 1)]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Retrieve array indices with ${!a}
+a=(1 '2 3')
+argv.py "${!a[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Retrieve sparse array indices with ${!a}
+a=()
+(( a[99]=1 ))
+argv.py "${!a[@]}"
+## stdout:
+## status: 127
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### ${!a[1]} is named ref in bash
+# mksh ignores it
+foo=bar
+a=('1 2' foo '2 3')
+argv.py "${!a[1]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### ${!a} on array
+
+# bash gives empty string because it's like a[0]
+# mksh gives the name of the variable with !.  Very weird.
+
+a=(1 '2 3')
+argv.py "${!a}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### All elements unquoted
+a=(1 '2 3')
+argv.py ${a[@]}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### All elements quoted
+a=(1 '2 3')
+argv.py "${a[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### $*
+a=(1 '2 3')
+argv.py ${a[*]}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### "$*"
+a=(1 '2 3')
+argv.py "${a[*]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Interpolate array into array
+a=(1 '2 3')
+a=(0 "${a[@]}" '4 5')
+argv.py "${a[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Exporting array doesn't do anything, not even first element
+# bash parses, but doesn't execute.
+# mksh gives syntax error -- parses differently with 'export'
+# osh no longer parses this statically.
+
+export PYTHONPATH
+
+PYTHONPATH=mystr  # NOTE: in bash, this doesn't work afterward!
+printenv.py PYTHONPATH
+
+PYTHONPATH=(myarray)
+printenv.py PYTHONPATH
+
+PYTHONPATH=(a b c)
+printenv.py PYTHONPATH
+## stdout:
+## status: 127
+## timeout: 10
+
+#### strict_array prevents exporting array
+
+shopt -s strict_array
+
+export PYTHONPATH
+PYTHONPATH=(a b c)
+printenv.py PYTHONPATH
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Arrays can't be used as env bindings
+# Hm bash it treats it as a string!
+A=a B=(b b) printenv.py A B
+## stdout:
+## status: 127
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Associative arrays can't be used as env bindings either
+A=a B=([k]=v) printenv.py A B
+## stdout:
+## status: 127
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### glob within array yields separate elements
+touch y.Y yy.Y
+a=(*.Y)
+argv.py "${a[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### declare array and then append
+declare -a array
+array+=(a)
+array+=(b c)
+argv.py "${array[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Array syntax in wrong place
+ls foo=(1 2)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Single array with :-
+
+# 2024-06 - bash 5.2 and mksh now match, bash 4.4 differed.
+# Could change OSH
+# zsh agrees with OSH, but it fails most test cases
+# 2025-01 We changed OSH.
+
+single=('')
+argv.py ${single[@]:-none} x "${single[@]:-none}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Stripping a whole array unquoted
+# Problem: it joins it first.
+files=('foo.c' 'sp ace.h' 'bar.c')
+argv.py ${files[@]%.c}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Stripping a whole array quoted
+files=('foo.c' 'sp ace.h' 'bar.c')
+argv.py "${files[@]%.c}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Multiple subscripts not allowed
+# NOTE: bash 4.3 had a bug where it ignored the bad subscript, but now it is
+# fixed.
+a=('123' '456')
+argv.py "${a[0]}" "${a[0][0]}"
+## stdout:
+## status: 1
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Length op, index op, then transform op is not allowed
+a=('123' '456')
+echo "${#a[0]}" "${#a[0]/1/xxx}"
+## stdout:
+## status: 1
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### ${mystr[@]} and ${mystr[*]} are no-ops
+s='abc'
+echo ${s[@]}
+echo ${s[*]}
+## STDOUT:
+abc
+abc
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Create a "user" array out of the argv array
+set -- 'a b' 'c'
+array1=('x y' 'z')
+array2=("$@")
+argv.py "${array1[@]}" "${array2[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Tilde expansion within array
+HOME=/home/bob
+a=(~/src ~/git)
+echo "${a[@]}"
+## stdout: /home/bob/src /home/bob/git
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Brace Expansion within Array
+a=(-{a,b} {c,d}-)
+echo "${a[@]}"
+## stdout: -a -b c- d-
+## status: 0
+## timeout: 10
+
+#### array default
+default=('1 2' '3')
+argv.py "${undef[@]:-${default[@]}}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Singleton Array Copy and Assign.  OSH can't index strings with ints
+a=( '12 3' )
+b=( "${a[@]}" )
+c="${a[@]}"  # This decays it to a string
+d=${a[*]}  # This decays it to a string
+echo ${#a[0]} ${#b[0]}
+echo ${#a[@]} ${#b[@]}
+
+# osh is intentionally stricter, and these fail.
+echo ${#c[0]} ${#d[0]}
+echo ${#c[@]} ${#d[@]}
+## STDOUT:
+4 4
+1 1
+4 4
+1 1
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### declare -a / local -a is empty array
+declare -a myarray
+argv.py "${myarray[@]}"
+myarray+=('x')
+argv.py "${myarray[@]}"
+
+f() {
+  local -a myarray
+  argv.py "${myarray[@]}"
+  myarray+=('x')
+  argv.py "${myarray[@]}"
+}
+f
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Create sparse array
+a=()
+(( a[99]=1 )) # osh doesn't parse index assignment outside arithmetic yet
+echo len=${#a[@]}
+argv.py "${a[@]}"
+echo "unset=${a[33]}"
+echo len-of-unset=${#a[33]}
+## STDOUT:
+len=1
+unset=
+len-of-unset=0
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Create sparse array implicitly
+(( a[99]=1 ))
+echo len=${#a[@]}
+argv.py "${a[@]}"
+echo "unset=${a[33]}"
+echo len-of-unset=${#a[33]}
+## STDOUT:
+len=1
+unset=
+len-of-unset=0
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Append sparse arrays
+a=()
+(( a[99]=1 ))
+b=()
+(( b[33]=2 ))
+(( b[66]=3 ))
+a+=( "${b[@]}" )
+argv.py "${a[@]}"
+argv.py "${a[99]}" "${a[100]}" "${a[101]}"
+## stdout:
+## status: 127
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Slice of sparse array with [@]
+# mksh doesn't support this syntax!  It's a bash extension.
+(( a[33]=1 ))
+(( a[66]=2 ))
+(( a[99]=2 ))
+argv.py "${a[@]:15:2}"
+## stdout:
+## status: 127
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Using an array itself as the index on LHS
+shopt -u strict_arith
+a[a]=42
+a[a]=99
+argv.py "${a[@]}" "${a[0]}" "${a[42]}" "${a[99]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Using an array itself as the index on RHS
+shopt -u strict_arith
+a=(1 2 3)
+(( x = a[a] ))
+echo $x
+## stdout: 2
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### a[$x$y] on LHS and RHS
+x=1
+y=2
+a[$x$y]=foo
+
+# not allowed by OSH parsing
+#echo ${a[$x$y]}
+
+echo ${a[12]}
+echo ${#a[@]}
+## STDOUT:
+foo
+1
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Dynamic parsing of LHS a[$code]=value
+
+declare -a array
+array[x=1]='one'
+
+code='y=2'
+#code='1+2'  # doesn't work either
+array[$code]='two'
+
+argv.py "${array[@]}"
+echo x=$x
+echo y=$y
+## STDOUT:
+x=1
+y=2
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Dynamic parsing of RHS ${a[$code]}
+declare -a array
+array=(zero one two three)
+
+echo ${array[1+2]}
+
+code='1+2'
+echo ${array[$code]}
+
+
+# it still dynamically parses
+## STDOUT:
+three
+three
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Is element set?  test -v a[i]
+
+# note: modern versions of zsh implement this
+
+array=(1 2 3 '')
+
+test -v 'array[1]'
+echo set=$?
+
+test -v 'array[3]'
+echo empty=$?
+
+test -v 'array[4]'
+echo unset=$?
+## STDOUT:
+set=0
+empty=0
+unset=1
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### [[ -v a[i] ]]
+
+# note: modern versions of zsh implement this
+
+array=(1 2 3)
+[[ -v array[1] ]]
+echo status=$?
+
+[[ -v array[4] ]]
+echo status=$?
+## STDOUT:
+status=0
+status=1
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### test -v a[i] with arith expressions
+
+array=(1 2 3 '')
+
+test -v 'array[1+1]'
+echo status=$?
+
+test -v 'array[4+1]'
+echo status=$?
+
+echo
+echo dbracket
+
+[[ -v array[1+1] ]]
+echo status=$?
+
+[[ -v array[4+1] ]]
+echo status=$?
+## STDOUT:
+status=0
+status=1
+
+dbracket
+status=0
+status=1
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### More arith expressions in [[ -v array[expr]] ]]
+
+typeset -a array
+array=('' nonempty)
+
+# This feels inconsistent with the rest of bash?
+zero=0
+
+[[ -v array[zero+0] ]]
+echo zero=$?
+
+[[ -v array[zero+1] ]]
+echo one=$?
+
+[[ -v array[zero+2] ]]
+echo two=$?
+
+echo ---
+
+i='0+0'
+[[ -v array[i] ]]
+echo zero=$?
+
+i='0+1'
+[[ -v array[i] ]]
+echo one=$?
+
+i='0+2'
+[[ -v array[i] ]]
+echo two=$?
+
+echo ---
+
+i='0+0'
+[[ -v array[$i] ]]
+echo zero=$?
+
+i='0+1'
+[[ -v array[$i] ]]
+echo one=$?
+
+i='0+2'
+[[ -v array[$i] ]]
+echo two=$?
+## STDOUT:
+zero=0
+one=0
+two=1
+---
+zero=0
+one=0
+two=1
+---
+zero=0
+one=0
+two=1
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Regression: Assigning with out-of-range negative index
+a=()
+a[-1]=1
+
+
+
+# Note: mksh interprets -1 as 0xFFFFFFFF
+## stdout:
+## status: 1
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Regression: Negative index in [[ -v a[index] ]]
+a[0]=x
+a[5]=y
+a[10]=z
+[[ -v a[-1] ]] && echo 'a has -1'
+[[ -v a[-2] ]] && echo 'a has -2'
+[[ -v a[-5] ]] && echo 'a has -5'
+[[ -v a[-6] ]] && echo 'a has -6'
+[[ -v a[-10] ]] && echo 'a has -10'
+[[ -v a[-11] ]] && echo 'a has -11'
+## STDOUT:
+a has -1
+a has -6
+a has -11
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Regression: Negative out-of-range index in [[ -v a[index] ]]
+e=()
+[[ -v e[-1] ]] && echo 'e has -1'
+## stdout:
+## status: 1
+## timeout: 10

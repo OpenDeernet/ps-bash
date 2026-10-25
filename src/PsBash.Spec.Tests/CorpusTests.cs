@@ -39,6 +39,16 @@ public class CorpusTests
             file = SpecImporter.Import(path, File.ReadAllText(src), Path.GetFileName(src));
             File.WriteAllText(path, SpecParser.Format(file));
         }
+        // Bulk import: PSBASH_SPEC_IMPORT_DIR=<dir of oils *.test.sh>; every empty spec/oils/NAME.spec.sh takes NAME.test.sh from it.
+        if (Environment.GetEnvironmentVariable("PSBASH_SPEC_IMPORT_DIR") is { Length: > 0 } dir && file.Cases.Count == 0)
+        {
+            var bulkSrc = Path.Combine(dir, Path.GetFileName(path).Replace(".spec.sh", ".test.sh"));
+            if (File.Exists(bulkSrc))
+            {
+                file = SpecImporter.Import(path, File.ReadAllText(bulkSrc), Path.GetFileName(bulkSrc));
+                File.WriteAllText(path, SpecParser.Format(file));
+            }
+        }
         bool triage = Environment.GetEnvironmentVariable("PSBASH_SPEC_TRIAGE") == "1";
         if (Environment.GetEnvironmentVariable("PSBASH_SPEC_RECORD") == "1")
         {
