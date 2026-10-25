@@ -3749,9 +3749,12 @@ public static class PsEmitter
         // parseable-or-ParseException the fuzz invariant requires.
         bool isScriptCommand =
             cmd.Words.Length > 0 && IsLocalShellScriptCommand(cmd.Words[0]);
+        // A literal command name starting with - or + (`--`, `-x`) would read as a PowerShell operator or parameter.
+        string? dashName = cmd.Words.Length > 0 && GetLiteralValue(cmd.Words[0]) is { Length: > 0 } dn && dn[0] is '-' or '+'
+            ? GetLiteralValue(cmd.Words[0]) : null;
         bool needsCallOperator =
             !isScriptCommand && cmd.Words.Length > 0
-            && IsExpandedCommandWord(cmd.Words[0]);
+            && (IsExpandedCommandWord(cmd.Words[0]) || dashName is not null);
         string leading = cmd.Words.Length == 0 ? ""
             : isScriptCommand ? "bash "
             : needsCallOperator ? "& "
@@ -3764,6 +3767,7 @@ public static class PsEmitter
         // double-quoted string, the same form the already-working single-part
         // quoted case (`"$gobin/go" help`) produced. Hit Go's clean.bash.
         string commandWordText = cmd.Words.Length == 0 ? ""
+            : dashName is not null ? PsBuild.SingleQuote(dashName)
             : needsCallOperator && cmd.Words[0].Parts.Length > 1
                 ? TransformWordPath(
                     FlattenPartsToDoubleQuotedString(cmd.Words[0].Parts))

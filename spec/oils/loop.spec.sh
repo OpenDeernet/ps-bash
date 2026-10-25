@@ -80,7 +80,6 @@ a
 --
 ## END
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### break in condition of loop
@@ -258,7 +257,7 @@ status=99
 - exit
 ## END
 ## status: 5
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash GAP-2 a builtin keyword reached through a variable ($b where b=break) is "command not found"
 ## timeout: 10
 
 #### \break \continue \return \exit

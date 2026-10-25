@@ -317,3 +317,14 @@ echo "p   q" | { read line; echo $line; }
 p q
 ## END
 ## status: 0
+
+#### command names that start with a dash are commands, not operators
+--
+echo rc=$?
+-x foo
+echo rc=$?
+## STDOUT:
+rc=127
+rc=127
+## END
+## status: 0
