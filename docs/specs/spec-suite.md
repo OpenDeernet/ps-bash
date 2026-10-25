@@ -210,3 +210,15 @@ A tman job is killed at its max-time and loses its summary, so the corpus runner
 `PSBASH_SPEC_RESULTS=<file>` appends `PASS|FAIL|SKIP<TAB>file<TAB>ms` per file as it finishes;
 `PSBASH_SPEC_RESUME=1` skips files the results file already records as PASS. Re-run until no file is SKIP.
 Full suite (301 files, 316 tests): clean, 32m47s.
+
+### 10.2 Parallelism vs memory (measured)
+
+`--filter "DisplayName~differential/"` (77 tests, all green at every setting), one tman job each:
+
+| `PSBASH_SPEC_PAR` | wall | peak memory |
+|---|---|---|
+| 2 | 24m26s | 2.9 GB |
+| 4 (default) | 18m19s | 4.2 GB |
+| 6 | 16m24s | 6.0 GB |
+
+4 stays the default: 6 buys 10% more speed for 1.8 GB more. On a shared machine use 2.
