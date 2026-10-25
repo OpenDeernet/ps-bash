@@ -37,6 +37,20 @@ public class BashShellStateTests : IClassFixture<SharedPwshFixture>
     }
 
     [Fact]
+    public void Restore_EndsReadonlyMadeInsideTheBody()
+    {
+        // `( readonly v=1 )` must not leave v readonly in the parent: a later `unset v` has to work.
+        var r = Run(
+            "$env:PSB_RO = 'x'; "
+            + "$s = [PsBash.Cmdlets.BashShellState]::Save($ExecutionContext.SessionState); "
+            + "[PsBash.Cmdlets.BashShellState]::MarkReadonly('PSB_RO'); "
+            + "[void][PsBash.Cmdlets.BashShellState]::Restore($ExecutionContext.SessionState, $s); "
+            + "Invoke-BashUnset PSB_RO; \"rc=$global:LASTEXITCODE v=[$env:PSB_RO]\"").AssertSuccess();
+
+        Assert.Contains("rc=0 v=[]", r.Stdout);
+    }
+
+    [Fact]
     public void Restore_ReportsTheXtraceLevelToReapply()
     {
         var r = Run(

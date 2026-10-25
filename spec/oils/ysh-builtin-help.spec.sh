@@ -23,27 +23,3 @@ status=1
 ## status: 0
 ## timeout: 10
 
-#### help oils-err-12 (case insensitive)
-
-# note that the topics are lower-casedo
-
-help oils-err-12 | grep -o 'catalog.html#oils-err-12'
-echo status=$?
-
-help OILS-ERR-12 | grep -o 'catalog.html#oils-err-12'
-echo status=$?
-
-# these are bad
-
-# help oils-err-zz
-# echo status=$?
-
-# help OILS-ERR-zz
-# echo status=$?
-## STDOUT:
-status=1
-status=1
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10

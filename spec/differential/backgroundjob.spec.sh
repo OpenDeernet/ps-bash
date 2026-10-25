@@ -22,7 +22,7 @@ jobs; echo empty
 
 #### Differential_Kill_ListSignals_Golden
 kill -l | head -1
-## stdout:  1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP
+## stdout: 1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 

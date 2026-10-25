@@ -187,3 +187,72 @@ rc=0
 rc=2
 ## END
 ## status: 0
+
+#### InTempDir
+t=$(mktemp -d); cd "$t" || exit 1; ls /nonexistent_psb 2>&1 >o | tr a-z A-Z; echo "o=[$(cat o)]"; cd /; rm -rf "$t"
+## STDOUT:
+LS: CANNOT ACCESS '/NONEXISTENT_PSB': NO SUCH FILE OR DIRECTORY
+o=[]
+## END
+## status: 0
+
+#### InTempDir row 2
+t=$(mktemp -d); cd "$t" || exit 1; n=/dev/null; echo hi > $n; echo rc=$?; ls /nonexistent_psb 2> $n; echo rc=$?; ls; cd /; rm -rf "$t"
+## STDOUT:
+rc=0
+rc=2
+## END
+## status: 0
+
+#### InTempDir row 3
+t=$(mktemp -d); cd "$t" || exit 1; ls /nonexistent_psb 2> e; echo rc=$?; ls /nonexistent_psb2 2>> e; cat -A e; cd /; rm -rf "$t"
+## STDOUT:
+rc=2
+ls: cannot access '/nonexistent_psb': No such file or directory$
+ls: cannot access '/nonexistent_psb2': No such file or directory$
+## END
+## status: 0
+
+#### InTempDir row 4
+t=$(mktemp -d); cd "$t" || exit 1; echo x >a >b; echo y >p >q >r; echo old > s; echo new >>s >u; d=.; echo z >$d/m >"$d/n"; ls /nonexistent_psb 2>f1 2>f2; for f in a b p q r s u m n; do printf '%s=[%s]\n' $f "$(cat $f)"; done; wc -c < f1; cat f2; cd /; rm -rf "$t"
+## STDOUT:
+a=[]
+b=[x]
+p=[]
+q=[]
+r=[y]
+s=[old]
+u=[new]
+m=[]
+n=[z]
+0
+ls: cannot access '/nonexistent_psb': No such file or directory
+## END
+## status: 0
+
+#### InTempDir row 5
+t=$(mktemp -d); cd "$t" || exit 1; echo x >/dev/null >/dev/null; echo rc=$?; ls /nonexistent_psb 2>/dev/null 2>/dev/null; echo rc=$?; echo after; cd /; rm -rf "$t"
+## STDOUT:
+rc=0
+rc=2
+after
+## END
+## status: 0
+
+#### InTempDir row 6
+t=$(mktemp -d); cd "$t" || exit 1; { echo a; ls /nonexistent_psb; } 2>e | tr a-z A-Z; cat -A e; cd /; rm -rf "$t"
+## STDOUT:
+A
+ls: cannot access '/nonexistent_psb': No such file or directory$
+## END
+## status: 0
+
+#### InTempDir row 7
+t=$(mktemp -d); cd "$t" || exit 1; { echo out; ls /nonexistent_psb; echo out2; } &> e; cat -A e; ls /nonexistent_psb >&e2; cat -A e2; cd /; rm -rf "$t"
+## STDOUT:
+out$
+ls: cannot access '/nonexistent_psb': No such file or directory$
+out2$
+ls: cannot access '/nonexistent_psb': No such file or directory$
+## END
+## status: 0

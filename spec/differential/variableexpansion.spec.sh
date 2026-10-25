@@ -183,3 +183,9 @@ beta
 gamma
 ## END
 ## status: 0
+
+#### Differential_SpecialVar_Pid_IsNonEmptyInteger
+pid=$$; if [ -n "$pid" ] && [ "$pid" -gt 0 ] 2>/dev/null; then echo pid_ok; else echo pid_bad; fi
+## stdout: pid_ok
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)

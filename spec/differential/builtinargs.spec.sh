@@ -392,3 +392,380 @@ test 2>/dev/null; echo $?
 test ''; echo $?
 ## stdout: 1
 ## status: 0
+
+#### Eq
+echo -E -e 'a\tb'
+## stdout: a	b
+## status: 0
+
+#### Eq row 2
+echo -Ee 'a\tb'
+## stdout: a	b
+## status: 0
+
+#### Eq row 3
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --directory sub; cd /; rm -rf "$d"
+## stdout: sub
+## status: 0
+
+#### Eq row 4
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --group; cd /; rm -rf "$d"
+## STDOUT:
+sub
+a
+b
+c
+## END
+## status: 0
+
+#### Eq row 5
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --sort=size; cd /; rm -rf "$d"
+## STDOUT:
+sub
+b
+c
+a
+## END
+## status: 0
+
+#### Eq row 6
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -1; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub
+## END
+## status: 0
+
+#### Eq row 7
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --reverse; cd /; rm -rf "$d"
+## STDOUT:
+sub
+c
+b
+a
+## END
+## status: 0
+
+#### Eq row 8
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -pF; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub/
+## END
+## status: 0
+
+#### Eq row 9
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --color=auto; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub
+## END
+## status: 0
+
+#### Eq row 10
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --classify=never; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub
+## END
+## status: 0
+
+#### Eq row 11
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --sort=time; cd /; rm -rf "$d"
+## STDOUT:
+sub
+c
+b
+a
+## END
+## status: 0
+
+#### Eq row 12
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -r; cd /; rm -rf "$d"
+## STDOUT:
+sub
+c
+b
+a
+## END
+## status: 0
+
+#### Eq row 13
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -Fp; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub/
+## END
+## status: 0
+
+#### Eq row 14
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --rev; cd /; rm -rf "$d"
+## STDOUT:
+sub
+c
+b
+a
+## END
+## status: 0
+
+#### Eq row 15
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --sort=s; cd /; rm -rf "$d"
+## STDOUT:
+sub
+b
+c
+a
+## END
+## status: 0
+
+#### Eq row 16
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --classify; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub/
+## END
+## status: 0
+
+#### Eq row 17
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -1 -r -S; cd /; rm -rf "$d"
+## STDOUT:
+a
+c
+b
+sub
+## END
+## status: 0
+
+#### Eq row 18
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -tS; cd /; rm -rf "$d"
+## STDOUT:
+sub
+b
+c
+a
+## END
+## status: 0
+
+#### Eq row 19
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --color=never; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub
+## END
+## status: 0
+
+#### Eq row 20
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -F; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub/
+## END
+## status: 0
+
+#### Eq row 21
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -Sr; cd /; rm -rf "$d"
+## STDOUT:
+a
+c
+b
+sub
+## END
+## status: 0
+
+#### Eq row 22
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls a -r b; cd /; rm -rf "$d"
+## STDOUT:
+b
+a
+## END
+## status: 0
+
+#### Eq row 23
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --group-directories-first; cd /; rm -rf "$d"
+## STDOUT:
+sub
+a
+b
+c
+## END
+## status: 0
+
+#### Eq row 24
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -tr; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub
+## END
+## status: 0
+
+#### Eq row 25
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -d sub; cd /; rm -rf "$d"
+## stdout: sub
+## status: 0
+
+#### Eq row 26
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -t; cd /; rm -rf "$d"
+## STDOUT:
+sub
+c
+b
+a
+## END
+## status: 0
+
+#### Eq row 27
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -p; cd /; rm -rf "$d"
+## STDOUT:
+a
+b
+c
+sub/
+## END
+## status: 0
+
+#### Eq row 28
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -- a; cd /; rm -rf "$d"
+## stdout: a
+## status: 0
+
+#### Eq row 29
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -S; cd /; rm -rf "$d"
+## STDOUT:
+sub
+b
+c
+a
+## END
+## status: 0
+
+#### Eq row 30
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -St; cd /; rm -rf "$d"
+## STDOUT:
+sub
+c
+b
+a
+## END
+## status: 0
+
+#### Eq row 31
+[ -e -e ]; echo $?
+## stdout: 1
+## status: 0
+
+#### Eq row 32
+[ ! -z x -a ! -z y ]; echo $?
+## stdout: 0
+## status: 0
+
+#### Eq row 33
+d=$(mktemp -d) && printf '' > "$d/a" && test "$d/a" -ef "$d/a"; echo $?; test "$d/a" -nt "$d/missing"; echo $?; test "$d/missing" -ot "$d/a"; echo $?
+## STDOUT:
+0
+0
+0
+## END
+## status: 0
+
+#### Eq row 34
+d=$(mktemp -d) && printf '' > "$d/f" && test -s "$d/f"; echo $?; echo x > "$d/f"; test -s "$d/f"; echo $?; test -r "$d/f" -a -w "$d/f"; echo $?
+## STDOUT:
+1
+0
+0
+## END
+## status: 0
+
+#### Eq row 35
+[ \( -n x \) -a -n y ]; echo $?
+## stdout: 0
+## status: 0
+
+#### Eq row 36
+d=$(mktemp -d) && printf '' > "$d/f" && mkdir "$d/dir" && test -e "$d/f" -a -d "$d/dir"; echo $?; test -e "$d/nope" -o -f "$d/f"; echo $?; test -w "$d/nope"; echo $?; ls "$d"
+## STDOUT:
+0
+0
+1
+dir
+f
+## END
+## status: 0
+
+#### Eq row 37
+[ 1 -eq 1 -a 2 -lt 3 ]; echo $?
+## stdout: 0
+## status: 0
+
+#### Eq row 38
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -- -x 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=2
+## status: 0
+
+#### Eq row 39
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --sort=bogus 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=1
+## status: 0
+
+#### Eq row 40
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --color=bogus 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=1
+## status: 0
+
+#### Eq row 41
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --a 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=2
+## status: 0
+
+#### Eq row 42
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --dir 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=2
+## status: 0
+
+#### Eq row 43
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --classify=bogus 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=1
+## status: 0
+
+#### Eq row 44
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls nosuch 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=2
+## status: 0
+
+#### Eq row 45
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --sort 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=2
+## status: 0
+
+#### Eq row 46
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --c 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=2
+## status: 0
+
+#### Eq row 47
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls -Y 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=2
+## status: 0
+
+#### Eq row 48
+d=$(mktemp -d) && cd "$d" && mkdir sub && printf 'x' > a && printf 'yyyyyyyyyy' > b && printf 'zzz' > c && touch -t 202001010000 a && touch -t 202101010000 b && touch -t 202201010000 c; ls --nope 2>/dev/null; echo rc=$?; cd /; rm -rf "$d"
+## stdout: rc=2
+## status: 0

@@ -53,10 +53,12 @@ public static class BashShellState
     public sealed class Snapshot
     {
         internal Snapshot(Dictionary<string, string> env, (bool Exists, object? Value)[] globals,
-            Dictionary<string, bool> shopt, bool xtrace)
+            Dictionary<string, bool> shopt, bool xtrace, HashSet<string> readonlyNames)
         {
-            Env = env; Globals = globals; Shopt = shopt; Xtrace = xtrace;
+            Env = env; Globals = globals; Shopt = shopt; Xtrace = xtrace; Readonly = readonlyNames;
         }
+
+        internal HashSet<string> Readonly { get; }
 
         internal Dictionary<string, string> Env { get; }
         internal (bool Exists, object? Value)[] Globals { get; }
@@ -80,8 +82,10 @@ public static class BashShellState
             globals[i] = v is null ? (false, null) : (true, CloneMutable(v.Value));
         }
 
+        HashSet<string> readonlyNow;
+        lock (ReadonlyNames) readonlyNow = new HashSet<string>(ReadonlyNames, StringComparer.Ordinal);
         return new Snapshot(env, globals, InvokeBashShoptCommand.SnapshotOptions(),
-            IsTrue(session.PSVariable.GetValue("global:__BashXtrace")));
+            IsTrue(session.PSVariable.GetValue("global:__BashXtrace")), readonlyNow);
     }
 
     /// <summary>
@@ -115,6 +119,8 @@ public static class BashShellState
         }
 
         InvokeBashShoptCommand.RestoreOptions(saved.Shopt);
+        // `readonly` made inside the body ends with it, like the variable it protects.
+        lock (ReadonlyNames) { ReadonlyNames.Clear(); ReadonlyNames.UnionWith(saved.Readonly); }
         return tracingNow == saved.Xtrace ? null : saved.Xtrace;
     }
 

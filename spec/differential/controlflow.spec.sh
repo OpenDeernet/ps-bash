@@ -81,3 +81,30 @@ n=0; until [ $n -ge 3 ]; do echo $n; n=$((n+1)); done
 2
 ## END
 ## status: 0
+
+#### Differential_Function_LocalScopeIsolation
+x=outer; f() { local x=inner; echo $x; }; f; echo $x
+## STDOUT:
+inner
+outer
+## END
+## status: 0
+
+#### Differential_For_CStyle
+for ((i=0; i<3; i++)); do echo $i; done
+## STDOUT:
+0
+1
+2
+## END
+## status: 0
+
+#### Differential_While_FalseCondition_ZeroIterations
+while false; do echo body; done; echo $?
+## stdout: 0
+## status: 0
+
+#### Differential_For_BreakExitsEarly
+n=0; for x in a b c; do n=$((n+1)); if [ $n -eq 2 ]; then break; fi; echo $x; done
+## stdout: a
+## status: 0

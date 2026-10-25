@@ -266,3 +266,477 @@ a
 c
 ## END
 ## status: 0
+
+#### Operand_CommandSubstitutionResultIsGlobExpanded
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' '1' > 'x'
+printf '%s\n' '2' > 'y'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+printf '[%s]' $(echo '*'); echo
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+[x][y]
+== exit 0
+== fs
+D .
+F ./x MQo=
+F ./y Mgo=
+## END
+## status: 0
+
+#### BareRedirect_CreatesFile
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+> f; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./a QQo=
+F ./f 
+## END
+## status: 0
+
+#### True_RedirectAppend_Creates
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+true >> f; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./a QQo=
+F ./f 
+## END
+## status: 0
+
+#### Colon_RedirectFailure_FlipsOrChain
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+: 2>/dev/null > nodir/f || echo failed; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+failed
+rc=0
+== exit 0
+== fs
+D .
+F ./a QQo=
+## END
+## status: 0
+
+#### ForList_CommandSubstitutionGlobWithoutMatchStaysLiteral
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' '1' > 'x'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+for f in $(echo 'q*'); do echo "<$f>"; done
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+<q*>
+== exit 0
+== fs
+D .
+F ./x MQo=
+## END
+## status: 0
+
+#### Colon_RedirectOut_CreatesFile
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+: > f; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./a QQo=
+F ./f 
+## END
+## status: 0
+
+#### False_RedirectOut_CreatesFileAndFails
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+false > f; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=1
+== exit 0
+== fs
+D .
+F ./a QQo=
+F ./f 
+## END
+## status: 0
+
+#### Colon_NoSpace_RedirectOut_Truncates
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'old content' > 'f'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+:>f; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./f 
+## END
+## status: 0
+
+#### True_RedirectOut_Truncates
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'old' > 'f'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+true > f; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./f 
+## END
+## status: 0
+
+#### Colon_RedirectOut_TruncatesExistingFile
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'old content' > 'f'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+: > f; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./f 
+## END
+## status: 0
+
+#### ForList_CommandSubstitutionResultIsGlobExpanded
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' '1' > 'x'
+printf '%s\n' '2' > 'y'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+for f in $(echo '*'); do echo "<$f>"; done
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+<x>
+<y>
+== exit 0
+== fs
+D .
+F ./x MQo=
+F ./y Mgo=
+## END
+## status: 0
+
+#### BareRedirect_Append_CreatesAndKeeps
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'stays' > 'keep'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+>> new; >> keep; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./keep c3RheXMK
+F ./new 
+## END
+## status: 0
+
+#### Colon_RedirectAppend_CreatesAndKeepsContent
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'stays' > 'keep'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+: >> new; : >> keep; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./keep c3RheXMK
+F ./new 
+## END
+## status: 0
+
+#### Colon_RedirectInMissingDirectory_FailsWithStatus1
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+{ : > nodir/f; } 2>/dev/null; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=1
+== exit 0
+== fs
+D .
+F ./a QQo=
+## END
+## status: 0
+
+#### Colon_RedirectSuccess_DoesNotTakeOrBranch
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+: > f || echo failed; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./a QQo=
+F ./f 
+## END
+## status: 0
+
+#### Colon_RedirectToDevNull_CreatesNothing
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+: > /dev/null; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./a QQo=
+## END
+## status: 0
+
+#### Echo_RedirectInMissingDirectory_FailsWithStatus1
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+{ echo hi > nodir/f; } 2>/dev/null; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=1
+== exit 0
+== fs
+D .
+F ./a QQo=
+## END
+## status: 0
+
+#### Colon_TwoRedirects_OpensBoth
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'old' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+: > a > b; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./a 
+F ./b 
+## END
+## status: 0
+
+#### True_RedirectInMissingDirectory_FailsWithStatus1
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'A' > 'a'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+{ true >> nodir/f; } 2>/dev/null; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=1
+== exit 0
+== fs
+D .
+F ./a QQo=
+## END
+## status: 0
+
+#### BareRedirect_TruncatesExistingFile
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'old' > 'f'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+> f; echo rc=$?
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+rc=0
+== exit 0
+== fs
+D .
+F ./f 
+## END
+## status: 0

@@ -122,3 +122,18 @@ rc=0
 [[ ! -z x ]]; echo $?
 ## stdout: 0
 ## status: 0
+
+#### Eq
+: $(echo side >&2) 2>&1; echo rc=$?
+## stdout: rc=0
+## status: 0
+
+#### Eq row 2
+false; : ; echo rc=$?
+## stdout: rc=0
+## status: 0
+
+#### Eq row 3
+:; echo rc=$?
+## stdout: rc=0
+## status: 0

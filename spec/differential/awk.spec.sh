@@ -142,3 +142,23 @@ small
 big
 ## END
 ## status: 0
+
+#### Eq
+printf 'hello\n' | awk '{print substr($0,2,3)}'
+## stdout: ell
+## status: 0
+
+#### Eq row 2
+printf 'ABC\n' | awk '{print tolower($0)}'
+## stdout: abc
+## status: 0
+
+#### Eq row 3
+printf 'abc\n' | awk '{print toupper($0)}'
+## stdout: ABC
+## status: 0
+
+#### Eq row 4
+printf 'hello\n' | awk '{print length($0)}'
+## stdout: 5
+## status: 0

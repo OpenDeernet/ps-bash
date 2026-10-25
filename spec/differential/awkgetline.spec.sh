@@ -148,3 +148,35 @@ M:c
 3
 ## END
 ## status: 0
+
+#### Eq
+cd "$(mktemp -d)" && printf 'a\nb\nc\n' > f && printf 'x\ny\n' > g && printf '1\n2\n3\n' | awk '{ getline x; print $0 "-" x; print NR }'
+## STDOUT:
+1-2
+2
+3-2
+3
+## END
+## status: 0
+
+#### Eq row 2
+cd "$(mktemp -d)" && printf 'a\nb\nc\n' > f && printf 'x\ny\n' > g && awk 'END{r = getline; print r, $0}' f
+## stdout: 0 c
+## status: 0
+
+#### Eq row 3
+cd "$(mktemp -d)" && printf 'a\nb\nc\n' > f && printf 'x\ny\n' > g && awk 'BEGIN{ print fflush() }'
+## stdout: 0
+## status: 0
+
+#### Eq row 4
+cd "$(mktemp -d)" && printf 'a\nb\nc\n' > f && printf 'x\ny\n' > g && awk '{print FILENAME, FNR; getline; print "g", FILENAME, FNR, NR}' f g
+## STDOUT:
+f 1
+g f 2 2
+f 3
+g g 1 4
+g 2
+g g 2 5
+## END
+## status: 0

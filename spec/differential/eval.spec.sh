@@ -49,3 +49,14 @@ f() { eval 'echo inside'; }; f
 eval false; echo $?
 ## stdout: 1
 ## status: 0
+
+#### Differential_Eval_FnmShapedPayload_DoesNotHang
+export PATH=/usr/bin
+eval $(printf 'export FNM_MULTISHELL_PATH="/tmp/fnm_msh"\nexport PATH="/tmp/fnm_msh":"$PATH"\n')
+echo $FNM_MULTISHELL_PATH
+echo $PATH
+## STDOUT:
+/tmp/fnm_msh
+/tmp/fnm_msh:/usr/bin
+## END
+## status: 0

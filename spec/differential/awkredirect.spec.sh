@@ -196,3 +196,546 @@ fromawk
 rc 0
 ## END
 ## status: 0
+
+#### Append_AddsToExistingFile
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'old' > 'o'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "x" >> "o"; print "y" >> "o" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./o b2xkCngKeQo=
+## END
+## status: 0
+
+#### Redirect_AppendAfterClose_KeepsEarlierContent
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ f = "o"; print "a" > f; close(f); print "b" >> f }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./o YQpiCg==
+## END
+## status: 0
+
+#### Redirect_FflushPublishesToGetline
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ f = "fl"; print "x" > f; print fflush(f); print fflush("zz"); getline l < f; print "got[" l "]" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+0
+-1
+got[x]
+== exit 0
+== fs
+D .
+F ./fl eAo=
+## END
+## status: 0
+
+#### Redirect_TargetIsAConcatenation
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ x = "p"; print "q" > x "3"; print > "p2" 5 }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./p25 Cg==
+F ./p3 cQo=
+## END
+## status: 0
+
+#### Redirect_CloseReturnsZeroThenMinusOne
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "x" > "f"; print close("f"); print close("f") }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+0
+-1
+== exit 0
+== fs
+D .
+F ./f eAo=
+## END
+## status: 0
+
+#### Redirect_TruncateOnFirstOpenThenAppendWhileOpen
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "a" > "o"; print "b" > "o" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./o YQpiCg==
+## END
+## status: 0
+
+#### Print_NoArgs_RedirectWritesRecord
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'a 1
+b 2
+a 3
+' > 'data'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk '{ print > "na" }' data
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./data YSAxCmIgMgphIDMKCg==
+F ./na YSAxCmIgMgphIDMKCg==
+## END
+## status: 0
+
+#### Redirect_CloseThenGetlineReadsBack
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'a 1
+b 2
+a 3
+' > 'data'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk '{ print NR > "nr.out" } END{ close("nr.out"); while ((getline l < "nr.out") > 0) print "r:" l }' data
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+r:1
+r:2
+r:3
+r:4
+== exit 0
+== fs
+D .
+F ./data YSAxCmIgMgphIDMKCg==
+F ./nr.out MQoyCjMKNAo=
+## END
+## status: 0
+
+#### Redirect_UnwritablePathIsFatal_Exit2
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "x" > "no/such/dir/f"; print "after" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 2
+== fs
+D .
+## END
+## status: 0
+
+#### Redirect_ExitStatusKept_FileStillWritten
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "x" > "ex"; exit 3 }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 3
+== fs
+D .
+F ./ex eAo=
+## END
+## status: 0
+
+#### Redirect_ParenthesizedComparisonIsNotARedirect
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print (3 > 2); print (2 > 3); print (1 > 2) ? "A" : "B" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+1
+0
+B
+== exit 0
+== fs
+D .
+## END
+## status: 0
+
+#### Print_ManyFilesInLoop
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ for (i = 0; i < 3; i++) print i > ("f" i) }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./f0 MAo=
+F ./f1 MQo=
+F ./f2 Mgo=
+## END
+## status: 0
+
+#### Printf_ParenthesizedArgs_Redirect
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ printf("%s|%s\n", "a", "b") > "pf"; print("c", "d") > "pp" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./pf YXxiCg==
+F ./pp YyBkCg==
+## END
+## status: 0
+
+#### Printf_AppendToLogFile
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'a 1
+b 2
+a 3
+' > 'data'
+printf '%s\n' 'start' > 'log'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk '{ printf "%s\n", $2 >> "log" }' data
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./data YSAxCmIgMgphIDMKCg==
+F ./log c3RhcnQKMQoyCjMKCg==
+## END
+## status: 0
+
+#### Redirect_ArgsWithCommaThenTarget
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print 1, 2 > "p1"; print 3, 4 > "p1" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./p1 MSAyCjMgNAo=
+## END
+## status: 0
+
+#### Redirect_TruncatesPreExistingFile
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'old' > 'o'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "new" > "o" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./o bmV3Cg==
+## END
+## status: 0
+
+#### Redirect_EmptyNameIsFatal_Exit2
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "x" > ""; print "after" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 2
+== fs
+D .
+## END
+## status: 0
+
+#### Redirect_AppendThenTruncateOperator_SameStreamKeepsAppending
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'old' > 'g'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "1" >> "g"; print "2" > "g" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./g b2xkCjEKMgo=
+## END
+## status: 0
+
+#### Redirect_SystemSeesUnclosedFile
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "fromawk" > "s.txt"; r = system("cat s.txt"); print "rc", r }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+fromawk
+rc 0
+== exit 0
+== fs
+D .
+F ./s.txt ZnJvbWF3awo=
+## END
+## status: 0
+
+#### Printf_Redirect_AndAppend
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ printf "%s-%d\n", "a", 3 > "pf"; printf "z\n" >> "pf" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./pf YS0zCnoK
+## END
+## status: 0
+
+#### Redirect_DevNullAndStdoutAlias
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ print "x" > "/dev/null"; print "1"; print "2" > "/dev/stdout"; print "3"; print "d" > "-" }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+1
+2
+3
+d
+== exit 0
+== fs
+D .
+## END
+## status: 0
+
+#### Print_SplitIntoFilesByFirstField
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+printf '%s\n' 'a 1
+b 2
+a 3
+' > 'data'
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk '{ print $2 > ($1 ".txt") }' data
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./.txt Cg==
+F ./a.txt MQozCg==
+F ./b.txt Mgo=
+F ./data YSAxCmIgMgphIDMKCg==
+## END
+## status: 0
+
+#### Redirect_CloseThenReopenTruncatesAgain
+__fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }
+d=$(mktemp -d) && cd "$d" && { :
+
+} >/dev/null 2>&1
+echo '== stdout'
+{ :
+awk 'BEGIN{ f = "o"; print "a" > f; print "b" > f; close(f); print "c" > f }'
+} 2>/dev/null
+echo "== exit $?"
+echo '== fs'
+__fs_snap
+cd /; rm -rf "$d"
+## STDOUT:
+== stdout
+== exit 0
+== fs
+D .
+F ./o Ywo=
+## END
+## status: 0

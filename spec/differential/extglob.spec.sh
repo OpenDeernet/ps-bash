@@ -58,3 +58,24 @@ x(y esc
 A default
 ## END
 ## status: 0
+
+#### Eq
+!(false); echo "rc=$?"; if !(false); then echo neg; fi; x=1; [[ $x == !(2) ]] && echo pat
+## STDOUT:
+rc=0
+neg
+pat
+## END
+## status: 0
+
+#### Eq row 2
+shopt -s extglob
+v=aaa.tar.gz; echo "${v#+(a)}|${v##+(a)}|${v#*(a)}|${v##*(a).}"; echo "${v%.@(gz|bz2)}|${v%%.@(tar|gz)*}|${v%?(.gz)}|${v%%?(.gz)}"; echo "${v#!(a)}|${v##!(z)}|${v%!(z)}|${v%%!(z)}"; echo "${v/+(a)/X}|${v//@(a|z)/Y}|${v/!(a)/N}"; w=foo.log.txt; echo "${w%.!(txt)}|${w%%.!(log)}"
+## STDOUT:
+aa.tar.gz|.tar.gz|aaa.tar.gz|tar.gz
+aaa.tar|aaa|aaa.tar.gz|aaa.tar
+aaa.tar.gz||aaa.tar.gz|
+X.tar.gz|YYY.tYr.gY|N
+foo|foo
+## END
+## status: 0
