@@ -153,3 +153,18 @@ public class SpecParserNoTrailingNewlineTests
         Assert.Equal("x", f.Cases[0].Primary.Stdout);
     }
 }
+
+
+public class SpecRunnerTimeoutTests
+{
+    private static SpecCase Case(XfailMark? xfail, TimeSpan? timeout)
+        => new("c", "echo", new Expectation(null, null, null), Array.Empty<Expectation>(), xfail, timeout, false);
+
+    [Fact]
+    public void A_known_gap_gets_a_short_timeout_so_a_hang_does_not_cost_the_full_limit()
+        => Assert.Equal(SpecRunner.KnownGapTimeout, SpecRunner.TimeoutFor(Case(new XfailMark("g", "r"), TimeSpan.FromSeconds(10))));
+
+    [Fact]
+    public void A_case_expected_to_pass_keeps_its_own_timeout()
+        => Assert.Equal(TimeSpan.FromSeconds(10), SpecRunner.TimeoutFor(Case(null, TimeSpan.FromSeconds(10))));
+}

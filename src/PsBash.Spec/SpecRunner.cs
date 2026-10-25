@@ -11,6 +11,15 @@ public static class SpecRunner
 {
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
 
+    /// <summary>A known gap is only checked for "still fails / now passes"; a hang must not cost its whole timeout every run.</summary>
+    public static readonly TimeSpan KnownGapTimeout = TimeSpan.FromSeconds(3);
+
+    public static TimeSpan TimeoutFor(SpecCase c)
+    {
+        var limit = c.Timeout ?? DefaultTimeout;
+        return c.Xfail is not null && limit > KnownGapTimeout ? KnownGapTimeout : limit;
+    }
+
     public static async Task<IReadOnlyList<CaseResult>> RunAsync(
         SpecFile file, IScriptExecutor executor, int parallelism = 4, CancellationToken cancel = default)
     {
@@ -22,7 +31,7 @@ public static class SpecRunner
             try
             {
                 ExecResult actual;
-                try { actual = await executor.RunAsync(c.Script, c.Timeout ?? DefaultTimeout, cancel); }
+                try { actual = await executor.RunAsync(c.Script, TimeoutFor(c), cancel); }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     actual = new ExecResult(-1, "", "runner error: " + ex.Message);
