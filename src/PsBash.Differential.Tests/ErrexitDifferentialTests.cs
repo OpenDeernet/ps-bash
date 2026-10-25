@@ -136,6 +136,10 @@ public class ErrexitDifferentialTests
         Assert.DoesNotContain(result.Stderr.Split('\n'), l => l.StartsWith("ps-bash: ", StringComparison.Ordinal)); // [ps-bash] lines are the harness trace
     }
     [SkippableFact]
+    public Task TestAndArithCommands_AcceptTrailingRedirects()
+        => Eq("[[ 1 -eq 1 ]] 2>/dev/null; echo a; (( 1 )) >/dev/null; echo b; [[ x == y ]] 2>/dev/null || echo no; (( 0 )) 2>/dev/null || echo zero; f=$(mktemp); [[ -n $f ]] > \"$f\"; wc -c < \"$f\"; rm -f \"$f\"");
+
+    [SkippableFact]
     public Task Nounset_DefaultForms_AreNotChecked() => Eq("set -u; echo [${u1:-d}] [${u2-d}] [${u3+x}]; echo after");
 
     [SkippableFact]

@@ -4879,6 +4879,13 @@ public class PsEmitterTests
         Assert.DoesNotContain("__BashUnbound", PsEmitter.Transpile("echo $((x + 1))"));
     }
 
+    [Theory]
+    [InlineData("[[ 1 -eq 1 ]] 2>/dev/null")]
+    [InlineData("(( 1 )) >/dev/null")]
+    [InlineData("[[ x == y ]] 2>/dev/null || echo no")]
+    public void Transpile_TestAndArithCommandsAcceptTrailingRedirects(string bash)
+        => Assert.DoesNotContain("parse error", PsEmitter.Transpile(bash + "; echo after"));
+
     [Fact]
     public void Transpile_WithoutNounset_PlainReadsAreUnchanged()
         => Assert.DoesNotContain("unbound variable", PsEmitter.Transpile("echo \"$a\""));

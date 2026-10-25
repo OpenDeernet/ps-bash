@@ -338,7 +338,7 @@ public sealed partial class BashParser
             return ParseFunction();
 
         if (Peek().Kind == BashTokenKind.Word && Peek().Value is "[" or "[[")
-            return ParseTestExpr();
+            return WithTrailingRedirects(ParseTestExpr());
 
         // name() { body } form: Word followed by LParen RParen
         if (Peek().Kind == BashTokenKind.Word && IsParensFunctionDef())
@@ -346,7 +346,7 @@ public sealed partial class BashParser
 
         // Standalone arithmetic: (( expr ))
         if (Peek().Kind == BashTokenKind.LParen && IsDoubleLParen())
-            return ParseArithCommand();
+            return WithTrailingRedirects(ParseArithCommand());
 
         // Subshell: (cmd1; cmd2)
         if (Peek().Kind == BashTokenKind.LParen)
@@ -357,6 +357,16 @@ public sealed partial class BashParser
             return ParseStandaloneBraceGroup();
 
         return ParseSimpleCommand();
+    }
+
+    /// <summary>
+    /// `[[ ... ]] 2>/dev/null` / `(( ... )) >f`: the test and arithmetic commands carry no redirect list of
+    /// their own, so a trailing redirect makes them the single body of a redirected group (same scope).
+    /// </summary>
+    private Command WithTrailingRedirects(Command command)
+    {
+        var redirects = ParseTrailingRedirects();
+        return redirects.IsDefaultOrEmpty ? command : new Command.BraceGroup(command, redirects);
     }
 
     private Command.BoolExpr ParseTestExpr()

@@ -1,0 +1,17 @@
+PSBASH-ORACLE-CASSETTE v1
+bash-version: 5.2.21(1)-release
+exit-code: 0
+script-length: 191
+stdout-length: 14
+stderr-length: 0
+==== SCRIPT ====
+[[ 1 -eq 1 ]] 2>/dev/null; echo a; (( 1 )) >/dev/null; echo b; [[ x == y ]] 2>/dev/null || echo no; (( 0 )) 2>/dev/null || echo zero; f=$(mktemp); [[ -n $f ]] > "$f"; wc -c < "$f"; rm -f "$f"
+==== STDOUT ====
+a
+b
+no
+zero
+0
+
+==== STDERR ====
+
