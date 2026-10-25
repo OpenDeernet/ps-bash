@@ -38,7 +38,6 @@ printf 'keys: '; argv.py "${!a[@]}"
 printf 'vals: '; argv.py "${a[@]}"
 ## stdout-json: "keys: vals: keys: vals: "
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### [k]=$v and [k]="$@" (BashArray)
@@ -63,7 +62,6 @@ printf 'keys: '; argv.py "${!a[@]}"
 printf 'vals: '; argv.py "${a[@]}"
 ## stdout-json: "keys: vals: keys: vals: keys: vals: keys: vals: keys: vals: "
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### [k]=$v and [k]="$@" (BashAssoc)
@@ -89,7 +87,6 @@ printf 'keys: '; argv.py "${!a[@]}"
 printf 'vals: '; argv.py "${a[@]}"
 ## stdout-json: "keys: vals: keys: vals: keys: vals: keys: vals: keys: vals: "
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### append to element (BashArray)

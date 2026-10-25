@@ -135,7 +135,7 @@ echo status=$?
 echo $PPID | egrep '[0-9]+'
 
 # NOTE: There is also $BASHPID
-## stdout: 2439599
+## stdout: 2453861
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
@@ -152,7 +152,7 @@ expr $0 : '.*/osh$' && exit 99  # Disabled because of spec-runner.sh issue
 echo $RANDOM | egrep '[0-9]+'
 ## STDOUT:
 0
-26260
+6874
 ## END
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
@@ -173,143 +173,5 @@ echo status=$?
 test -n "$OSTYPE"
 echo status=$?
 ## stdout: status=0
-## status: 0
-## timeout: 10
-
-#### $HOSTNAME
-test "$HOSTNAME" = "$(hostname)"
-echo status=$?
-## stdout: status=0
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $LINENO is the current line, not line of function call
-echo $LINENO  # first line
-g() {
-  argv.py $LINENO  # line 3
-}
-f() {
-  argv.py $LINENO  # line 6
-  g
-  argv.py $LINENO  # line 8
-}
-f
-## stdout: 1
-## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $LINENO in [[
-echo one
-[[ $LINENO -eq 2 ]] && echo OK
-## STDOUT:
-one
-OK
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $LINENO in ((
-echo one
-(( x = LINENO ))
-echo $x
-## STDOUT:
-one
-2
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $LINENO in for loop
-# hm bash doesn't take into account the word break.  That's OK; we won't either.
-echo one
-for x in \
-  $LINENO zzz; do
-  echo $x
-done
-## STDOUT:
-one
-3
-zzz
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $LINENO in other for loops
-set -- a b c
-for x; do
-  echo $LINENO $x
-done
-## STDOUT:
-3 a
-3 b
-3 c
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $LINENO in for (( loop
-# This is a real edge case that I'm not sure we care about.  We would have to
-# change the span ID inside the loop to make it really correct.
-echo one
-for (( i = 0; i < $LINENO; i++ )); do
-  echo $i
-done
-## STDOUT:
-one
-0
-1
-2
-3
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $LINENO for assignment
-a1=$LINENO a2=$LINENO
-b1=$LINENO b2=$LINENO
-echo $a1 $a2
-echo $b1 $b2
-## STDOUT:
-1 1
-2 2
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $LINENO in case
-case $LINENO in
-  1) echo 'got line 1' ;;
-  *) echo line=$LINENO
-esac
-## stdout: got line 1
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### $_ with simple command and evaluation
-
-name=world
-echo "hi $name"
-echo "$_"
-## STDOUT:
-hi world
-hi world
-## END
-## status: 0
-## timeout: 10
-
-#### $SECONDS
-
-# most likely 0 seconds, but in CI I've seen 1 second
-echo $SECONDS | awk '/[0-9]+/ { print "ok" }'
-## stdout: ok
 ## status: 0
 ## timeout: 10

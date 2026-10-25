@@ -432,11 +432,12 @@ wc -l $files
 #cat $files
 ## STDOUT:
 declare -rx x="42"
-      0 de
-      2 ty
-      2 total
+declare -rx x="42"
+  2 de
+  2 ty
+  4 total
 ## END
-## status: 1
+## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 

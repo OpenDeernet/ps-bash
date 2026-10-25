@@ -41,7 +41,7 @@ chmod +x two/mycmd
 mycmd
 echo status=$?
 ## STDOUT:
-one
+two
 status=0
 ## END
 ## status: 0

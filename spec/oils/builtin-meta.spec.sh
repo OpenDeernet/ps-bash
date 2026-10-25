@@ -85,8 +85,7 @@ echo status=$?
 command -v _tmp/executable
 echo status=$?
 ## STDOUT:
-_tmp/non-executable
-status=0
+status=1
 _tmp/executable
 status=0
 ## END
@@ -211,149 +210,8 @@ command command -v seq
 #### command -p (find hidden tool in default path)
 export PATH=''
 command -p ls
-## STDOUT:
--foo.txt
-0
-1
-1.txt
-10
-10.txt
-2
-2 3 c d
-2.log
-20231114.log
-3
-3.md
-B
-Microsoft.TestPlatform.CommunicationUtilities.dll
-Microsoft.TestPlatform.CoreUtilities.dll
-Microsoft.TestPlatform.CrossPlatEngine.dll
-Microsoft.TestPlatform.PlatformAbstractions.dll
-Microsoft.TestPlatform.Utilities.dll
-Microsoft.VisualStudio.CodeCoverage.Shim.dll
-Microsoft.VisualStudio.TestPlatform.Common.dll
-Microsoft.VisualStudio.TestPlatform.ObjectModel.dll
-Newtonsoft.Json.dll
-OSCFLAGS
-Parlot.dll
-PsBash.Core.dll
-PsBash.Core.pdb
-PsBash.Core.xml
-PsBash.Spec.Tests.deps.json
-PsBash.Spec.Tests.dll
-PsBash.Spec.Tests.pdb
-PsBash.Spec.Tests.runtimeconfig.json
-PsBash.Spec.dll
-PsBash.Spec.pdb
-PsBash.Testing.dll
-PsBash.Testing.pdb
-PsBash.Transpiler.dll
-PsBash.Transpiler.pdb
-PsBash.Transpiler.xml
-_failglob
-_noglob
-_testing.py
-_tmp
-a
-bar.cc
-bar.h
-bar.txt
-baz.h
-c
-compose
-cs
-d
-de
-dir1
-dir2
-directory
-dist
-eg1
-eg10
-eg11
-eg2
-eg4
-eg5
-eg6
-eg7
-eg8
-eg9
-err.txt
-es
-escape*.txt
-escape-10.txt
-extglob2
-extpipe
-filename
-foo
-foo bar
-foo-bar
-foo-spam
-foo.
-foo.cc
-foo.h
-foo.hh
-foo.txt
-fr
-has space.docx
-hello
-hello.c
-hello.h
-hello.o
-hi.txt
-image.jpeg
-it
-ja
-ko
-leaf.md
-myfile
-node_modules
-one
-one-*
-one-bar
-one.md
-one.txt
-opts
-pl
-process-sub.txt
-ps-bash-host.deps.json
-ps-bash-host.exe
-ps-bash-host.runtimeconfig.json
-ps-bash.deps.json
-ps-bash.exe
-ps-bash.runtimeconfig.json
-pt-BR
-pyproject.toml
-ref
-reset.txt
-ru
-runtimes
-smoke1.txt
-src
-testhost.dll
-testhost.exe
-tmp.txt
-tr
-traps.txt
-two
-two-bar
-x
-xunit.abstractions.dll
-xunit.assert.dll
-xunit.core.dll
-xunit.execution.dotnet.dll
-xunit.runner.json
-xunit.runner.reporters.netcoreapp10.dll
-xunit.runner.utility.netcoreapp10.dll
-xunit.runner.visualstudio.testadapter.dll
-y.Y
-yy.Y
-zh-Hans
-zh-Hant
-zz-*-xx
-## END
+## stdout: _tmp
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### $(command type ls)

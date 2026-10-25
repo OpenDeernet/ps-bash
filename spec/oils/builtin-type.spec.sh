@@ -55,11 +55,8 @@ type _tmp/file _tmp/ex
 
 # dash and ash don't care if it's executable
 # mksh
-## STDOUT:
-_tmp/file is _tmp/file
-_tmp/ex is _tmp/ex
-## END
-## status: 0
+## stdout: _tmp/ex is _tmp/ex
+## status: 1
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 

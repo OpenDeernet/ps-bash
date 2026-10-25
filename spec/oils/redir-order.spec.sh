@@ -7,7 +7,7 @@ echo hello > OSCFLAGS
 echo `cat OSCFLAGS` "world" > OSCFLAGS
 #echo $(cat OSCFLAGS) "world" > OSCFLAGS
 cat OSCFLAGS
-## stdout:
+## stdout: hello world
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
@@ -28,9 +28,8 @@ for x in `cat OSCFLAGS` world; do
   echo $x
 done > OSCFLAGS
 cat OSCFLAGS
-## stdout:
+## stdout: world
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### case word + redirect order

@@ -285,6 +285,6 @@ argv.py x/*$v*.txt
 #### pattern starting with . does not return . and ..
 
 echo hi .*
-## stdout: hi .msCoverageSourceRootsMapping_PsBash.Spec.Tests
+## stdout: hi .*
 ## status: 0
 ## timeout: 10

@@ -43,8 +43,8 @@ echo [$i]
 echo [$j]
 ## STDOUT:
 [1  2 ]
-3
-2
+[3]
+[2]
 ## END
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)

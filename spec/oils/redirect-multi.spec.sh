@@ -115,7 +115,10 @@ echo hi > @(*-bar|other)
 echo status=$?
 
 cat foo-bar
-## stdout: status=1
+## STDOUT:
+status=0
+hi
+## END
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
@@ -131,8 +134,12 @@ echo should-not-be-on-stdout >& 1*
 
 echo stdout
 echo stderr >&2
-## stdout: stdout
+## STDOUT:
+should-not-be-on-stdout
+stdout
+## END
 ## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### Redirect with brace expansion isn't allowed

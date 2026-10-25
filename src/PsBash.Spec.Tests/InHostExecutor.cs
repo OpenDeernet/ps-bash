@@ -39,6 +39,7 @@ internal sealed class InHostExecutor : IScriptExecutor, IAsyncDisposable
             return new ExecResult(2, "", $"ps-bash: parse error: {ex.Message}\n");
         }
 
+        using var caseDir = new CaseDir();
         var worker = await _slots.Reader.ReadAsync(cancel);
         var healthy = false;
         try
@@ -54,7 +55,7 @@ internal sealed class InHostExecutor : IScriptExecutor, IAsyncDisposable
             int code;
             try
             {
-                code = await worker.ExecuteAsync(CwdPreamble() + ps, cts.Token, CaptureEnvironment());
+                code = await worker.ExecuteAsync(CwdPreamble(caseDir.Path) + ps, cts.Token, CaptureEnvironment());
                 healthy = true;
             }
             catch (OperationCanceledException) when (!cancel.IsCancellationRequested)
@@ -74,9 +75,9 @@ internal sealed class InHostExecutor : IScriptExecutor, IAsyncDisposable
         }
     }
 
-    private static string CwdPreamble()
+    private static string CwdPreamble(string dir)
     {
-        var cwd = Environment.CurrentDirectory.Replace("'", "''");
+        var cwd = dir.Replace("'", "''");
         return "$__psbash_invocation_cwd = '" + cwd + "'; [System.Environment]::CurrentDirectory = $__psbash_invocation_cwd; "
              + "$env:PWD = $__psbash_invocation_cwd; Set-Location -LiteralPath $__psbash_invocation_cwd -ErrorAction SilentlyContinue; ";
     }

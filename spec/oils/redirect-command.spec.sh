@@ -18,7 +18,6 @@ status=1
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### $(< $file) yields the contents of the file
@@ -37,9 +36,11 @@ seq 7 8 > myfile
 x=`< myfile`
 
 echo "[$x]"
-## stdout: []
+## STDOUT:
+[7
+8]
+## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### $(< file; end) is not a special case

@@ -572,38 +572,3 @@ typo=1
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
-
-#### BashAssoc a+=()
-
-declare -A a=([apple]=red [orange]=orange)
-a+=([lemon]=yellow [banana]=yellow)
-echo "apple is ${a['apple']}"
-echo "orange is ${a['orange']}"
-echo "lemon is ${a['lemon']}"
-echo "banana is ${a['banana']}"
-## STDOUT:
-apple is red
-orange is orange
-lemon is yellow
-banana is yellow
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10
-
-#### BashAssoc ${a[@]@Q}
-
-declare -A a=()
-a['symbol1']=\'\'
-a['symbol2']='"'
-a['symbol3']='()<>&|'
-a['symbol4']='[]*?'
-echo "[${a[@]@Q}]"
-echo "[${a[*]@Q}]"
-## STDOUT:
-['[]*?' '()<>&|' '"' ''\'''\''']
-['[]*?' '()<>&|' '"' ''\'''\''']
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10

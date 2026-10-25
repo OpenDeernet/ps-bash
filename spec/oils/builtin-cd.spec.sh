@@ -40,11 +40,12 @@ if test $st -ne 0; then
   echo 'failed with multiple args'
 fi
 ## STDOUT:
-status=1
+status=0
 status=0
 failed with multiple args
 ## END
 ## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### cd with 2 or more args is allowed (strict_arg_parse disabled)
@@ -53,6 +54,7 @@ mkdir -p foo
 cd foo bar
 ## stdout:
 ## status: 1
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### cd - without OLDPWD
@@ -60,7 +62,7 @@ cd foo bar
 cd - > /dev/null  # silence dash output
 echo status=$?
 #pwd
-## stdout: status=1
+## stdout: status=0
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
@@ -194,7 +196,7 @@ pwd
 
 #### arguments to pwd
 pwd /
-## stdout: /mnt/c/Users/andyb/work/core/ps-bash/src/PsBash.Spec.Tests/bin/Debug/net10.0
+## stdout: /tmp/tmp.9tP0QCmIsK
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10

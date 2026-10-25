@@ -20,7 +20,7 @@ public sealed class WslBashExecutor : IScriptExecutor
         try
         {
             var psi = new ProcessStartInfo("wsl.exe") { RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true, UseShellExecute = false };
-            foreach (var a in new[] { "-d", _distro, "-e", "bash", ToWslPath(file) }) psi.ArgumentList.Add(a);
+            foreach (var a in new[] { "-d", _distro, "-e", "bash", "-c", "d=$(mktemp -d); cd \"$d\" && mkdir _tmp; bash \"$1\"; s=$?; cd /; rm -rf \"$d\"; exit $s", "spec", ToWslPath(file) }) psi.ArgumentList.Add(a);
             var sw = Stopwatch.StartNew();
             using var p = Process.Start(psi)!;
             p.StandardInput.Close();

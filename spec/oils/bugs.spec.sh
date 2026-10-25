@@ -230,7 +230,7 @@ fi
 len=1
 len=0
 PWNED
-42
+0
 ## END
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)

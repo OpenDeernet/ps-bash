@@ -80,7 +80,7 @@ echo ${PIPESTATUS[@]}
 
 #### |&
 stdout_stderr.py |& cat
-## stdout: /mnt/c/Users/andyb/AppData/Local/Temp/ps-bash/spec-record/a1b73aa6296d4650bd07c57c7c6ab792.sh: line 1: stdout_stderr.py: command not found
+## stdout: /mnt/c/Users/andyb/AppData/Local/Temp/ps-bash/spec-record/5dcd33a1ff6d4ed1bc8123117863afa7.sh: line 1: stdout_stderr.py: command not found
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10

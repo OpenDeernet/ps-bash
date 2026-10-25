@@ -145,8 +145,8 @@ echo "echo hi" > dir/cmd
 PATH="dir:$PATH"
 . cmd
 rm dir/cmd
-## stdout: path
-## status: 1
+## stdout: hi
+## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 

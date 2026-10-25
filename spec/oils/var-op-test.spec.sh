@@ -114,7 +114,6 @@ v=
 v=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### ${v-foo} and ${v:-foo} when set -u
@@ -132,7 +131,6 @@ v=foo
 v=foo
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### $@ (empty) and - and +

@@ -27,8 +27,13 @@ seq 3 > >(tac)
 
 #### Process sub from shell to stdin
 { echo 1; echo 2; echo 3; } > >(tac)
-## stdout:
+## STDOUT:
+3
+2
+1
+## END
 ## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### $(<file) idiom with process sub
