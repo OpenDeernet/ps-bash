@@ -65,9 +65,7 @@ EOF
 one
 two
 EOF
-## STDOUT:
-twoXoneX
-## END
+## stdout-json: "twoXoneX"
 ## status: 0
 ## timeout: 10
 

@@ -29,7 +29,6 @@ _
 0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### Out of range string slice: length
@@ -42,7 +41,6 @@ _defg
 0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### Negative start index

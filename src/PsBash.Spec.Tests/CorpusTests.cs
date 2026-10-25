@@ -43,7 +43,7 @@ public class CorpusTests
         if (Environment.GetEnvironmentVariable("PSBASH_SPEC_RECORD") == "1")
         {
             // Fill cases that have no expectation yet from real bash (WSL); existing expectations are kept.
-            file = await SpecRecorder.RecordAsync(file, new WslBashExecutor(), all: false);
+            file = await SpecRecorder.RecordAsync(file, new WslBashExecutor(), all: Environment.GetEnvironmentVariable("PSBASH_SPEC_RECORD_ALL") == "1");
             File.WriteAllText(path, SpecParser.Format(file));
         }
         var sw = System.Diagnostics.Stopwatch.StartNew();

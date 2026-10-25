@@ -83,7 +83,6 @@ empty=''
 echo ${v:+v is not empty} ${empty:+is not empty}
 ## stdout: v is not empty
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### ${v+foo} Alternative value when unset
@@ -91,7 +90,6 @@ v=foo
 echo ${v+v is not unset} ${unset:+is not unset}
 ## stdout: v is not unset
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### "${x+foo}" quoted (regression)
@@ -116,7 +114,6 @@ v=
 v=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### ${v-foo} and ${v:-foo} when set -u
@@ -241,7 +238,6 @@ v=foo
 echo ${v+v is not unset} ${unset:+is not unset}
 ## stdout: v is not unset
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### ${var=x} dynamic scope

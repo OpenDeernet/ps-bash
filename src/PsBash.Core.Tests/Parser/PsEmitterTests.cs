@@ -1500,6 +1500,10 @@ public class PsEmitterTests
             result);
     }
 
+    /// <summary>An unquoted default/alternative expansion is word-split: its value goes through ConvertTo-BashWords (empty elides, spaces split).</summary>
+    private static string SplitEcho(string expr)
+        => $"& {{ $__bashsplat0 = @(ConvertTo-BashWords ({expr})); Invoke-BashEcho @__bashsplat0 }}";
+
     [Fact]
     public void Transpile_BracedVarWithDefault_EmitsEmptyOrUnsetTest()
     {
@@ -1509,7 +1513,7 @@ public class PsEmitterTests
         // `??`, which only tests $null, so `x=; echo ${x:-d}` printed NOTHING
         // instead of `d` — the most common parameter expansion in shell, silently
         // wrong. The ternary is exactly bash's test ("" and $null falsy, "0" truthy).
-        Assert.Equal("Invoke-BashEcho ($env:VAR ? $env:VAR : \"fallback\")", result);
+        Assert.Equal(SplitEcho("($env:VAR ? $env:VAR : \"fallback\")"), result);
     }
 
     [Fact]
@@ -1590,7 +1594,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("echo ${VAR:+yes}");
 
-        Assert.Equal("Invoke-BashEcho ($env:VAR ? \"yes\" : \"\")", result);
+        Assert.Equal(SplitEcho("($env:VAR ? \"yes\" : \"\")"), result);
     }
 
     [Fact]
@@ -1607,7 +1611,7 @@ public class PsEmitterTests
         // ${VAR-w} (unset-only default) must not silently drop to bare $env:VAR.
         var result = PsEmitter.Transpile("echo ${VAR-fallback}");
 
-        Assert.Equal("Invoke-BashEcho ($env:VAR ?? \"fallback\")", result);
+        Assert.Equal(SplitEcho("($env:VAR ?? \"fallback\")"), result);
     }
 
     [Fact]
@@ -1623,7 +1627,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("echo ${VAR+yes}");
 
-        Assert.Equal("Invoke-BashEcho ($env:VAR ? \"yes\" : \"\")", result);
+        Assert.Equal(SplitEcho("($env:VAR ? \"yes\" : \"\")"), result);
     }
 
     [Fact]
@@ -5954,13 +5958,13 @@ public class PsEmitterTests
     // The `:` forms act on unset OR EMPTY, the colon-less forms on unset ONLY.
     // `$env:X` is $null when unset but "" when set-to-empty, so `??` is EXACT for
     // the colon-less forms and was WRONG for the `:` forms.
-    [InlineData("echo ${V:-d}", "($env:V ? $env:V : \"d\")")]
-    [InlineData("echo ${V-d}", "($env:V ?? \"d\")")]
+    [InlineData("echo ${V:-d}", "split:($env:V ? $env:V : \"d\")")]
+    [InlineData("echo ${V-d}", "split:($env:V ?? \"d\")")]
     [InlineData("echo ${V:=d}", "($env:V ? $env:V : ($env:V = \"d\"))")]
     [InlineData("echo ${V=d}", "($env:V ?? ($env:V = \"d\"))")]
     public void Transpile_ParamExpansionColonForm_TestsEmptyNotJustUnset(
         string bash, string expected)
-        => Assert.Equal($"Invoke-BashEcho {expected}", PsEmitter.Transpile(bash));
+        => Assert.Equal(expected.StartsWith("split:") ? SplitEcho(expected[6..]) : $"Invoke-BashEcho {expected}", PsEmitter.Transpile(bash));
 
     [Theory]
     // PowerShell's &&/|| chain wants a COMMAND on the right; a statement keyword
@@ -6207,7 +6211,7 @@ public class PsEmitterTests
         // `""` alternative is safe; what must hold is that no outer "$( … )" string exists.
         // `git` is not a mapped command (it could be a function), so the body gets the subshell scope.
         Assert.StartsWith("Invoke-BashEcho $((@(& { $__psbash_ss = ", result);
-        Assert.Contains("try { git ($env:x ? ", result);
+        Assert.Contains("ConvertTo-BashWords (($env:x ? ", result);
         Assert.DoesNotContain("\"$(", result);
     }
 
@@ -6215,7 +6219,7 @@ public class PsEmitterTests
     public void Transpile_ParamExpansionUnnested_KeepsDoubleQuotedForm()
     {
         // Un-nested, the readable double-quoted shape is retained.
-        Assert.Equal("Invoke-BashEcho ($env:x ? \"alt\" : \"\")",
+        Assert.Equal(SplitEcho("($env:x ? \"alt\" : \"\")"),
             PsEmitter.Transpile("echo ${x:+alt}"));
     }
 

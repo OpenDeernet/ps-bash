@@ -131,3 +131,25 @@ public class SpecParserWhitespaceTests
         Assert.Equal("c   d\n", f.Cases[0].Alternatives[0].Stdout);
     }
 }
+
+public class SpecParserNoTrailingNewlineTests
+{
+    // Oracle note: the spec file format is ps-bash's own; a round trip is the contract, so this asserts directly.
+    [Theory]
+    [InlineData("twoXoneX")]
+    [InlineData("a\nb")]
+    [InlineData("tab\there \"q\" \\")]
+    public void Output_without_a_final_newline_survives_a_write_and_read(string stdout)
+    {
+        var c = new SpecCase("n", "echo\n", new Expectation(stdout, 0), Array.Empty<Expectation>(), null, null, false);
+        var back = SpecParser.Parse("t", SpecParser.Format(new SpecFile("t", "", new[] { c })));
+        Assert.Equal(stdout, back.Cases[0].Primary.Stdout);
+    }
+
+    [Fact]
+    public void Stdout_json_is_read_as_a_json_string()
+    {
+        var f = SpecParser.Parse("t", "#### j\nprintf x\n## stdout-json: \"x\"\n");
+        Assert.Equal("x", f.Cases[0].Primary.Stdout);
+    }
+}

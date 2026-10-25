@@ -85,6 +85,8 @@ public static class SpecParser
         {
             case "stdout": return new Block(alt, "stdout", inline.Length == 0 ? "" : inline + "\n");
             case "stderr": return new Block(alt, "stderr", inline.Length == 0 ? "" : inline + "\n");
+            case "stdout-json": return new Block(alt, "stdout", System.Text.Json.JsonSerializer.Deserialize<string>(inline) ?? "");
+            case "stderr-json": return new Block(alt, "stderr", System.Text.Json.JsonSerializer.Deserialize<string>(inline) ?? "");
             case "status": return new Block(alt, "status", inline.Trim());
             case "STDOUT":
             case "STDERR":
@@ -147,10 +149,18 @@ public static class SpecParser
         if (e.Status is { } s) sb.Append("## ").Append(prefix).Append("status: ").Append(s).Append('\n');
     }
 
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOpts = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
     private static void AppendStream(StringBuilder sb, string prefix, string small, string big, string? value)
     {
         if (value is null) return;
         if (value.Length == 0) { sb.Append("## ").Append(prefix).Append(small).Append(":\n"); return; }
+        // Output with no final newline cannot be a STDOUT block (blocks always end in one): keep it exact as JSON.
+        if (!value.EndsWith('\n'))
+        {
+            sb.Append("## ").Append(prefix).Append(small).Append("-json: ").Append(System.Text.Json.JsonSerializer.Serialize(value, JsonOpts)).Append('\n');
+            return;
+        }
         if (value.Length > 1 && value.IndexOf('\n') == value.Length - 1)
             sb.Append("## ").Append(prefix).Append(small).Append(": ").Append(value[..^1]).Append('\n');
         else
