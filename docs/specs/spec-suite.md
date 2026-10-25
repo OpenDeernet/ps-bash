@@ -187,3 +187,18 @@ Raising launcher-per-case parallelism did not help: one host serialises, and spi
 The in-host executor is the first to scale with the corpus, since the fixed cost is paid once per slot.
 Fidelity guard: the first and every 25th case of each file is re-run through the real launcher and must give the same verdict.
 Memory: 4 slots = 4 hosts (~0.4-0.8 GB each at peak); `PSBASH_SPEC_PAR` lowers it.
+
+## 10. Status: Oils and Differential tests brought over
+
+- **Oils**: every file in `oils-for-unix/oils` `spec/` except `builtin-fc` is in `spec/oils/` (bulk import: `PSBASH_SPEC_IMPORT_DIR=<dir>`
+  with empty `spec/oils/NAME.spec.sh` placeholders, plus `PSBASH_SPEC_RECORD=1 PSBASH_SPEC_TRIAGE=1`). Cases that need the Oils harness or
+  `ysh` are dropped by `SpecImporter`; `builtin-fc` is out because the in-host executor and the launcher disagree on every `fc` case.
+- **Differential**: `PSBASH_ORACLE_CAPTURE=<file>` makes `AssertOracle.EqualAsync/GoldenAsync` and `PsBashRunner.RunScriptAsync` append
+  `{class, method, script}` and return without running anything (`PsBash.Testing/ScriptCapture.cs`), so a `Differential.Tests` run takes
+  seconds and yields the exact script of every test, including ones built by `Tree()`/`WithArchive()`. `tools/absorb-capture.ps1 -Capture <file>`
+  merges them into `spec/differential/<class>.spec.sh` (existing recorded cases kept). `FsStateOracle` scripts already print the file-system
+  snapshot to stdout, so state checks are part of the case. `tools/absorb-differential.ps1` is the older text-scanning route (literals only).
+- Not part of the spec suite by nature: cmdlet tests (`CmdResult`, in `Cmdlets.Tests`), the host-memory budget and process-lifecycle tests.
+- **Isolation**: each case gets its own scratch directory (`_tmp` only when the script mentions one). The in-host executor snapshots shell state
+  once per host (`BashShellState.Save` plus the function table) and restores it after every case; `readonly` names are reset per invocation.
+- Cost: the full suite is ~35 min on this machine (the restore step and the record pass dominate); a single file is seconds.

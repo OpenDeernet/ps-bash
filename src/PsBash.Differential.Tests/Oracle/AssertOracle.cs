@@ -209,7 +209,7 @@ public static class AssertOracle
         TimeSpan? timeout = null,
         bool liveOnly = false)
     {
-        if (OracleCapture.TryCapture(script, liveOnly)) return;
+        if (PsBash.Testing.ScriptCapture.TryCapture(script, liveOnly)) return;
         Skip.If(Fixture.PsBashPath is null, "ps-bash binary not found -- build PsBash.Shell first");
 
         var mode = OracleCassette.CurrentMode;
@@ -326,7 +326,7 @@ public static class AssertOracle
         TimeSpan? timeout = null,
         bool? updateGoldens = null)
     {
-        if (OracleCapture.TryCapture(script, false)) return;
+        if (PsBash.Testing.ScriptCapture.TryCapture(script, false)) return;
         Skip.If(Fixture.PsBashPath is null, "ps-bash binary not found -- build PsBash.Shell first");
 
         var goldenPath = GoldenFilePath(testName);

@@ -108,6 +108,7 @@ public sealed class PsBashRunner
     /// </summary>
     public async Task<SpawnResult> RunScriptAsync(string script)
     {
+        if (ScriptCapture.TryCapture(script, liveOnly: false)) return new SpawnResult(0, "", "", 0);
         var binary = ResolveBinary();
 
         switch (_mode)
