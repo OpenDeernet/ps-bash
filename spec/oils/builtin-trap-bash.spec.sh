@@ -91,7 +91,7 @@ echo A
 echo status=$?
 echo B
 echo status=$?
-## stdout:   [10]
+## stdout: [10]
 ## status: 42
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
@@ -141,7 +141,7 @@ echo A
 echo status=$?
 echo B
 echo status=$?
-## stdout:   [7]
+## stdout: [7]
 ## status: 42
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10

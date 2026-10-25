@@ -110,3 +110,81 @@ beta
 END
 ## END
 ## status: 0
+
+#### Differential_Redirect_Heredoc_Expanding_VarSubstitution
+cat <<EOF
+hello $USER
+EOF
+## stdout: hello beagle
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+
+#### Differential_Redirect_StderrToFile_RawBytesNoCmdletPrefix
+ls /nonexistent_psb 2> e; echo rc=$?; ls /nonexistent_psb2 2>> e; cat -A e
+## STDOUT:
+rc=2
+ls: cannot access '/nonexistent_psb': No such file or directory$
+ls: cannot access '/nonexistent_psb2': No such file or directory$
+## END
+## status: 0
+
+#### Differential_Redirect_BothStreamsToFile_InOrder
+{ echo out; ls /nonexistent_psb; echo out2; } &> e; cat -A e; ls /nonexistent_psb >&e2; cat -A e2
+## STDOUT:
+out$
+ls: cannot access '/nonexistent_psb': No such file or directory$
+out2$
+ls: cannot access '/nonexistent_psb': No such file or directory$
+## END
+## status: 0
+
+#### Differential_Redirect_SameFdTwice_DevNull_Parses
+echo x >/dev/null >/dev/null; echo rc=$?; ls /nonexistent_psb 2>/dev/null 2>/dev/null; echo rc=$?; echo after
+## STDOUT:
+rc=0
+rc=2
+after
+## END
+## status: 0
+
+#### Differential_Redirect_SameFdTwice_Files_LastWins
+echo x >a >b; echo y >p >q >r; echo old > s; echo new >>s >u; d=.; echo z >$d/m >"$d/n"; ls /nonexistent_psb 2>f1 2>f2; for f in a b p q r s u m n; do printf '%s=[%s]\n' $f "$(cat $f)"; done; wc -c < f1; cat f2
+## STDOUT:
+a=[]
+b=[x]
+p=[]
+q=[]
+r=[y]
+s=[old]
+u=[new]
+m=[]
+n=[z]
+0
+ls: cannot access '/nonexistent_psb': No such file or directory
+## END
+## status: 0
+
+#### Differential_Redirect_DupBeforeFile_StderrToPipe
+ls /nonexistent_psb 2>&1 >o | tr a-z A-Z; echo "o=[$(cat o)]"
+## STDOUT:
+LS: CANNOT ACCESS '/NONEXISTENT_PSB': NO SUCH FILE OR DIRECTORY
+o=[]
+## END
+## status: 0
+
+#### Differential_Redirect_PipeStage_StderrToFile_StdoutFlows
+{ echo a; ls /nonexistent_psb; } 2>e | tr a-z A-Z; cat -A e
+## STDOUT:
+A
+ls: cannot access '/nonexistent_psb': No such file or directory$
+## END
+## status: 0
+
+#### Differential_Redirect_ExpandedDevNullTarget_Discards
+n=/dev/null; echo hi > $n; echo rc=$?; ls /nonexistent_psb 2> $n; echo rc=$?; ls
+## STDOUT:
+rc=0
+rc=2
+_tmp
+## END
+## status: 0

@@ -64,3 +64,16 @@ x=$(true); echo "[$x]"
 x=$(false); echo $?
 ## stdout: 1
 ## status: 0
+
+#### Differential_CommandSub_BacktickForm_SameAsParenForm
+echo `echo hi`
+## stdout: hi
+## status: 0
+
+#### Differential_ProcessSub_DiffTwoSources_ProducesDiff
+diff <(echo a) <(echo b) | grep -E '^[<>]'
+## STDOUT:
+< a
+> b
+## END
+## status: 0

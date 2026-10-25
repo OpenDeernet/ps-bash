@@ -44,3 +44,8 @@ f() { v='y=7'; eval "$v"; echo "$y"; }; f
 f() { eval 'echo inside'; }; f
 ## stdout: inside
 ## status: 0
+
+#### Differential_Eval_ExitCodeFromFalse_PropagatedToShell
+eval false; echo $?
+## stdout: 1
+## status: 0

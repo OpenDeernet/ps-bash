@@ -22,3 +22,8 @@ b
 false | true; echo $?
 ## stdout: 0
 ## status: 0
+
+#### Differential_CommandSubstitution_NestedQuoting
+echo "today is $(date +%Y)"
+## stdout: today is 2026
+## status: 0

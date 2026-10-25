@@ -24,3 +24,11 @@ f() { exit 7; }; f; echo should_not_print
 set -e; exit 3
 ## stdout:
 ## status: 3
+
+#### ScriptMode_ExitCode_NegatedCommand
+! false; echo $?; ! true; echo $?
+## STDOUT:
+0
+1
+## END
+## status: 0

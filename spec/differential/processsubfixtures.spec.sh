@@ -44,3 +44,18 @@ wc -l <(seq 1 100)
 ## stdout: 100 /dev/fd/63
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+
+#### ProcessSub_Source_FunctionDefinition
+source <(echo 'greet() { echo "hi $1"; }'); greet world
+## stdout: hi world
+## status: 0
+
+#### ProcessSub_TempFile_CatMultiLineEach
+cat <(echo -e "line1\nline2") <(echo -e "line3\nline4")
+## STDOUT:
+line1
+line2
+line3
+line4
+## END
+## status: 0

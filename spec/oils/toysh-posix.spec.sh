@@ -1,0 +1,72 @@
+## Imported from the Oils spec tests (toysh-posix.test.sh, Apache-2.0, https://github.com/oils-for-unix/oils).
+## Names and scripts only; expectations are recorded from bash 5.2, not taken from Oils.
+## Cases using the Oils harness ($SH, $REPO_ROOT, ...) are omitted.
+#### Fatal error
+# http://landley.net/notes.html#20-06-2020
+
+abc=${a?bc} echo hello; echo blah
+## stdout:
+## status: 1
+## timeout: 10
+
+#### readonly with temp binding
+# http://landley.net/notes.html#20-06-2020
+
+# temp binding
+readonly abc=123
+abc=def echo one
+echo status=$?
+
+echo potato < /does/not/exist || echo hello
+## STDOUT:
+one
+status=0
+hello
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Failed redirect in assignment, vs. export
+
+abc=def > /does/not/exist1
+echo abc=$abc
+
+export abc=def > /does/not/exist2
+echo abc=$abc
+## STDOUT:
+abc=def
+abc=def
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### IFS 5
+cc() { for i in $*; do echo -$i-; done;}; cc "" "" "" "" ""
+cc() { echo =$1$2=;}; cc "" ""
+## stdout: ==
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Command Sub Syntax Error
+# http://landley.net/notes.html#28-01-2020
+
+echo $(if true)
+echo $?
+echo $(false)
+echo $?
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Pipeline - http://landley.net/notes-2019.html#16-12-2019
+echo hello | { read i; echo $i;} | { read i; echo $i;} | cat
+echo hello | while read i; do echo -=$i=- | sed s/=/@/g ; done | cat
+## STDOUT:
+hello
+-@hello@-
+## END
+## status: 0
+## timeout: 10

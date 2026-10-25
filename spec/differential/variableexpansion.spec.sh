@@ -174,3 +174,12 @@ x='$(echo injected)'; echo "$x"
 x='a;b'; echo "$x"
 ## stdout: a;b
 ## status: 0
+
+#### Differential_SpecialVar_Positional_1to3
+set -- alpha beta gamma; echo $1; echo $2; echo $3
+## STDOUT:
+alpha
+beta
+gamma
+## END
+## status: 0

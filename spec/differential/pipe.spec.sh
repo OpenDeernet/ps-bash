@@ -75,3 +75,22 @@ a
 b
 ## END
 ## status: 0
+
+#### Differential_Pipe_BrokenPipe_HeadClosesEarly
+yes | head -n 3
+## STDOUT:
+y
+y
+y
+## END
+## status: 0
+
+#### Differential_PipeAmp_StderrMergedToStdout
+ls /nonexistent_path_xyz |& cat
+## stdout: ls: cannot access '/nonexistent_path_xyz': No such file or directory
+## status: 0
+
+#### Differential_Pipe_ExitCode_PipefailOn_FirstFailurePropagates
+set -o pipefail; false | true; echo $?
+## stdout: 1
+## status: 0

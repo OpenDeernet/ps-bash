@@ -24,3 +24,28 @@ case hello in (hello) echo yes ;; esac
 case ok in ok) false ;; esac; echo $?
 ## stdout: 1
 ## status: 0
+
+#### Differential_Case_AlternatePatterns
+case b in a|b|c) echo abc ;; *) echo other ;; esac
+## stdout: abc
+## status: 0
+
+#### Differential_Case_GlobPattern
+case file.txt in *.txt) echo text ;; *) echo other ;; esac
+## stdout: text
+## status: 0
+
+#### Differential_Case_VariableSubject
+x=hello; case $x in hello) echo matched ;; *) echo missed ;; esac
+## stdout: matched
+## status: 0
+
+#### Differential_Case_QuotedSubject
+x=world; case "$x" in world) echo yes ;; *) echo no ;; esac
+## stdout: yes
+## status: 0
+
+#### Differential_Case_NoFallthrough_OnlyFirstMatchFires
+case a in a) echo first ;; b) echo second ;; esac
+## stdout: first
+## status: 0
