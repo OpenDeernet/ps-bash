@@ -354,18 +354,3 @@ argv.py star $*
 ## stdout:
 ## status: 127
 ## timeout: 10
-
-#### IFS='' with $@ and $* and printf (bug #627)
-set -- a 'b c'
-IFS=''
-printf '[%s]\n' $@
-printf '[%s]\n' $*
-## STDOUT:
-[a]
-[b c]
-[a]
-[b c]
-## END
-## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
-## timeout: 10

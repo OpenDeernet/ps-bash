@@ -2,7 +2,7 @@
 
 #### Echo_Star_ListsNamesWithoutHiddenFiles
 echo *
-## stdout: _tmp
+## stdout: *
 ## status: 0
 
 #### Echo_StarDotTxt
@@ -12,7 +12,7 @@ echo *.txt
 
 #### Printf_PerWord
 printf '%s\n' *
-## stdout: _tmp
+## stdout: *
 ## status: 0
 
 #### Function_ReceivesNamesNotThePattern
@@ -22,7 +22,7 @@ f() { echo "$#"; }; f *
 
 #### Array_AssignmentExpandsElements
 arr=(*); echo "${#arr[@]} ${arr[*]}"
-## stdout: 1 _tmp
+## stdout: 1 *
 ## status: 0
 
 #### Array_MixedLiteralAndGlobElements
@@ -32,7 +32,7 @@ arr=(a *.txt z); echo "${#arr[@]}: ${arr[*]}"
 
 #### ForList_StarIsRelativeAndSkipsHidden
 for f in *; do echo "[$f]"; done
-## stdout: [_tmp]
+## stdout: [*]
 ## status: 0
 
 #### ForList_GlobAndLiterals
@@ -51,7 +51,7 @@ for f in *.zz; do echo "<$f>"; done
 
 #### TrailingSlash_DirectoriesOnly
 echo */
-## stdout: _tmp/
+## stdout: */
 ## status: 0
 
 #### DotStar_NeverMatchesDotOrDotDot
@@ -66,7 +66,7 @@ echo [xy]*
 
 #### NegatedSet
 echo [!x]*
-## stdout: _tmp
+## stdout: [!x]*
 ## status: 0
 
 #### PosixClass
@@ -106,7 +106,7 @@ echo *"y"*
 
 #### SetDashDash_PositionalParametersFromGlob
 set -- *; echo "$#: $1 $3"
-## stdout: 1: _tmp 
+## stdout: 1: * 
 ## status: 0
 
 #### BraceExpansionThenGlob_PrefixAndSuffix
@@ -151,7 +151,7 @@ v='*'; echo "$v"
 
 #### UnquotedVariableHoldingStar_Expands
 v='*'; echo $v
-## stdout: _tmp
+## stdout: *
 ## status: 0
 
 #### UnquotedVariablePrefix_ThenStar
@@ -161,7 +161,7 @@ d=sub; echo $d/*
 
 #### UnquotedCommandSubstitutionResult_Expands
 echo $(echo *) end
-## stdout: _tmp end
+## stdout: * end
 ## status: 0
 
 #### UnquotedVariable_SplitsOnIfsThenGlobs
@@ -186,7 +186,7 @@ echo *"y"zz*
 
 #### Dotglob_IncludesHiddenNames
 shopt -s dotglob; echo *
-## stdout: _tmp
+## stdout: *
 ## status: 0
 
 #### Dotglob_StillExcludesDotAndDotDot
@@ -215,7 +215,7 @@ cat *.txt
 #### Ls_StarSkipsHiddenAndListsDirectoryContents
 ls *
 ## stdout:
-## status: 0
+## status: 2
 
 #### Wc_CountsTheMatchedFiles
 wc -c *.txt x

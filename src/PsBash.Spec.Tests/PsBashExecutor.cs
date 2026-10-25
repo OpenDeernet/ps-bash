@@ -29,7 +29,7 @@ internal sealed class PsBashExecutor : IScriptExecutor
 
     public async Task<ExecResult> RunAsync(string script, TimeSpan timeout, CancellationToken cancel)
     {
-        using var caseDir = new CaseDir();
+        using var caseDir = new CaseDir(script);
         var r = await PsBashRunner.Create().WithTimeout(timeout).WithEnv(Env).RunScriptAsync($"cd '{caseDir.Path}'\n" + script);
         return new ExecResult(r.ExitCode, r.Stdout, r.Stderr, r.WallMs);
     }

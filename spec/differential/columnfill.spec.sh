@@ -192,3 +192,56 @@ echo a | column -c -5
 echo a | column -c 4294967296
 ## stdout:
 ## status: 1
+
+#### Numbers_ColumnsEnvironment
+seq 1 40 > n40
+COLUMNS=60 column n40 | cat -A
+## STDOUT:
+1^I7^I13^I19^I25^I31^I37$
+2^I8^I14^I20^I26^I32^I38$
+3^I9^I15^I21^I27^I33^I39$
+4^I10^I16^I22^I28^I34^I40$
+5^I11^I17^I23^I29^I35$
+6^I12^I18^I24^I30^I36$
+## END
+## status: 0
+
+#### Numbers_OptionBeatsColumnsEnvironment
+seq 1 40 > n40
+COLUMNS=60 column -c 30 n40 | cat -A
+## STDOUT:
+1^I15^I29$
+2^I16^I30$
+3^I17^I31$
+4^I18^I32$
+5^I19^I33$
+6^I20^I34$
+7^I21^I35$
+8^I22^I36$
+9^I23^I37$
+10^I24^I38$
+11^I25^I39$
+12^I26^I40$
+13^I27$
+14^I28$
+## END
+## status: 0
+
+#### FileOperands
+seq 1 12 > nums
+column -c 20 nums nums | cat -A
+## STDOUT:
+1^I1$
+2^I2$
+3^I3$
+4^I4$
+5^I5$
+6^I6$
+7^I7$
+8^I8$
+9^I9$
+10^I10$
+11^I11$
+12^I12$
+## END
+## status: 0

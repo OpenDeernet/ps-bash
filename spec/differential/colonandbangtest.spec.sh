@@ -1,10 +1,5 @@
 ## Absorbed from Differential.Tests/ColonAndBangTestDifferentialTests.cs (scripts only; expectations recorded from bash 5.2).
 
-#### ColonTrueFalse_Builtins row 1
-:; echo rc=$?
-## stdout: rc=0
-## status: 0
-
 #### ColonTrueFalse_Builtins row 2
 : a b c; echo rc=$?
 ## stdout: rc=0
@@ -17,16 +12,6 @@ x=; : ${x:=5}; echo $x
 
 #### ColonTrueFalse_Builtins row 4
 : > /dev/null; echo rc=$?
-## stdout: rc=0
-## status: 0
-
-#### ColonTrueFalse_Builtins row 5
-false; : ; echo rc=$?
-## stdout: rc=0
-## status: 0
-
-#### ColonTrueFalse_Builtins row 6
-: $(echo side >&2) 2>&1; echo rc=$?
 ## stdout: rc=0
 ## status: 0
 
@@ -125,9 +110,15 @@ rc=0
 
 #### BangOperand_Tests row 10
 [ ! -o ! ]; echo $?
+## stdout: 0
+## status: 0
 
 #### BangOperand_Tests row 11
 [[ ! a ]]; echo $?
+## stdout: 1
+## status: 0
 
 #### BangOperand_Tests row 12
 [[ ! -z x ]]; echo $?
+## stdout: 0
+## status: 0

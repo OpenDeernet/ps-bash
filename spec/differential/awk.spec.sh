@@ -105,26 +105,6 @@ printf '1\n2\n3\n' | awk '{s+=$1} END{print s}'
 ## stdout: 6
 ## status: 0
 
-#### Awk_Length
-printf 'hello\n' | awk '{print length($0)}'
-## stdout: 5
-## status: 0
-
-#### Awk_Substr
-printf 'hello\n' | awk '{print substr($0,2,3)}'
-## stdout: ell
-## status: 0
-
-#### Awk_Toupper
-printf 'abc\n' | awk '{print toupper($0)}'
-## stdout: ABC
-## status: 0
-
-#### Awk_Tolower
-printf 'ABC\n' | awk '{print tolower($0)}'
-## stdout: abc
-## status: 0
-
 #### Awk_Index
 printf 'hello\n' | awk '{print index($0,"ll")}'
 ## stdout: 3

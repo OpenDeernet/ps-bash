@@ -22,6 +22,16 @@ internal sealed class InHostExecutor : IScriptExecutor, IAsyncDisposable
     private const string WarmupScript =
         "x=1; f() { echo \"$x\"; }; f | cat; [[ a == a ]] && echo $((x+1)); for i in 1 2; do :; done; y=$(echo z); case $y in z) ;; esac; printf %s ok >&2";
 
+    // A host is reused across cases, so each case must start from the same shell state: a baseline is taken once per fresh
+    // host (bash variables, aliases, shopt/set options, dir stack, plus the function table) and restored after every case.
+    private const string BaselineScript =
+        "$global:__spec_ss = [PsBash.Cmdlets.BashShellState]::Save($ExecutionContext.SessionState); " +
+        "$global:__spec_fn = @((Get-ChildItem function:).Name)";
+
+    private const string RestoreScript =
+        "[void][PsBash.Cmdlets.BashShellState]::Restore($ExecutionContext.SessionState, $global:__spec_ss); " +
+        "Get-ChildItem function: | Where-Object { $_.Name -notin $global:__spec_fn } | Remove-Item -ErrorAction SilentlyContinue";
+
     public InHostExecutor(int slots)
     {
         var launcher = PsBashLocator.ResolveRequired(BuildConfig.Auto);
@@ -39,12 +49,18 @@ internal sealed class InHostExecutor : IScriptExecutor, IAsyncDisposable
             return new ExecResult(2, "", $"ps-bash: parse error: {ex.Message}\n");
         }
 
-        using var caseDir = new CaseDir();
+        using var caseDir = new CaseDir(script);
         var worker = await _slots.Reader.ReadAsync(cancel);
         var healthy = false;
         try
         {
-            worker ??= await IpcWorker.StartAsync(_hostBinary, lifetime: Lifetime.PerInvocation, ct: cancel);
+            if (worker is null)
+            {
+                worker = await IpcWorker.StartAsync(_hostBinary, lifetime: Lifetime.PerInvocation, ct: cancel);
+                worker.OutputCallback = _ => { };
+                worker.ErrorCallback = _ => { };
+                await worker.ExecuteAsync(BaselineScript, cancel, CaptureEnvironment());
+            }
             var stdout = new StringBuilder();
             var stderr = new StringBuilder();
             worker.OutputCallback = s => stdout.Append(s);
@@ -62,7 +78,13 @@ internal sealed class InHostExecutor : IScriptExecutor, IAsyncDisposable
             {
                 return new ExecResult(124, stdout.ToString(), stderr + "runner: case timed out\n", sw.ElapsedMilliseconds);
             }
-            return new ExecResult(code, stdout.ToString(), stderr.ToString(), sw.ElapsedMilliseconds);
+            var result = new ExecResult(code, stdout.ToString(), stderr.ToString(), sw.ElapsedMilliseconds);
+            // Back to the baseline shell state; a host that cannot is replaced rather than reused dirty.
+            worker.OutputCallback = _ => { };
+            worker.ErrorCallback = _ => { };
+            try { await worker.ExecuteAsync(CwdPreamble(caseDir.Path) + RestoreScript, cancel, CaptureEnvironment()); }
+            catch (Exception) when (!cancel.IsCancellationRequested) { healthy = false; }
+            return result;
         }
         finally
         {

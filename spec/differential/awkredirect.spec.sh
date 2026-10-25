@@ -97,3 +97,102 @@ X
 to-sort
 ## END
 ## status: 0
+
+#### Redirect_TruncateOnFirstOpenThenAppendWhileOpen
+awk 'BEGIN{ print "a" > "o"; print "b" > "o" }'
+## stdout:
+## status: 0
+
+#### Redirect_CloseThenReopenTruncatesAgain
+awk 'BEGIN{ f = "o"; print "a" > f; print "b" > f; close(f); print "c" > f }'
+## stdout:
+## status: 0
+
+#### Redirect_AppendAfterClose_KeepsEarlierContent
+awk 'BEGIN{ f = "o"; print "a" > f; close(f); print "b" >> f }'
+## stdout:
+## status: 0
+
+#### Printf_Redirect_AndAppend
+awk 'BEGIN{ printf "%s-%d\n", "a", 3 > "pf"; printf "z\n" >> "pf" }'
+## stdout:
+## status: 0
+
+#### Printf_ParenthesizedArgs_Redirect
+awk 'BEGIN{ printf("%s|%s\n", "a", "b") > "pf"; print("c", "d") > "pp" }'
+## stdout:
+## status: 0
+
+#### Print_ManyFilesInLoop
+awk 'BEGIN{ for (i = 0; i < 3; i++) print i > ("f" i) }'
+## stdout:
+## status: 0
+
+#### Redirect_TargetIsAConcatenation
+awk 'BEGIN{ x = "p"; print "q" > x "3"; print > "p2" 5 }'
+## stdout:
+## status: 0
+
+#### Redirect_ArgsWithCommaThenTarget
+awk 'BEGIN{ print 1, 2 > "p1"; print 3, 4 > "p1" }'
+## stdout:
+## status: 0
+
+#### Redirect_ParenthesizedComparisonIsNotARedirect
+awk 'BEGIN{ print (3 > 2); print (2 > 3); print (1 > 2) ? "A" : "B" }'
+## STDOUT:
+1
+0
+B
+## END
+## status: 0
+
+#### Redirect_DevNullAndStdoutAlias
+awk 'BEGIN{ print "x" > "/dev/null"; print "1"; print "2" > "/dev/stdout"; print "3"; print "d" > "-" }'
+## STDOUT:
+1
+2
+3
+d
+## END
+## status: 0
+
+#### Redirect_CloseReturnsZeroThenMinusOne
+awk 'BEGIN{ print "x" > "f"; print close("f"); print close("f") }'
+## STDOUT:
+0
+-1
+## END
+## status: 0
+
+#### Redirect_ExitStatusKept_FileStillWritten
+awk 'BEGIN{ print "x" > "ex"; exit 3 }'
+## stdout:
+## status: 3
+
+#### Redirect_UnwritablePathIsFatal_Exit2
+awk 'BEGIN{ print "x" > "no/such/dir/f"; print "after" }'
+## stdout:
+## status: 2
+
+#### Redirect_EmptyNameIsFatal_Exit2
+awk 'BEGIN{ print "x" > ""; print "after" }'
+## stdout:
+## status: 2
+
+#### Redirect_FflushPublishesToGetline
+awk 'BEGIN{ f = "fl"; print "x" > f; print fflush(f); print fflush("zz"); getline l < f; print "got[" l "]" }'
+## STDOUT:
+0
+-1
+got[x]
+## END
+## status: 0
+
+#### Redirect_SystemSeesUnclosedFile
+awk 'BEGIN{ print "fromawk" > "s.txt"; r = system("cat s.txt"); print "rc", r }'
+## STDOUT:
+fromawk
+rc 0
+## END
+## status: 0

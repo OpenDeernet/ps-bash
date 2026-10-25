@@ -187,9 +187,15 @@ printf 'caf\xc3\xa9\r\n' > f
 
 #### Text_Latin1Crlf
 printf 'caf\xe9\r\n' > f
+## stdout:
+## status: 0
 
 #### Text_Utf8Bom
 printf '\xef\xbb\xbfhello\r\n' > f
+## stdout:
+## status: 0
 
 #### Text_Del_IsData
 printf 'abc\x7f\n' > f
+## stdout:
+## status: 0

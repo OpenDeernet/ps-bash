@@ -185,6 +185,5 @@ n=/dev/null; echo hi > $n; echo rc=$?; ls /nonexistent_psb 2> $n; echo rc=$?; ls
 ## STDOUT:
 rc=0
 rc=2
-_tmp
 ## END
 ## status: 0

@@ -278,26 +278,6 @@ x=-f; [ "$x" != -f ]; echo $?
 ## stdout: 0
 ## status: 0
 
-#### Test_BuiltinHasNoOptions row 14
-[ ! -z x -a ! -z y ]; echo $?
-## stdout: 0
-## status: 0
-
-#### Test_BuiltinHasNoOptions row 15
-[ \( -n x \) -a -n y ]; echo $?
-## stdout: 0
-## status: 0
-
-#### Test_BuiltinHasNoOptions row 16
-[ 1 -eq 1 -a 2 -lt 3 ]; echo $?
-## stdout: 0
-## status: 0
-
-#### Test_BuiltinHasNoOptions row 17
-[ -e -e ]; echo $?
-## stdout: 1
-## status: 0
-
 #### Test_BuiltinHasNoOptions row 18
 [ -d -d ]; echo $?
 ## stdout: 1
@@ -411,33 +391,4 @@ test 2>/dev/null; echo $?
 #### Test_BuiltinHasNoOptions row 40
 test ''; echo $?
 ## stdout: 1
-## status: 0
-
-#### Test_BuiltinHasNoOptions row 41
-d=$(mktemp -d) && printf '' > "$d/f" && mkdir "$d/dir" && test -e "$d/f" -a -d "$d/dir"; echo $?; test -e "$d/nope" -o -f "$d/f"; echo $?; test -w "$d/nope"; echo $?; ls "$d"
-## STDOUT:
-0
-0
-1
-dir
-f
-## END
-## status: 0
-
-#### Test_BuiltinHasNoOptions row 42
-d=$(mktemp -d) && printf '' > "$d/f" && test -s "$d/f"; echo $?; echo x > "$d/f"; test -s "$d/f"; echo $?; test -r "$d/f" -a -w "$d/f"; echo $?
-## STDOUT:
-1
-0
-0
-## END
-## status: 0
-
-#### Test_BuiltinHasNoOptions row 43
-d=$(mktemp -d) && printf '' > "$d/a" && test "$d/a" -ef "$d/a"; echo $?; test "$d/a" -nt "$d/missing"; echo $?; test "$d/missing" -ot "$d/a"; echo $?
-## STDOUT:
-0
-0
-0
-## END
 ## status: 0

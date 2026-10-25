@@ -58,3 +58,48 @@ d
 printf 'a!b\nab\n' | grep '[[:punct:]]'
 ## stdout: a!b
 ## status: 0
+
+#### Grep_Bre_EscapedPipe_IsAlternation
+printf 'foo\nbar\na|b\n(foo)\nfo{2}\nfoofoo\nfofo\nx?\n' | grep 'foo\|bar'
+## STDOUT:
+foo
+bar
+(foo)
+foofoo
+## END
+## status: 0
+
+#### Grep_Bre_EscapedGroup_Backref
+printf 'foo\nbar\na|b\n(foo)\nfo{2}\nfoofoo\nfofo\nx?\n' | grep '\(fo\)\1'
+## stdout: fofo
+## status: 0
+
+#### Grep_Bre_EscapedInterval_PlusQuestion
+printf 'foo\nbar\na|b\n(foo)\nfo{2}\nfoofoo\nfofo\nx?\n' | grep -e 'o\{2\}' -e 'r\+$' -e '^x\?f'
+## STDOUT:
+foo
+bar
+(foo)
+fo{2}
+foofoo
+fofo
+## END
+## status: 0
+
+#### Grep_Bre_BareMetachars_AreLiteral
+printf 'foo\nbar\na|b\n(foo)\nfo{2}\nfoofoo\nfofo\nx?\n' | grep -e 'a|b' -e '(foo)' -e 'fo{2}' -e 'x?'
+## STDOUT:
+a|b
+(foo)
+fo{2}
+x?
+## END
+## status: 0
+
+#### Grep_Bre_GroupedAlternation_Anchored
+printf 'foo\nbar\na|b\n(foo)\nfo{2}\nfoofoo\nfofo\nx?\n' | grep '^\(a\|b\)'
+## STDOUT:
+bar
+a|b
+## END
+## status: 0

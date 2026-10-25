@@ -30,3 +30,23 @@ kill -l | head -1
 sleep 0 & wait; echo quoting_ok
 ## stdout: quoting_ok
 ## status: 0
+
+#### Differential_Background_LastPidIsNonEmpty
+sleep 0 & pid=$!; if [ -n "$pid" ]; then echo got_pid; else echo no_pid; fi; wait
+## stdout: got_pid
+## status: 0
+
+#### Differential_Background_WaitAll_ReturnsAfterCompletion
+sleep 0 & sleep 0 & wait; echo all_done
+## stdout: all_done
+## status: 0
+
+#### Differential_Background_WaitLastPid_Continues
+sleep 0 & wait $!; echo after_wait
+## stdout: after_wait
+## status: 0
+
+#### Differential_Background_ThreeJobsWaitAll_ExitsZero
+sleep 0 & sleep 0 & sleep 0 & wait; echo three_done
+## stdout: three_done
+## status: 0

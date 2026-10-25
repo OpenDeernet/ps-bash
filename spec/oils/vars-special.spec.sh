@@ -135,7 +135,7 @@ echo status=$?
 echo $PPID | egrep '[0-9]+'
 
 # NOTE: There is also $BASHPID
-## stdout: 2453861
+## stdout: 2494930
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
@@ -152,7 +152,7 @@ expr $0 : '.*/osh$' && exit 99  # Disabled because of spec-runner.sh issue
 echo $RANDOM | egrep '[0-9]+'
 ## STDOUT:
 0
-6874
+16399
 ## END
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)

@@ -108,3 +108,23 @@ printf 'a\351\nb\377\n' | cat | head -n 1 | wc -c
 cat <(printf '\351') | wc -c
 ## stdout: 1
 ## status: 0
+
+#### Printf_InvalidByte_Redirect_WritesOneByteFile
+printf '\xe9' > f
+## stdout:
+## status: 0
+
+#### PrintfAppendRedirect_InvalidBytes
+printf '\xe9' >> f; printf '\xe9\x80' >> f
+## stdout:
+## status: 0
+
+#### FusedLane_Tac_Rev_Keep_TheBytes
+printf 'x\351\ny\n' | tac | cat > out
+## stdout:
+## status: 0
+
+#### Sort_OfInvalidBytes_KeepsEveryByte
+printf 'b\351\na\377\n' | sort | wc -c > n
+## stdout:
+## status: 0

@@ -140,7 +140,7 @@ $"
 
 #### $'' octal escapes with fewer than 3 chars
 echo $'\1 \11 \11 \111' | od -A n -c | sed 's/ \+/ /g'
-## stdout: 001 \t \t I \n
+## stdout:  001 \t \t I \n
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10

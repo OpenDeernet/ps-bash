@@ -33,6 +33,8 @@ function ReadLiteral([string]$text, [int]$p) {
             $k = $p + 1; $sb = [System.Text.StringBuilder]::new()
             while ($k -lt $text.Length -and $text[$k] -ne '"') { if ($text[$k] -eq '\') { [void]$sb.Append($text[$k]); $k++ }; [void]$sb.Append($text[$k]); $k++ }
             [void]$acc.Append((Unescape $sb.ToString())); $p = $k + 1
+        } elseif ($text.Substring($p) -match '^([A-Za-z_]\w*)\b(?!\s*[(.])' -and $script:consts.ContainsKey($Matches[1])) {
+            [void]$acc.Append($script:consts[$Matches[1]]); $p += $Matches[1].Length
         } else { return $null }
         $q = $p; while ($q -lt $text.Length -and [char]::IsWhiteSpace($text[$q])) { $q++ }
         if ($text[$q] -eq '+') { $p = $q + 1; continue }
@@ -45,6 +47,10 @@ foreach ($f in Get-ChildItem "$Root/src/PsBash.Differential.Tests" -Filter *.cs 
     $text = Get-Content $f.FullName -Raw
     $cls = [IO.Path]::GetFileNameWithoutExtension($f.Name) -replace 'DifferentialTests$|Tests$', ''
     $cases = [System.Collections.Generic.List[string]]::new(); $seen = @{}
+    $script:consts = @{}
+    foreach ($cm in [regex]::Matches($text, '(?:const|static\s+readonly)\s+string\s+(\w+)\s*=\s*')) {
+        $lit0 = ReadLiteral $text ($cm.Index + $cm.Length); if ($lit0) { $script:consts[$cm.Groups[1].Value] = $lit0[0] }
+    }
     $helpers = @([regex]::Matches($text, 'private\s+static\s+(?:async\s+)?Task\s+(\w+)\s*\(\s*string\s+\w+\s*\)\s*(?:=>|\{)[^;]*?EqualAsync\(') | ForEach-Object { $_.Groups[1].Value })
     # A helper that forwards `CONST + script` (fixture setup) keeps its constant as a prefix.
     $prefix = ""
@@ -63,7 +69,6 @@ foreach ($f in Get-ChildItem "$Root/src/PsBash.Differential.Tests" -Filter *.cs 
         $r = ReadLiteral $text $pos
         if ($null -eq $r) { $skipped++; continue }
         $end = $text.IndexOf(';', $r[1]); $tail = $text.Substring($r[1], $end - $r[1])
-        if ($tail -match 'liveOnly\s*:\s*true') { $skipped++; continue }
         $before = $text.Substring([Math]::Max(0, $i - 1500), [Math]::Min(1500, $i))
         $nm = $nameRx.Matches($before); if ($nm.Count -eq 0) { $skipped++; continue }
         $name = $nm[$nm.Count - 1].Groups[1].Value
@@ -87,6 +92,18 @@ foreach ($f in Get-ChildItem "$Root/src/PsBash.Differential.Tests" -Filter *.cs 
             $seen[$script] = 1
             $cases.Add("#### $($m.Groups[2].Value) row $n`n$($script.TrimEnd("`n"))`n")
         }
+    }    # EqualAsync(setup, command) from the file-state oracles: run the setup, then the command.
+    foreach ($pm2 in [regex]::Matches($text, '(?<![\w.])(?:FsStateOracle\.)?EqualAsync\(')) {
+        $r1 = ReadLiteral $text ($pm2.Index + $pm2.Length); if ($null -eq $r1) { continue }
+        $c = $r1[1]; while ($c -lt $text.Length -and [char]::IsWhiteSpace($text[$c])) { $c++ }
+        if ($text[$c] -ne ',') { continue }
+        $r2 = ReadLiteral $text ($c + 1); if ($null -eq $r2) { continue }
+        $total++
+        $nm = $nameRx.Matches($text.Substring([Math]::Max(0, $pm2.Index - 1500), [Math]::Min(1500, $pm2.Index))); if ($nm.Count -eq 0) { $skipped++; continue }
+        $script = ($r1[0].TrimEnd("`n") + "`n" + $r2[0]).Trim("`n")
+        if ($seen.ContainsKey($script)) { $skipped++; continue }
+        $seen[$script] = 1
+        $cases.Add("#### $($nm[$nm.Count - 1].Groups[1].Value)`n$script`n")
     }    if ($cases.Count -gt 0) {
         $file = Join-Path $out "$($cls.ToLower()).spec.sh"
         if (Test-Path $file) {

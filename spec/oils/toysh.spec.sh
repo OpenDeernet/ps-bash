@@ -16,7 +16,7 @@ echo $ABC
 ## STDOUT:
 abc)d
 ab+( ?d)
-_tmp abc)d
+abc)d
 ## END
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)

@@ -210,7 +210,7 @@ command command -v seq
 #### command -p (find hidden tool in default path)
 export PATH=''
 command -p ls
-## stdout: _tmp
+## stdout:
 ## status: 0
 ## timeout: 10
 

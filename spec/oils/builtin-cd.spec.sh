@@ -196,7 +196,7 @@ pwd
 
 #### arguments to pwd
 pwd /
-## stdout: /tmp/tmp.9tP0QCmIsK
+## stdout: /tmp/tmp.rnPGBNmmgT
 ## status: 0
 ## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10

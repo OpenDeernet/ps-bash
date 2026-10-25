@@ -5,10 +5,11 @@ public sealed class CaseDir : IDisposable
 {
     public string Path { get; }
 
-    public CaseDir()
+    /// <param name="script">The case's script; <c>_tmp</c> is created only when it mentions one (an extra entry would show up in <c>ls</c> output).</param>
+    public CaseDir(string script)
     {
         Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ps-bash", "spec-run", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(System.IO.Path.Combine(Path, "_tmp"));
+        Directory.CreateDirectory(script.Contains("_tmp", StringComparison.Ordinal) ? System.IO.Path.Combine(Path, "_tmp") : Path);
     }
 
     public void Dispose()

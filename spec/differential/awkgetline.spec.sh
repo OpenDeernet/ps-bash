@@ -139,7 +139,12 @@ after
 ## END
 ## status: 0
 
-#### Fflush_ReturnsZero
-cd "$(mktemp -d)" && printf 'a\nb\nc\n' > f && printf 'x\ny\n' > g && awk 'BEGIN{ print fflush() }'
-## stdout: 0
+#### Getline_Stdin_BeginThenMainLoop
+cd "$(mktemp -d)" && printf 'a\nb\nc\n' > f && printf 'x\ny\n' > g && printf 'a\nb\nc\n' | awk 'BEGIN{ getline; print "B:" $0 } { print "M:" $0 } END{ print NR }'
+## STDOUT:
+B:a
+M:b
+M:c
+3
+## END
 ## status: 0
