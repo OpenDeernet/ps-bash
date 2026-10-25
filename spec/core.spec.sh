@@ -284,3 +284,14 @@ f1
 f2
 ## END
 ## status: 0
+
+#### declare with several initializers
+declare X=1 Y=2; echo "[$X] [$Y]"
+declare -i P=1 Q=2+3; echo "[$P] [$Q]"
+declare A="a b" B=$(echo c); echo "[$A] [$B]"
+## STDOUT:
+[1] [2]
+[1] [5]
+[a b] [c]
+## END
+## status: 0

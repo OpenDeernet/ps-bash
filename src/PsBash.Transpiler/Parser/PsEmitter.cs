@@ -2979,6 +2979,31 @@ public static class PsEmitter
         if (name is not ("declare" or "typeset"))
             return false;
 
+        // `declare a=1 b=2`: one declaration at a time (the single-name machinery below keeps only the last).
+        // Not for the print forms, which take several names in one runtime call.
+        {
+            var flagWords = new List<CompoundWord>();
+            var nameWords = new List<CompoundWord>();
+            foreach (var w in cmd.Words.Skip(1))
+            {
+                var lit = GetLiteralValue(w);
+                (lit is { Length: > 1 } && lit[0] == '-' ? flagWords : nameWords).Add(w);
+            }
+            bool printForm = flagWords.Any(w => GetLiteralValue(w) is { } f && f.AsSpan(1).IndexOfAnyExcept("pfF") < 0);
+            if (nameWords.Count > 1 && !printForm)
+            {
+                var parts = new List<string>();
+                foreach (var nw in nameWords)
+                {
+                    var single = cmd with { Words = [cmd.Words[0], .. flagWords, nw] };
+                    if (!TryEmitDeclare(single, out var one)) return false;
+                    parts.Add(one);
+                }
+                result = string.Join("; ", parts);
+                return true;
+            }
+        }
+
         bool isAssoc = false;
         bool isPrint = false;
         bool isNameref = false;

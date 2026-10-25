@@ -40,3 +40,14 @@ a.c c.c
 a.c b.h
 ## END
 ## status: 0
+
+#### unquoted loop variable word-splits
+for cfg in "perinv 3" "warm 8"; do set -- $cfg; echo "[$1] [$2]"; done
+printf '[%s]' $cfg; echo
+## STDOUT:
+[perinv] [3]
+[warm] [8]
+[warm][8]
+## END
+## status: 0
+## XFAIL ps-bash GAP-1 loop variables are emitted as one bound value and never word-split

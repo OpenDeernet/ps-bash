@@ -16,6 +16,17 @@ public class CorpusTests
         => Directory.GetFiles(SpecDir(), "*.spec.sh", SearchOption.AllDirectories).OrderBy(p => p)
             .Select(p => new object[] { Path.GetRelativePath(SpecDir(), p).Replace('\\', '/') });
 
+    private static int SpecParallelism()
+        => int.TryParse(Environment.GetEnvironmentVariable("PSBASH_SPEC_PAR"), out var n) && n > 0 ? n : 3;
+
+    /// <summary>Appends <c>mode par file cases ms</c> to PSBASH_SPEC_TIMING so runs can be compared.</summary>
+    private static void LogTiming(string name, int cases, long ms)
+    {
+        if (Environment.GetEnvironmentVariable("PSBASH_SPEC_TIMING") is not { Length: > 0 } log) return;
+        lock (typeof(CorpusTests))
+            File.AppendAllText(log, $"{PsBashExecutor.Mode} par={SpecParallelism()} {name} cases={cases} ms={ms}\n");
+    }
+
     [Theory]
     [MemberData(nameof(Files))]
     public async Task Spec_file_conforms(string name)
@@ -35,7 +46,9 @@ public class CorpusTests
             file = await SpecRecorder.RecordAsync(file, new WslBashExecutor(), all: false);
             File.WriteAllText(path, SpecParser.Format(file));
         }
-        var results = await SpecRunner.RunAsync(file, new PsBashExecutor(), parallelism: 3);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var results = await SpecRunner.RunAsync(file, new PsBashExecutor(), parallelism: SpecParallelism());
+        LogTiming(name, file.Cases.Count, sw.ElapsedMilliseconds);
         if (triage)
         {
             // Mark every failing case as a known gap, and unmark any that now pass, so the file records the true state.
