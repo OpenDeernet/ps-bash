@@ -35,7 +35,6 @@ for - in a b c; do
 done
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### the word 'in' can be the loop variable
@@ -62,7 +61,6 @@ while true; do
 done
 ## stdout: hi
 ## status: 128
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 ## timeout: 10
 
 #### too many args to continue
