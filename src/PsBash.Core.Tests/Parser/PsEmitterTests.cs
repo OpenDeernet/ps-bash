@@ -4872,6 +4872,14 @@ public class PsEmitterTests
     }
 
     [Fact]
+    public void Transpile_Nounset_ArithmeticReadsAreGuarded()
+    {
+        Assert.Contains("__BashUnbound", PsEmitter.Transpile("set -u; echo $((x + 1))"));
+        Assert.Contains("__BashUnbound", PsEmitter.Transpile("set -u; (( x++ ))"));
+        Assert.DoesNotContain("__BashUnbound", PsEmitter.Transpile("echo $((x + 1))"));
+    }
+
+    [Fact]
     public void Transpile_WithoutNounset_PlainReadsAreUnchanged()
         => Assert.DoesNotContain("unbound variable", PsEmitter.Transpile("echo \"$a\""));
 

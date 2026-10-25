@@ -142,6 +142,15 @@ public static class PsBuild
         + "Write-Error ('ps-bash: ' + $__psbash_pe.Message) -ErrorAction Continue; throw $__psbash_pe";
 
     /// <summary>
+    /// Under <c>set -u</c>, an arithmetic expression that reads an unset name: <c>Invoke-BashArith</c>
+    /// reports it on the error stream and leaves the name in <c>$global:__BashUnbound</c>; this ends the
+    /// script (a cmdlet exception would only end that one statement). The value otherwise passes through.
+    /// </summary>
+    public static string ArithNounsetGuard(string invocation) =>
+        "$($__psbash_av = " + invocation + "; if ($global:__BashUnbound) { $__psbash_un = $global:__BashUnbound; $global:__BashUnbound = $null; "
+        + "throw [PsBash.Cmdlets.BashParamErrorException]::Reported($__psbash_un + ': ', 'unbound variable') }; $__psbash_av)";
+
+    /// <summary>
     /// The save / <c>try</c> / restore of <see cref="ShellStateScope"/> WITHOUT its child <c>&amp; { }</c>: for a
     /// caller that is already inside a script block of its own and must keep that block's <c>$input</c> (a
     /// compound pipeline stage), which a nested <c>&amp; { }</c> would hide.

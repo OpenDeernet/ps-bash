@@ -50,6 +50,10 @@ public sealed class InvokeBashArithmeticCommand : PSCmdlet
             long result = BashArith.Evaluate(expr, ReadVar, WriteVar, ReadRawVar);
             WriteObject(result);
         }
+        catch (UnboundVariableException)
+        {
+            // already reported; no value
+        }
         catch (BashArith.BashArithException ex)
         {
             FileSystemHelpers.SetLastExitCode(this, 1);
@@ -63,6 +67,8 @@ public sealed class InvokeBashArithmeticCommand : PSCmdlet
     /// value is recursively evaluated as an arithmetic expression (bash
     /// semantics), guarded against reference cycles.
     /// </summary>
+    private sealed class UnboundVariableException : Exception { }
+
     private long ReadVar(string name) => ReadVar(name, new HashSet<string>(StringComparer.Ordinal));
 
     private long ReadVar(string name, HashSet<string> visiting)
@@ -70,6 +76,16 @@ public sealed class InvokeBashArithmeticCommand : PSCmdlet
         if (!visiting.Add(name)) return 0; // cycle: bash also stops at 0
 
         string? raw = ReadRawVar(name);
+        // `set -u`: an unset name in an arithmetic expression ends the script like any other unbound read.
+        if (raw is null && SessionState.PSVariable.GetValue("__BashNounset") is true)
+        {
+            // Reported on the error stream here; the emitted wrapper (PsBuild.ArithNounsetGuard) sees the
+            // global and ends the script -- a cmdlet exception would only end this statement.
+            FileSystemHelpers.WriteStderr(this, $"ps-bash: {name}: unbound variable");
+            FileSystemHelpers.SetLastExitCode(this, 1);
+            SessionState.PSVariable.Set("global:__BashUnbound", name);
+            throw new UnboundVariableException();
+        }
         if (string.IsNullOrEmpty(raw)) return 0;
 
         var trimmed = raw.Trim();

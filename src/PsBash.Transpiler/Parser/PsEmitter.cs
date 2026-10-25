@@ -5243,7 +5243,8 @@ public static class PsEmitter
         string argument = fragments is null
             ? PsBuild.SingleQuote(expr)
             : $"('' + {string.Join(" + ", fragments)})";
-        return $"Invoke-BashArith {argument}";
+        var invocation = $"Invoke-BashArith {argument}";
+        return _nounsetMode ? PsBuild.ArithNounsetGuard(invocation) : invocation;
     }
 
     /// <summary>

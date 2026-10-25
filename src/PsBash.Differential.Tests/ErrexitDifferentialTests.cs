@@ -124,6 +124,8 @@ public class ErrexitDifferentialTests
     [SkippableTheory]
     [InlineData("set -u; echo before; { echo [$undefined_var_x]; } 2>/dev/null; echo never")]
     [InlineData("echo before; { echo ${undefined_var_x:?gone}; } 2>/dev/null; echo never")]
+    [InlineData("set -u; echo before; { echo $((undefined_var_x + 1)); } 2>/dev/null; echo never")]
+    [InlineData("set -u; echo before; { (( undefined_var_x++ )); } 2>/dev/null; echo never")]
     public async Task ParamError_UnderGroupRedirect_IsSilencedAndEndsTheScript(string script)
     {
         var fixture = new BashOracleFixture();
