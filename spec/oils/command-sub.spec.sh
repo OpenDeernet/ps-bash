@@ -1,0 +1,187 @@
+## Imported from the Oils spec tests (command-sub.test.sh, Apache-2.0, https://github.com/oils-for-unix/oils).
+## Names and scripts only; expectations are recorded from bash 5.2, not taken from Oils.
+## Cases using the Oils harness ($SH, $REPO_ROOT, ...) are omitted.
+#### case
+foo=a; case $foo in [0-9]) echo number;; [a-z]) echo letter ;; esac
+## stdout: letter
+## status: 0
+## timeout: 10
+
+#### case in subshell
+# Hm this subhell has to know about the closing ) and stuff like that.
+# case_clause is a compound_command, which is a command.  And a subshell
+# takes a compound_list, which is a list of terms, which has and_ors in them
+# ... which eventually boils down to a command.
+echo $(foo=a; case $foo in [0-9]) echo number;; [a-z]) echo letter ;; esac)
+## stdout: letter
+## status: 0
+## timeout: 10
+
+#### Command sub word part
+# "The token shall not be delimited by the end of the substitution."
+foo=FOO; echo $(echo $foo)bar$(echo $foo)
+## stdout: FOObarFOO
+## status: 0
+## timeout: 10
+
+#### Backtick
+foo=FOO; echo `echo $foo`bar`echo $foo`
+## stdout: FOObarFOO
+## status: 0
+## timeout: 10
+
+#### Backtick 2
+echo `echo -n l; echo -n s`
+## stdout: ls
+## status: 0
+## timeout: 10
+
+#### Making command out of command sub should work
+# Works in bash and dash!
+$(echo ec)$(echo ho) split builtin
+## stdout: split builtin
+## status: 0
+## timeout: 10
+
+#### Making keyword out of command sub should NOT work
+$(echo f)$(echo or) i in a b c; do echo $i; done
+echo status=$?
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Command sub with here doc
+echo $(<<EOF tac
+one
+two
+EOF
+)
+## stdout: two one
+## status: 0
+## timeout: 10
+
+#### Here doc with pipeline
+<<EOF tac | tr '\n' 'X'
+one
+two
+EOF
+## STDOUT:
+twoXoneX
+## END
+## status: 0
+## timeout: 10
+
+#### Command Sub word split
+argv.py $(echo 'hi there') "$(echo 'hi there')"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Command Sub trailing newline removed
+s=$(python2 -c 'print("ab\ncd\n")')
+argv.py "$s"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Command Sub trailing whitespace not removed
+s=$(python2 -c 'print("ab\ncd\n ")')
+argv.py "$s"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Command Sub and exit code
+# A command resets the exit code, but an assignment doesn't.
+echo $(echo x; exit 33)
+echo $?
+x=$(echo x; exit 33)
+echo $?
+## STDOUT:
+x
+0
+33
+## END
+## status: 0
+## timeout: 10
+
+#### Command Sub in local sets exit code
+# A command resets the exit code, but an assignment doesn't.
+f() {
+  echo $(echo x; exit 33)
+  echo $?
+  local x=$(echo x; exit 33)
+  echo $?
+}
+f
+## STDOUT:
+x
+0
+0
+## END
+## status: 0
+## timeout: 10
+
+#### Double Quotes in Command Sub in Double Quotes
+# virtualenv's bin/activate uses this.
+# This is weird!  Double quotes within `` is different than double quotes
+# within $()!  All shells agree.
+# I think this is related to the nested backticks case!
+echo "x $(echo hi)"
+echo "x $(echo "hi")"
+echo "x $(echo \"hi\")"
+echo "x `echo hi`"
+echo "x `echo "hi"`"
+echo "x `echo \"hi\"`"
+## STDOUT:
+x hi
+x hi
+x "hi"
+x hi
+x hi
+x hi
+## END
+## status: 0
+## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## timeout: 10
+
+#### Quoting " within ``
+echo 1 `echo \"`
+#echo 2 `echo \\"`
+#echo 3 `echo \\\"`
+#echo 4 `echo \\\\"`
+## stdout: 1 "
+## status: 0
+## timeout: 10
+
+#### Quoting $ within ``
+echo 1 `echo $`
+echo 2 `echo \$`
+echo 3 `echo \\$`
+echo 4 `echo \\\$`
+echo 5 `echo \\\\$`
+## STDOUT:
+1 $
+2 $
+3 $
+4 $
+5 \$
+## END
+## status: 0
+## timeout: 10
+
+#### Quoting $ within `` within double quotes
+echo "1 `echo $`"
+echo "2 `echo \$`"
+echo "3 `echo \\$`"
+echo "4 `echo \\\$`"
+echo "5 `echo \\\\$`"
+## STDOUT:
+1 $
+2 $
+3 $
+4 $
+5 \$
+## END
+## status: 0
+## timeout: 10
