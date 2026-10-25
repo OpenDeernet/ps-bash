@@ -58,6 +58,17 @@ public static class AssertOracle
     internal static string DifferentialEndpointForTest => Fixture.EndpointForTest;
 
     /// <summary>
+    /// ps-bash only (no bash oracle) on the SHARED warm host. A test that asserts a property bash cannot
+    /// reproduce (exit status of `bash -c`, a ps-bash-specific message) uses this instead of
+    /// `new BashOracleFixture()`: every fixture instance owns its own endpoint, hence its own host process.
+    /// </summary>
+    internal static Task<OracleResult> RunPsBashOnlyAsync(string script, TimeSpan? timeout = null)
+    {
+        Skip.If(Fixture.PsBashPath is null, "ps-bash binary not built");
+        return Fixture.RunPsBashAsync(script, timeout);
+    }
+
+    /// <summary>
     /// One stable canonical HOME/TEMP for the whole process, matching the
     /// canonical fixture's single warm daemon. Created on first use and
     /// deliberately never deleted here: the daemon owns it (Windows module

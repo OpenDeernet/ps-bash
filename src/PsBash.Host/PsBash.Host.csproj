@@ -8,12 +8,17 @@
     <AssemblyName>ps-bash-host</AssemblyName>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <NoWarn>$(NoWarn);IL2026</NoWarn>
+    <!-- A warm host grew to ~1.2 GB after a few hundred trivial commands; ConserveMemory=9 plateaus it near
+         ~770 MB (measured, 400 commands). Background GC off: no extra GC thread/heap for a one-command-at-a-time host. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
   </PropertyGroup>
   <ItemGroup>
     <!-- Must be set before DeflateStream's cached static initialization. The
          shell owns this process; complete gzip files must not silently accept EOF
          mid-member and then delete their compressed input as if decoding succeeded. -->
     <RuntimeHostConfigurationOption Include="System.IO.Compression.UseStrictValidation" Value="true" />
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="9" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="PsBash.Host.Tests" />

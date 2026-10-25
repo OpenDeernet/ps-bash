@@ -111,9 +111,7 @@ public class ErrexitDifferentialTests
     {
         // GNU bash 5.2: prints "before", reports `bash: line 1: x: unbound variable`, exits 1. The message prefix
         // differs by design (intentional-differences.md), so stdout and status are asserted directly.
-        var fixture = new BashOracleFixture();
-        Skip.If(fixture.PsBashPath is null, "ps-bash binary not built");
-        var result = await fixture.RunPsBashAsync("set -eu; echo before; echo [$undefined_var_x]; echo never", TimeSpan.FromSeconds(30));
+        var result = await AssertOracle.RunPsBashOnlyAsync("set -eu; echo before; echo [$undefined_var_x]; echo never", TimeSpan.FromSeconds(30));
         Assert.Equal(1, result.ExitCode);
         Assert.Equal("before", result.Stdout.Trim());
         Assert.Contains("undefined_var_x: unbound variable", result.Stderr);
@@ -128,9 +126,7 @@ public class ErrexitDifferentialTests
     [InlineData("set -u; echo before; { (( undefined_var_x++ )); } 2>/dev/null; echo never")]
     public async Task ParamError_UnderGroupRedirect_IsSilencedAndEndsTheScript(string script)
     {
-        var fixture = new BashOracleFixture();
-        Skip.If(fixture.PsBashPath is null, "ps-bash binary not built");
-        var result = await fixture.RunPsBashAsync(script, TimeSpan.FromSeconds(30));
+        var result = await AssertOracle.RunPsBashOnlyAsync(script, TimeSpan.FromSeconds(30));
         Assert.Equal(1, result.ExitCode);
         Assert.Equal("before", result.Stdout.Trim());
         Assert.DoesNotContain(result.Stderr.Split('\n'), l => l.StartsWith("ps-bash: ", StringComparison.Ordinal)); // [ps-bash] lines are the harness trace

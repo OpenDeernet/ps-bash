@@ -90,6 +90,9 @@ public sealed class BashOracleFixture
     {
         [IpcTransportFactory.EndpointEnvVar] = _endpoint,
         ["PSBASH_HOST_IDLE_SECS"] = WarmHostIdleSecs.ToString(),
+        // Memory cap: the host's guard cancels a command past this (default is half of RAM, which never trips).
+        // GC tuning lives in the host's runtimeconfig; a warm host plateaus near 770 MB, so 1536 is a real ceiling.
+        ["PSBASH_HOST_MAX_MB"] = "1536",
     };
 
     public BashOracleFixture(
