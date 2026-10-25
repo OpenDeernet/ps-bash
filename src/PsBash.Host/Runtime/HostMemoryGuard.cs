@@ -9,8 +9,8 @@ namespace PsBash.Host.Runtime;
 /// one command could otherwise exhaust memory and take every session down with an OutOfMemory crash.
 /// While a command runs, its usage is polled; past <see cref="LimitBytes"/> the command is cancelled
 /// (the same Stop a disconnect uses) and reports the limit, exit 137 as for an OOM kill.
-/// Limit: <c>PSBASH_HOST_MAX_MB</c> (<c>0</c> disables); default half the memory available to the
-/// process (physical RAM or a container limit), at most 4 GB.
+/// Limit: <c>PSBASH_HOST_MAX_MB</c> (<c>0</c> disables); default a quarter of the memory available to the
+/// process (physical RAM or a container limit), at most 2 GB (a warm host plateaus near 840 MB; machines are shared).
 /// </para>
 /// </summary>
 internal sealed class HostMemoryGuard : IDisposable
@@ -31,12 +31,12 @@ internal sealed class HostMemoryGuard : IDisposable
     public const int ExitCode = 137;
 
     /// <summary>Default limit never exceeds this, so a big-RAM machine still bounds a runaway command.</summary>
-    private const long DefaultCeilingBytes = 4L << 30;
+    private const long DefaultCeilingBytes = 2L << 30;
 
     internal static long ResolveLimit(string? envMb, long availableBytes)
     {
         if (long.TryParse(envMb, out var mb) && mb >= 0) return mb == 0 ? 0 : mb * 1024 * 1024;
-        return availableBytes > 0 ? Math.Min(availableBytes / 2, DefaultCeilingBytes) : 0;
+        return availableBytes > 0 ? Math.Min(availableBytes / 4, DefaultCeilingBytes) : 0;
     }
 
     private readonly Timer? _timer;

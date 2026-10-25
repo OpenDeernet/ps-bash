@@ -83,10 +83,10 @@ public class StuckCommandTests : IDisposable
     [Theory]
     [InlineData("600", 0L, 600L * 1024 * 1024)]
     [InlineData("0", 8L << 30, 0L)]                 // explicit 0 disables
-    [InlineData(null, 8L << 30, 4L << 30)]          // default: half of what is available
-    [InlineData("garbage", 8L << 30, 4L << 30)]
-    [InlineData(null, 32L << 30, 4L << 30)]         // big machine: capped at 4 GB
-    [InlineData(null, 4L << 30, 2L << 30)]
+    [InlineData(null, 8L << 30, 2L << 30)]          // default: a quarter of what is available, capped at 2 GB
+    [InlineData("garbage", 8L << 30, 2L << 30)]
+    [InlineData(null, 32L << 30, 2L << 30)]         // big machine: capped at 2 GB
+    [InlineData(null, 4L << 30, 1L << 30)]
     public void MemoryLimit_Resolve(string? env, long available, long expected)
         => Assert.Equal(expected, HostMemoryGuard.ResolveLimit(env, available));
 
