@@ -21,6 +21,8 @@
   <ItemGroup>
     <ProjectReference Include="..\PsBash.Spec\PsBash.Spec.csproj" />
     <ProjectReference Include="..\PsBash.Testing\PsBash.Testing.csproj" />
+    <ProjectReference Include="..\PsBash.Core\PsBash.Core.csproj" />
+    <ProjectReference Include="..\PsBash.Transpiler\PsBash.Transpiler.csproj" />
     <!-- Build-ordering only (same as Differential.Tests): a fresh launcher + host before the corpus runs. -->
     <ProjectReference Include="..\PsBash.Shell\PsBash.Shell.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>

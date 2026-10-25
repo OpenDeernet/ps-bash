@@ -172,3 +172,18 @@ Record expectations for new cases from real bash: `PSBASH_SPEC_RECORD=1 tman tes
 `$REPO_ROOT`, `ysh`, ...) are dropped, and an Apache-2.0 attribution header is added. `PSBASH_SPEC_RECORD=1` then fills
 expectations from bash 5.2 (oracle timeouts drop the case), and `PSBASH_SPEC_TRIAGE=1` marks failing cases XFAIL and
 unmarks the ones that now pass. First import: `spec/oils/loop.spec.sh`.
+
+## 9. Measured (Phase 2 in-host executor)
+
+56 cases (`spec/**`), same machine, run to completion; wall time of the case runs only (`PSBASH_SPEC_TIMING`).
+
+| Executor | Wall | Per case | Note |
+|---|---|---|---|
+| Launcher + fresh host per case (Phase 1) | 84 s | 1.5 s | `PSBASH_SPEC_MODE=perinv` |
+| Launcher per case, one shared warm host | 30 s | 0.54 s | `PSBASH_SPEC_MODE=warm`; ~500 ms of each case is launcher start + connect (`PSBASH_TIMING=1`: transpile 125 ms, connect 55 ms, execute 100 ms) |
+| **In-process transpile + N private hosts (default)** | **13 s** | **0.24 s** | `InHostExecutor`; 4 slots, one warm-up script per host; most remaining time is host start-up and two `sleep`-based cases |
+
+Raising launcher-per-case parallelism did not help: one host serialises, and spilling to more hosts costs a cold start each.
+The in-host executor is the first to scale with the corpus, since the fixed cost is paid once per slot.
+Fidelity guard: the first and every 25th case of each file is re-run through the real launcher and must give the same verdict.
+Memory: 4 slots = 4 hosts (~0.4-0.8 GB each at peak); `PSBASH_SPEC_PAR` lowers it.

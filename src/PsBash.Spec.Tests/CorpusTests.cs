@@ -17,7 +17,7 @@ public class CorpusTests
             .Select(p => new object[] { Path.GetRelativePath(SpecDir(), p).Replace('\\', '/') });
 
     private static int SpecParallelism()
-        => int.TryParse(Environment.GetEnvironmentVariable("PSBASH_SPEC_PAR"), out var n) && n > 0 ? n : 3;
+        => int.TryParse(Environment.GetEnvironmentVariable("PSBASH_SPEC_PAR"), out var n) && n > 0 ? n : 4;
 
     /// <summary>Appends <c>mode par file cases ms</c> to PSBASH_SPEC_TIMING so runs can be compared.</summary>
     private static void LogTiming(string name, int cases, long ms)
@@ -47,8 +47,10 @@ public class CorpusTests
             File.WriteAllText(path, SpecParser.Format(file));
         }
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var results = await SpecRunner.RunAsync(file, new PsBashExecutor(), parallelism: SpecParallelism());
+        var results = await SpecRunner.RunAsync(file, Executors.Get(), parallelism: SpecParallelism());
         LogTiming(name, file.Cases.Count, sw.ElapsedMilliseconds);
+        foreach (var slow in results.OrderByDescending(r => r.Actual?.WallMs ?? 0).Take(4))
+            LogTiming($"  slowest[{slow.Actual?.WallMs}ms] {slow.Case.Name}", 0, 0);
         if (triage)
         {
             // Mark every failing case as a known gap, and unmark any that now pass, so the file records the true state.
@@ -60,6 +62,18 @@ public class CorpusTests
             }).ToList();
             File.WriteAllText(path, SpecParser.Format(file with { Cases = marked }));
             return;
+        }
+        // Fidelity guard (spec-suite.md 3.3): the in-host fast path must agree with the real launcher.
+        // Sampled: the first case of the file plus every 25th.
+        if (PsBashExecutor.Mode == "inhost")
+        {
+            for (var i = 0; i < file.Cases.Count; i += 25)
+            {
+                var c = file.Cases[i];
+                var viaLauncher = SpecRunner.Judge(c, await new PsBashExecutor().RunAsync(c.Script, c.Timeout ?? SpecRunner.DefaultTimeout, default));
+                Assert.True(viaLauncher.Verdict == results[i].Verdict,
+                    $"fast path and launcher disagree on '{c.Name}': in-host {results[i].Verdict}, launcher {viaLauncher.Verdict}");
+            }
         }
         var bad = results.Where(r => r.Verdict is Verdict.Fail or Verdict.XPass).ToList();
         Assert.True(bad.Count == 0, SpecRunner.Summarize(file, results) + "\n\n" +

@@ -10,7 +10,7 @@ namespace PsBash.Spec.Tests;
 /// </summary>
 internal sealed class PsBashExecutor : IScriptExecutor
 {
-    public static string Mode { get; } = Environment.GetEnvironmentVariable("PSBASH_SPEC_MODE") is { Length: > 0 } m ? m : "warm";
+    public static string Mode { get; } = Environment.GetEnvironmentVariable("PSBASH_SPEC_MODE") is { Length: > 0 } m ? m : "inhost";
 
     // One endpoint per test process; the daemon idles out shortly after the run.
     private static readonly string Endpoint =
@@ -24,6 +24,7 @@ internal sealed class PsBashExecutor : IScriptExecutor
             ["PSBASH_IPC_ENDPOINT"] = Endpoint,
             ["PSBASH_HOST_IDLE_SECS"] = "20",
             ["PSBASH_HOST_MAX_MB"] = "1536",
+            ["PSBASH_EXEC_SPILL_MS"] = Environment.GetEnvironmentVariable("PSBASH_SPEC_SPILL_MS") ?? "250",
         };
 
     public async Task<ExecResult> RunAsync(string script, TimeSpan timeout, CancellationToken cancel)
@@ -31,4 +32,15 @@ internal sealed class PsBashExecutor : IScriptExecutor
         var r = await PsBashRunner.Create().WithTimeout(timeout).WithEnv(Env).RunScriptAsync(script);
         return new ExecResult(r.ExitCode, r.Stdout, r.Stderr, r.WallMs);
     }
+}
+
+/// <summary>Picks the executor for the run: <c>inhost</c> (default, shared slots), else a launcher per case.</summary>
+internal static class Executors
+{
+    private static readonly Lazy<InHostExecutor> Shared = new(() => new InHostExecutor(Slots));
+
+    public static int Slots
+        => int.TryParse(Environment.GetEnvironmentVariable("PSBASH_SPEC_PAR"), out var n) && n > 0 ? n : 4;
+
+    public static IScriptExecutor Get() => PsBashExecutor.Mode == "inhost" ? Shared.Value : new PsBashExecutor();
 }
