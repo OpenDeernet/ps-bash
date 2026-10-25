@@ -28,6 +28,9 @@ public static class BashShellState
     /// <summary>Records <c>readonly NAME</c>; only <c>unset</c> consults it (assignment is not blocked: see intentional-differences.md).</summary>
     public static void MarkReadonly(string name) { lock (ReadonlyNames) ReadonlyNames.Add(name); }
 
+    /// <summary>A new, independent invocation starts with nothing readonly (the daemon outlives the scripts it runs).</summary>
+    public static void ClearReadonly() { lock (ReadonlyNames) ReadonlyNames.Clear(); }
+
     internal static bool IsReadonly(string name) { lock (ReadonlyNames) return ReadonlyNames.Contains(name); }
 
     /// <summary>The <c>$global:</c> variables that are shell state (see the class summary).</summary>

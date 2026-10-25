@@ -51,6 +51,17 @@ public class BashShellStateTests : IClassFixture<SharedPwshFixture>
     }
 
     [Fact]
+    public void ClearReadonly_LetsTheNextInvocationUnset()
+    {
+        // A daemon runs many scripts; `readonly v` in one must not block `unset v` in the next.
+        var r = Run(
+            "$env:PSB_RO2 = 'x'; [PsBash.Cmdlets.BashShellState]::MarkReadonly('PSB_RO2'); "
+            + "[PsBash.Cmdlets.BashShellState]::ClearReadonly(); Invoke-BashUnset PSB_RO2; \"rc=$global:LASTEXITCODE v=[$env:PSB_RO2]\"").AssertSuccess();
+
+        Assert.Contains("rc=0 v=[]", r.Stdout);
+    }
+
+    [Fact]
     public void Restore_ReportsTheXtraceLevelToReapply()
     {
         var r = Run(

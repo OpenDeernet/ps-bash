@@ -217,6 +217,22 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
     /// batching there silently turned N line-callbacks into one multi-line callback. It
     /// would also buy nothing, since that path has no IPC frame to amortize.
     /// </param>
+    /// <summary>
+    /// A new invocation starts with nothing `readonly`. The Cmdlets assembly is not referenced by the host (it is
+    /// loaded into the runspace), so the call goes through reflection and is a no-op until the assembly is loaded.
+    /// </summary>
+    private static void ClearReadonlyNames()
+    {
+        try
+        {
+            AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "PsBash.Cmdlets")
+                ?.GetType("PsBash.Cmdlets.BashShellState")
+                ?.GetMethod("ClearReadonly")?.Invoke(null, null);
+        }
+        catch (Exception) { /* best effort: a stale readonly name only makes a later `unset` refuse */ }
+    }
+
     private int RunCommand(string command, Action<string>? output, Action<string>? errorOutput,
                            bool batchOutput,
                            IReadOnlyList<KeyValuePair<string, string>>? environment = null,
@@ -239,7 +255,7 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
             // control variables in (compact output, path mode, ...), never wipes `export`s made by an
             // earlier call or replaces PATH.
             if (StatefulSession) ApplyControlEnvironment(environment);
-            else ResetEnvironment(environment);
+            else { ResetEnvironment(environment); ClearReadonlyNames(); }
             SyncHomeToEnvironment();
         }
 
