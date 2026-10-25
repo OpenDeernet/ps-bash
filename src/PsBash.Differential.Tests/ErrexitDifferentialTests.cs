@@ -119,6 +119,20 @@ public class ErrexitDifferentialTests
         Assert.Contains("undefined_var_x: unbound variable", result.Stderr);
     }
 
+    // The report goes through the error stream where the read happens, so the group's own redirect silences it
+    // (a thrown error used to bypass it). bash -c exits 127 here and a script file 1, so status is asserted directly.
+    [SkippableTheory]
+    [InlineData("set -u; echo before; { echo [$undefined_var_x]; } 2>/dev/null; echo never")]
+    [InlineData("echo before; { echo ${undefined_var_x:?gone}; } 2>/dev/null; echo never")]
+    public async Task ParamError_UnderGroupRedirect_IsSilencedAndEndsTheScript(string script)
+    {
+        var fixture = new BashOracleFixture();
+        Skip.If(fixture.PsBashPath is null, "ps-bash binary not built");
+        var result = await fixture.RunPsBashAsync(script, TimeSpan.FromSeconds(30));
+        Assert.Equal(1, result.ExitCode);
+        Assert.Equal("before", result.Stdout.Trim());
+        Assert.DoesNotContain(result.Stderr.Split('\n'), l => l.StartsWith("ps-bash: ", StringComparison.Ordinal)); // [ps-bash] lines are the harness trace
+    }
     [SkippableFact]
     public Task Nounset_DefaultForms_AreNotChecked() => Eq("set -u; echo [${u1:-d}] [${u2-d}] [${u3+x}]; echo after");
 

@@ -5445,12 +5445,12 @@ public static class PsEmitter
     /// <summary>`$1`..`$N` past the last positional parameter is unbound under nounset (`$@` `$*` `$#` `$0` never are).</summary>
     private static string StrictPositional(string name, string special)
         => name.Length > 0 && name[0] != '0' && name.All(char.IsAsciiDigit)
-            ? $"$(if ($global:__BashNounset -and @(if ($global:BashPositional) {{ $global:BashPositional }} else {{ $args }}).Count -lt {name}) {{ throw [PsBash.Cmdlets.BashParamErrorException]::new('{name}: ', 'unbound variable') }} else {{ {special} }})"
+            ? $"$(if ($global:__BashNounset -and @(if ($global:BashPositional) {{ $global:BashPositional }} else {{ $args }}).Count -lt {name}) {{ {PsBuild.ParamErrorThrowStatements(PsBuild.SingleQuote(name + ": "), "'unbound variable'")} }} else {{ {special} }})"
             : special;
 
     /// <summary>A read of <paramref name="name"/> that ends the script ("unbound variable") when nounset is on and it is unset.</summary>
     private static string StrictRead(string name, string plain)
-        => $"$(if ($global:__BashNounset -and $null -eq {plain}) {{ throw [PsBash.Cmdlets.BashParamErrorException]::new({PsBuild.SingleQuote(name + ": ")}, 'unbound variable') }} else {{ {plain} }})";
+        => $"$(if ($global:__BashNounset -and $null -eq {plain}) {{ {PsBuild.ParamErrorThrowStatements(PsBuild.SingleQuote(name + ": "), "'unbound variable'")} }} else {{ {plain} }})";
 
     // -- RC-7: unquoted variable word-splitting -------------------------------
     //
@@ -6044,7 +6044,7 @@ public static class PsEmitter
     {
         var name = varRef.StartsWith("$env:", StringComparison.Ordinal) ? varRef[5..].Trim('{', '}', '(', ')') : "";
         var prefix = name.Length > 0 ? PsBuild.SingleQuote(name + ": ") : "''";
-        return $"$(throw [PsBash.Cmdlets.BashParamErrorException]::new({prefix}, {argVal}))";
+        return "$(" + PsBuild.ParamErrorThrowStatements(prefix, argVal) + ")";
     }
 
     private static string? EmitScalarSuffix(string varRef, string suffix, bool inDoubleQuote,

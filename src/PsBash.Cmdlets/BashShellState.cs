@@ -145,4 +145,16 @@ public sealed class BashParamErrorException : Exception
 {
     public BashParamErrorException(string name, string? message)
         : base(name + (string.IsNullOrEmpty(message) ? "parameter null or not set" : message)) { }
+
+    /// <summary>
+    /// The error, already written to the error stream by the emitted code (so the command's own
+    /// redirects applied to it); catchers must not print it again. Marked via <c>Data</c> so the host,
+    /// which does not reference this assembly, can test it by key.
+    /// </summary>
+    public static BashParamErrorException Reported(string name, string? message)
+    {
+        var ex = new BashParamErrorException(name, message);
+        ex.Data["psbash.reported"] = true;
+        return ex;
+    }
 }

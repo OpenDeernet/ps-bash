@@ -131,6 +131,17 @@ public static class PsBuild
         "& { " + ShellStateGuard(body, finallyTail) + " }";
 
     /// <summary>
+    /// Statements that report a parameter error (<c>x: unbound variable</c>, <c>${x:?msg}</c>) on the
+    /// ERROR STREAM where the failing command runs, then end the script with the typed exception. The
+    /// report happens before the throw so an enclosing <c>2&gt; f</c> / <c>2&gt;/dev/null</c> applies to it
+    /// (a thrown error escapes a group's redirect); the exception is marked reported so no catcher
+    /// prints it again.
+    /// </summary>
+    public static string ParamErrorThrowStatements(string prefixLiteral, string messageExpr) =>
+        "$__psbash_pe = [PsBash.Cmdlets.BashParamErrorException]::Reported(" + prefixLiteral + ", " + messageExpr + "); "
+        + "Write-Error ('ps-bash: ' + $__psbash_pe.Message) -ErrorAction Continue; throw $__psbash_pe";
+
+    /// <summary>
     /// The save / <c>try</c> / restore of <see cref="ShellStateScope"/> WITHOUT its child <c>&amp; { }</c>: for a
     /// caller that is already inside a script block of its own and must keep that block's <c>$input</c> (a
     /// compound pipeline stage), which a nested <c>&amp; { }</c> would hide.
@@ -138,7 +149,7 @@ public static class PsBuild
     public static string ShellStateGuard(string body, string? finallyTail = null) =>
         "$__psbash_ss = [PsBash.Cmdlets.BashShellState]::Save($ExecutionContext.SessionState); try { "
         + body
-        + " } catch [PsBash.Cmdlets.BashParamErrorException] { Write-Error ('ps-bash: ' + $_.Exception.Message) -ErrorAction Continue; $global:LASTEXITCODE = 1 } finally { $__psbash_xt =[PsBash.Cmdlets.BashShellState]::Restore($ExecutionContext.SessionState, $__psbash_ss); "
+        + " } catch [PsBash.Cmdlets.BashParamErrorException] { if (-not $_.Exception.Data['psbash.reported']) { Write-Error ('ps-bash: ' + $_.Exception.Message) -ErrorAction Continue }; $global:LASTEXITCODE = 1 } finally { $__psbash_xt =[PsBash.Cmdlets.BashShellState]::Restore($ExecutionContext.SessionState, $__psbash_ss); "
         + "if ($null -ne $__psbash_xt) { if ($__psbash_xt) { Set-PSDebug -Trace 1 } else { Set-PSDebug -Off } }"
         + (finallyTail is null ? "" : "; " + finallyTail)
         + " }";

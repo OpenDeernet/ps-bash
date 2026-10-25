@@ -1598,7 +1598,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("echo ${VAR:?error msg}");
 
-        Assert.Equal("Invoke-BashEcho ($env:VAR ? $env:VAR : $(throw [PsBash.Cmdlets.BashParamErrorException]::new('VAR: ', \"error msg\")))", result);
+        Assert.Equal("Invoke-BashEcho ($env:VAR ? $env:VAR : $($__psbash_pe = [PsBash.Cmdlets.BashParamErrorException]::Reported('VAR: ', \"error msg\"); Write-Error ('ps-bash: ' + $__psbash_pe.Message) -ErrorAction Continue; throw $__psbash_pe))", result);
     }
 
     [Fact]
@@ -1631,7 +1631,7 @@ public class PsEmitterTests
     {
         var result = PsEmitter.Transpile("echo ${VAR?must be set}");
 
-        Assert.Equal("Invoke-BashEcho ($env:VAR ?? $(throw [PsBash.Cmdlets.BashParamErrorException]::new('VAR: ', \"must be set\")))", result);
+        Assert.Equal("Invoke-BashEcho ($env:VAR ?? $($__psbash_pe = [PsBash.Cmdlets.BashParamErrorException]::Reported('VAR: ', \"must be set\"); Write-Error ('ps-bash: ' + $__psbash_pe.Message) -ErrorAction Continue; throw $__psbash_pe))", result);
     }
 
     [Fact]

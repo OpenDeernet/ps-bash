@@ -616,7 +616,10 @@ public sealed class SdkWorker : IWorker, ICompletionWorker
             }
             catch (System.Management.Automation.RuntimeException ex)
             {
-                deliverError($"ps-bash: {ex.Message}");
+                // A parameter error the script already wrote to its error stream (so `2>/dev/null` applied).
+                bool reported = ex.ErrorRecord?.Exception?.Data["psbash.reported"] is true
+                    || ex.InnerException?.Data["psbash.reported"] is true;
+                if (!reported) deliverError($"ps-bash: {ex.Message}");
                 _ps.Commands.Clear();
                 return 1;
             }
