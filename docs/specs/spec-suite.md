@@ -202,3 +202,11 @@ Memory: 4 slots = 4 hosts (~0.4-0.8 GB each at peak); `PSBASH_SPEC_PAR` lowers i
 - **Isolation**: each case gets its own scratch directory (`_tmp` only when the script mentions one). The in-host executor snapshots shell state
   once per host (`BashShellState.Save` plus the function table) and restores it after every case; `readonly` names are reset per invocation.
 - Cost: the full suite is ~35 min on this machine (the restore step and the record pass dominate); a single file is seconds.
+
+### 10.1 Bounded, resumable runs
+
+A tman job is killed at its max-time and loses its summary, so the corpus runner records progress itself:
+`PSBASH_SPEC_BUDGET_MIN=<n>` stops starting new files after n minutes (skipped, not failed);
+`PSBASH_SPEC_RESULTS=<file>` appends `PASS|FAIL|SKIP<TAB>file<TAB>ms` per file as it finishes;
+`PSBASH_SPEC_RESUME=1` skips files the results file already records as PASS. Re-run until no file is SKIP.
+Full suite (301 files, 316 tests): clean, 32m47s.

@@ -27,9 +27,51 @@ public class CorpusTests
             File.AppendAllText(log, $"{PsBashExecutor.Mode} par={SpecParallelism()} {name} cases={cases} ms={ms}\n");
     }
 
+    // Bounded, resumable runs (tman kills a job at its max-time and loses everything):
+    //   PSBASH_SPEC_BUDGET_MIN=<n>  stop starting new files after n minutes; the rest are skipped, not failed.
+    //   PSBASH_SPEC_RESULTS=<file>  one "PASS|FAIL|SKIP<TAB>name<TAB>ms" line per file, appended as each finishes.
+    //   PSBASH_SPEC_RESUME=1        skip files the results file already records as PASS.
+    private static readonly System.Diagnostics.Stopwatch SuiteClock = System.Diagnostics.Stopwatch.StartNew();
+
+    private static string? ResultsFile => Environment.GetEnvironmentVariable("PSBASH_SPEC_RESULTS") is { Length: > 0 } f ? f : null;
+
+    private static bool OverBudget()
+        => double.TryParse(Environment.GetEnvironmentVariable("PSBASH_SPEC_BUDGET_MIN"), out var m) && m > 0
+           && SuiteClock.Elapsed.TotalMinutes > m;
+
+    private static bool AlreadyPassed(string name)
+    {
+        if (Environment.GetEnvironmentVariable("PSBASH_SPEC_RESUME") != "1" || ResultsFile is not { } f || !File.Exists(f)) return false;
+        return File.ReadLines(f).Any(l => l.StartsWith("PASS\t" + name + "\t", StringComparison.Ordinal));
+    }
+
+    private static void Record(string verdict, string name, long ms)
+    {
+        if (ResultsFile is not { } f) return;
+        lock (typeof(CorpusTests)) File.AppendAllText(f, $"{verdict}\t{name}\t{ms}\n");
+    }
+
+    [Fact]
+    public void Resume_and_budget_are_inert_by_default()
+    {
+        // With no env set a full run must neither skip nor stop early.
+        if (Environment.GetEnvironmentVariable("PSBASH_SPEC_BUDGET_MIN") is null) Assert.False(OverBudget());
+        if (Environment.GetEnvironmentVariable("PSBASH_SPEC_RESUME") is null) Assert.False(AlreadyPassed("x"));
+    }
+
     [Theory]
     [MemberData(nameof(Files))]
     public async Task Spec_file_conforms(string name)
+    {
+        if (AlreadyPassed(name)) { Record("SKIP", name, 0); return; }
+        if (OverBudget()) { Record("SKIP", name, 0); return; }
+        var fileClock = System.Diagnostics.Stopwatch.StartNew();
+        try { await RunFileAsync(name); }
+        catch { Record("FAIL", name, fileClock.ElapsedMilliseconds); throw; }
+        Record("PASS", name, fileClock.ElapsedMilliseconds);
+    }
+
+    private static async Task RunFileAsync(string name)
     {
         string path = Path.Combine(SpecDir(), name);
         var file = SpecParser.Parse(name, File.ReadAllText(path));
