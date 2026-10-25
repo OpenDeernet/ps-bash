@@ -295,3 +295,25 @@ declare A="a b" B=$(echo c); echo "[$A] [$B]"
 [a b] [c]
 ## END
 ## status: 0
+
+#### quoted for-list items word-split when used unquoted
+for c in "a b" 'c  d' e; do printf '[%s]' $c; echo; done
+for c in "x y"; do set -- $c; echo "$# $1 $2"; done
+for c in 1 2; do printf '<%s>' $c; done; echo
+## STDOUT:
+[a][b]
+[c][d]
+[e]
+2 x y
+<1><2>
+## END
+## status: 0
+
+#### read variable word-splits when used unquoted
+echo "p   q" | { read line; printf '[%s]' $line; echo; }
+echo "p   q" | { read line; echo $line; }
+## STDOUT:
+[p][q]
+p q
+## END
+## status: 0

@@ -760,6 +760,28 @@ public static class PsEmitter
         return check + keyword + " " + (keyword == "break" ? target.Break : target.Continue);
     }
 
+    /// <summary>
+    /// Loop variables whose value may hold IFS whitespace or glob characters, so an unquoted <c>$v</c> must split
+    /// like any other variable. Unquoted list words are already split, so only quoted items can introduce them
+    /// (<c>for c in "a b" "c d"; do set -- $c</c>).
+    /// </summary>
+    [ThreadStatic]
+    private static HashSet<string>? _splitLoopVars;
+
+    private static bool ForListMaySplit(ImmutableArray<CompoundWord> list)
+    {
+        static bool Risky(string s) => s.AsSpan().IndexOfAny(" \t\n*?[\\") >= 0;
+        static bool PartRisky(WordPart p) => p switch
+        {
+            WordPart.SingleQuoted sq => Risky(sq.Value),
+            WordPart.AnsiCQuoted => true,
+            WordPart.EscapedLiteral => true,
+            WordPart.DoubleQuoted dq => dq.Parts.Any(i => i is not WordPart.Literal l || Risky(l.Value)),
+            _ => false,
+        };
+        return list.Any(w => w.Parts.Any(PartRisky));
+    }
+
     private static string EmitForIn(Command.ForIn forIn)
     {
         int depth = _loopDepth++;
@@ -792,12 +814,15 @@ public static class PsEmitter
 
             var vars = _loopVars ??= new HashSet<string>();
             bool added = vars.Add(forIn.Var);
+            // `for i; do` (no list) iterates "$@": arbitrary strings.
+            bool addedSplit = (forIn.List.IsEmpty || ForListMaySplit(forIn.List)) && (_splitLoopVars ??= new HashSet<string>()).Add(forIn.Var);
             try
             {
                 sb.Append(EmitBody(forIn.Body));
             }
             finally
             {
+                if (addedSplit) _splitLoopVars!.Remove(forIn.Var);
                 if (added) vars.Remove(forIn.Var);
             }
 
@@ -5543,6 +5568,11 @@ public static class PsEmitter
     {
         if (name.Length == 0)
             return false;
+
+        // A loop variable bound from quoted items holds an arbitrary string: it splits like any variable
+        // (EmitSimpleVar renders it bare, `$cfg`, which the split array takes just as well as `$env:cfg`).
+        if (_splitLoopVars is not null && _splitLoopVars.Contains(name))
+            return true;
 
         // The single source of truth: a name is RC-7-splat-eligible iff
         // EmitSimpleVar would render it as `$env:NAME`. Loop vars, special

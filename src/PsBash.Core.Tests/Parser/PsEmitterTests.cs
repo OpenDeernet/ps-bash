@@ -2990,12 +2990,12 @@ public class PsEmitterTests
     [Fact]
     public void Transpile_ForImplicitArgs_EmitsArgsIteration()
     {
-        var result = PsEmitter.Transpile("for x; do echo $x; done");
+        var result = PsEmitter.Transpile("for x; do echo \"$x\"; done");
 
         // $(if ...) subexpression — a bare (if ...) is parsed by PowerShell as an
         // invocation of a command named "if" and fails at runtime; the subexpression
         // operator is required for the implicit-$@ iteration to actually run.
-        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($x in $(if ($global:BashPositional) { $global:BashPositional } else { $args })) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; $env:x = [string]$x; Invoke-BashEcho $x }", result);
+        Assert.Equal("$__psbash_iter = 0; :__psbash_l0 foreach ($x in $(if ($global:BashPositional) { $global:BashPositional } else { $args })) { if (++$__psbash_iter -gt ($env:PSBASH_MAX_ITERATIONS ?? 100000)) { throw \"ps-bash: loop iteration limit exceeded ($(($env:PSBASH_MAX_ITERATIONS ?? 100000)))\" }; $env:x = [string]$x; Invoke-BashEcho \"$x\" }", result);
     }
 
     [Fact]

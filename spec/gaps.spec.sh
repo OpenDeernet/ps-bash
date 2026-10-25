@@ -50,4 +50,3 @@ printf '[%s]' $cfg; echo
 [warm][8]
 ## END
 ## status: 0
-## XFAIL ps-bash GAP-1 loop variables are emitted as one bound value and never word-split
