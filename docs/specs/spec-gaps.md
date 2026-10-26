@@ -193,3 +193,26 @@ Known ps-bash/bash 5.2 divergences recorded as XFAIL in the spec corpus, grouped
 | `gap-oils-zsh-idioms` | `spec/oils/zsh-idioms.spec.sh` | 1 |
 
 Total: 1562 cases in 187 areas.
+
+## Fix priority
+
+Ranked by how often real scripts hit the feature (likelihood), how bad the failure is (silent wrong output or a leaked
+PowerShell artifact beats a missing diagnostic), and how big the fix looks. Rows marked *probed* were reproduced against
+bash 5.2 in WSL; the rest are estimates from case names.
+
+| # | Gap | Probed behaviour (ps-bash vs bash) | Cases | Severity | Size |
+|---|---|---|---|---|---|
+| 1 | Brace expansion followed by `$var` | `x=1; echo {a,b}$x` prints `a$env:x b$env:x`, bash `a1 b1` | brace-expansion | high: emitter leaks PowerShell text | small |
+| 2 | `${v/pat/rep}` glob patterns and `#`/`%` anchors | `${v/c*/XX}` unchanged; `${s/#xx/yy}` and `${s/%xx/yy}` ignore the anchor | var-op-patsub 18 | high: silent wrong output | small |
+| 3 | printf precision, `%*.*s`, `'c` | `%6.4d`, `%5.2s` ignore precision; `%*.*s` printed literally; `printf %d \'a` gives 0, bash 97 | builtin-printf 29 | high: silent wrong output | small |
+| 4 | `${u=z}` visible to later words of the same command | `echo ${u=z} $u` prints `z`, bash `z z` | var-op-test 13 | medium | small |
+| 5 | Brace range with step | `{a..e..2}` ignores the step, bash `a c e` | brace-expansion | medium | small |
+| 6 | Sparse arrays: `unset a[i]`, `${!a[@]}`, negative indexes | `${!a[@]}` after `unset a[1]` prints `0 1 2` (bash `0 2`) | array 33, array-sparse 27, array-assoc 36 | medium | medium: storage is dense |
+| 7 | Tilde expansion in assignments and defaults | `x=foo:~`, `${undef:-~}`, `~user` | tilde 11 | medium | small |
+| 8 | `[[ ]]` syntax errors, numeric edge cases | accepts malformed `[[ ]]` | dbracket 18 | low: bad input only | small |
+| 9 | Arithmetic: `${..}`, subscripts, `base#` | evaluator limits | arith 33 | medium | medium |
+| 10 | PIPESTATUS with `lastpipe`, `\|&`, SIGPIPE | known deferred | pipeline 14 | low | large |
+| 11 | trap, kill, set, read, nameref details | many small differences | ~100 | low to medium | mixed |
+| 12 | Interactive-only: prompt, completion, history, fc, sh-options | not reachable from scripts | ~120 | low | large |
+
+Work order: 1 to 5 first (small, high likelihood, silent wrong output), then 7 and 8, then 6 and 9.
