@@ -95,6 +95,19 @@ public class BashTranspilerReviewRegressionTests
         Assert.Contains(string.Join(",", items.Split(',').Select(s => $"'{s}'")), ps.Replace("\"", "'"));
     }
 
+    // Oracle: bash `[[ -v name ]]` is true when name is set (even to ""); it fell to the "unsupported test operator" stub.
+
+    [Theory]
+    [InlineData("[[ -v x ]] && echo set")]
+    [InlineData("if [[ -v x && -n $x ]]; then :; fi")]
+    [InlineData("[[ ! -v x ]]")]
+    public void Transpile_DoubleBracketVariableIsSet_RoutesToTheTestCmdlet(string bash)
+    {
+        var ps = BashTranspiler.Transpile(bash);
+        Assert.DoesNotContain("unsupported test operator", ps);
+        Assert.Contains("Invoke-BashTest", ps);
+    }
+
     // ── Finding: subshell input redirect fell to the raw 0<file fallback ────
     // (cmd) < file -> "'<' is reserved for future use". Must become Invoke-BashCat -RawStdinBytes | & {}.
 

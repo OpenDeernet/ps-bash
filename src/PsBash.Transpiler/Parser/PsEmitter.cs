@@ -2443,7 +2443,8 @@ public static class PsEmitter
         // `[ ]` (not `[[ ]]`) runs bash's own argument-count grammar in the `test` cmdlet, which
         // knows `( )`, `-o NAME`, `-v`, `-R`, usage errors (exit 2) and every shape above
         // verbatim. `[[ ]]` keeps the diagnostic: the cmdlet has no `[[` grammar.
-        if (!extended)
+        // `[[ -v name ]]` / `[[ -R name ]]` (is-set / is-nameref) are the same unary operators; the cmdlet owns them.
+        if (!extended || (words.Length == 2 && GetLiteralValue(words[0]) is "-v" or "-R"))
             return PsBuild.ExitCodeTest(EmitPassthrough("Invoke-BashTest", words), negate: false);
 
         var opName = GetLiteralValue(words[0]) ?? "";
