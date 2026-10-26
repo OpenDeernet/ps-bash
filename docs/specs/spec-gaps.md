@@ -216,3 +216,29 @@ bash 5.2 in WSL; the rest are estimates from case names.
 | 12 | Interactive-only: prompt, completion, history, fc, sh-options | not reachable from scripts | ~120 | low | large |
 
 Work order: 1 to 5 first (small, high likelihood, silent wrong output), then 7 and 8, then 6 and 9.
+
+### Status and the discovery pass (agent-style scripts)
+
+Rows 1, 2, 3 and 5 are fixed; row 4 (`${u=z} $u` in one command) is open. The oils corpus is a conformance list, not a
+likelihood list, so the next pass ran idiomatic agent scripts (functions, heredocs, arrays, background jobs, redirects,
+getopts) under real bash and ps-bash and diffed them. That found bugs the corpus never reached, all fixed with
+regression tests:
+
+| Fixed | Was |
+|---|---|
+| `a[$i]=v`, `a[i+1]=v`, `a[n]=v` past the end, `a[i]+=v` | subscript stored as the literal text `$i`; an index at `Count` threw |
+| `arr=($(cmd))`, `arr=($x)` | one element, not word-split |
+| `$1 $# $@ $* $? $$` in an unquoted heredoc | printed literally |
+| unquoted `${v#p} ${v%p} ${v/a/b} ${v:o} ${v^^}` | one word, not split |
+| `kill $!`, `kill %1`, `kill -0 $!`; `wait` after kill | "No such process"; wait returned 0 (bash 143) |
+| `$((10#$x))`, `$((16#$h))` | parse error |
+| `sed '/re/,$p'`, `sed '/re/,3p'` | "unknown command" |
+| `seq -s, / -s' ' / -f FMT` | rejected |
+| function defined inside a function | local to the outer function |
+| `bash -c 'echo hi'; echo next` | `hinext` (last newline dropped) |
+
+Still open from that pass (bash is the oracle): `set -x` prints no `+ cmd` trace lines (it drives `Set-PSDebug`); `trap ... EXIT`
+inside `( )` and `trap ... RETURN` never fire; `$LINENO` is empty; `declare -p` prints arrays and attributes in its own
+format; sparse arrays are padded, not sparse (`${#a[@]}` counts the gap, `unset a[i]` leaves a hole); `local -n r=$1`
+(a nameref whose target is dynamic) does not write through; `sh` is not found; `BASH_VERSION` / `BASH_VERSINFO` report
+ps-bash's own version (`0.10.0`, major 0), so a script guarding on `BASH_VERSINFO[0] >= 4` takes the wrong branch.
