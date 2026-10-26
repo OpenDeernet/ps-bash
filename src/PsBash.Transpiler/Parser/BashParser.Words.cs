@@ -1046,7 +1046,8 @@ public sealed partial class BashParser
             {
                 char cStart = startStr[0], cEnd = endStr[0];
                 int vStart = cStart, vEnd = cEnd;
-                int step = vStart <= vEnd ? 1 : -1;
+                int mag = stepVal != 0 ? Math.Abs(stepVal) : 1; // {a..e..2}: the step magnitude; direction comes from the endpoints
+                int step = vStart <= vEnd ? mag : -mag;
                 var letterItems = ImmutableArray.CreateBuilder<string>();
                 for (int v = vStart; step > 0 ? v <= vEnd : v >= vEnd; v += step)
                     letterItems.Add(((char)v).ToString());

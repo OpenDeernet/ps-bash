@@ -82,6 +82,19 @@ public class BashTranspilerReviewRegressionTests
         Assert.DoesNotContain("[regex]::Escape", ps);
     }
 
+    // Oracle: bash `echo {a..e..2}` -> a c e (the step was dropped for letter ranges: a b c d e).
+
+    [Theory]
+    [InlineData("echo {a..e..2}", "a,c,e")]
+    [InlineData("echo {e..a..2}", "e,c,a")]
+    [InlineData("echo {a..e..-2}", "a,c,e")]
+    [InlineData("echo {A..E..3}", "A,D")]
+    public void Transpile_LetterRangeWithStep_SkipsByTheStep(string bash, string items)
+    {
+        var ps = BashTranspiler.Transpile(bash);
+        Assert.Contains(string.Join(",", items.Split(',').Select(s => $"'{s}'")), ps.Replace("\"", "'"));
+    }
+
     // ── Finding: subshell input redirect fell to the raw 0<file fallback ────
     // (cmd) < file -> "'<' is reserved for future use". Must become Invoke-BashCat -RawStdinBytes | & {}.
 

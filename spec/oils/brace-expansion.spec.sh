@@ -31,7 +31,6 @@ echo -{a..e}-
 echo -{a..e..2}-
 ## stdout: -a- -c- -e-
 ## status: 0
-## XFAIL ps-bash gap-oils-brace-expansion brace-expansion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Char ranges with steps of the wrong sign
@@ -42,14 +41,12 @@ echo -{e..a..2}-
 -e- -c- -a-
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-brace-expansion brace-expansion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Descending char range expansion
 echo -{e..a..-2}-
 ## stdout: -e- -c- -a-
 ## status: 0
-## XFAIL ps-bash gap-oils-brace-expansion brace-expansion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Fixed width number range expansion
