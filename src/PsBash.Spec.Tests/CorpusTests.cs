@@ -91,6 +91,18 @@ public class CorpusTests
                 File.WriteAllText(path, SpecParser.Format(file));
             }
         }
+        // Merge import: PSBASH_SPEC_IMPORT_MERGE=1 with PSBASH_SPEC_IMPORT_DIR adds the cases a file lacks (by name) to a non-empty spec/oils file.
+        if (Environment.GetEnvironmentVariable("PSBASH_SPEC_IMPORT_MERGE") == "1"
+            && Environment.GetEnvironmentVariable("PSBASH_SPEC_IMPORT_DIR") is { Length: > 0 } mergeDir && file.Cases.Count > 0
+            && name.StartsWith("oils/", StringComparison.Ordinal))
+        {
+            var mergeSrc = Path.Combine(mergeDir, Path.GetFileName(path).Replace(".spec.sh", ".test.sh"));
+            if (File.Exists(mergeSrc))
+            {
+                var merged = SpecImporter.Merge(file, SpecImporter.Import(path, File.ReadAllText(mergeSrc), Path.GetFileName(mergeSrc)));
+                if (!ReferenceEquals(merged, file)) { file = merged; File.WriteAllText(path, SpecParser.Format(file)); }
+            }
+        }
         bool triage = Environment.GetEnvironmentVariable("PSBASH_SPEC_TRIAGE") == "1";
         if (Environment.GetEnvironmentVariable("PSBASH_SPEC_RECORD") == "1")
         {

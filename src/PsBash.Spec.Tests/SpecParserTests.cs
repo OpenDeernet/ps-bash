@@ -155,6 +155,36 @@ public class SpecParserNoTrailingNewlineTests
 }
 
 
+public class SpecImporterShellVariableTests
+{
+    private const string Oils = "#### runs the shell under test\n$SH -c 'echo hi'\n## stdout: hi\n\n#### plain\necho x\n## stdout: x\n\n#### needs ysh\nysh -c 'echo'\n## stdout: x\n\n#### needs repo root\ncat $REPO_ROOT/x\n## stdout: x\n";
+
+    [Fact]
+    public void A_dollar_SH_case_is_kept_and_routed_to_the_real_launcher()
+    {
+        var f = SpecImporter.Import("p", Oils, "t.test.sh");
+        Assert.Equal(["runs the shell under test", "plain"], f.Cases.Select(c => c.Name));
+        Assert.True(f.Cases[0].RealLauncher);
+        Assert.False(f.Cases[1].RealLauncher);
+    }
+
+    [Fact]
+    public void Merge_adds_only_cases_the_file_lacks_and_keeps_recorded_expectations()
+    {
+        var existing = SpecParser.Parse("p", "#### plain\necho x\n## stdout: recorded\n");
+        var merged = SpecImporter.Merge(existing, SpecImporter.Import("p", Oils, "t.test.sh"));
+        Assert.Equal(["plain", "runs the shell under test"], merged.Cases.Select(c => c.Name));
+        Assert.Equal("recorded", merged.Cases[0].Primary.Stdout.Trim());
+    }
+
+    [Fact]
+    public void Merge_of_nothing_new_returns_the_same_file()
+    {
+        var existing = SpecImporter.Import("p", Oils, "t.test.sh");
+        Assert.Same(existing, SpecImporter.Merge(existing, SpecImporter.Import("p", Oils, "t.test.sh")));
+    }
+}
+
 public class SpecRunnerLauncherRoutingTests
 {
     private sealed class Fixed(string stdout) : IScriptExecutor

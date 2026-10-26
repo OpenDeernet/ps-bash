@@ -30,7 +30,10 @@ internal sealed class PsBashExecutor : IScriptExecutor
     public async Task<ExecResult> RunAsync(string script, TimeSpan timeout, CancellationToken cancel)
     {
         using var caseDir = new CaseDir(script);
-        var r = await PsBashRunner.Create().WithTimeout(timeout).WithEnv(Env).RunScriptAsync($"cd '{caseDir.Path}'\n" + script);
+        var runner = PsBashRunner.Create().WithTimeout(timeout).WithEnv(Env);
+        // Oils cases run "the shell under test" as $SH: here, the launcher this run is exercising.
+        string shell = SpecImporter.UsesShellVariable(script) && runner.TryResolveBinary() is { } bin ? $"SH='{bin}'\n" : "";
+        var r = await runner.RunScriptAsync($"cd '{caseDir.Path}'\n" + shell + script);
         return new ExecResult(r.ExitCode, r.Stdout, r.Stderr, r.WallMs);
     }
 }
