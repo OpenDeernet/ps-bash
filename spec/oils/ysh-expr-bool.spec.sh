@@ -30,7 +30,7 @@ echo $c
 
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-expr-bool ysh-expr-bool (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### or BashArray, or BashAssoc
@@ -55,5 +55,5 @@ echo $f
 
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-expr-bool ysh-expr-bool (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -6,7 +6,7 @@ v=abcde
 echo ${v/c*/XX}
 ## stdout: abXX
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Pattern replacement on unset variable
@@ -19,7 +19,7 @@ echo -${v/x/y}-
 status=0
 ## END
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Replace is longest match
@@ -28,7 +28,7 @@ s='begin <html></html> end'
 echo ${s/<*>/[]}
 ## stdout: begin [] end
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### When LC_ALL=C, pattern ? doesn't match multibyte character
@@ -58,7 +58,7 @@ foo and _y_
 _x_ and foo
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${x/^} regression
@@ -105,7 +105,7 @@ echo 4 ${x//*\(\)/z}
 4 z
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### patsub with single quotes and hyphen in character class (regression)
@@ -117,7 +117,7 @@ program=${program//[^'><+-.,[]']}
 echo $program
 ## stdout: ++--.,<>[]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### patsub with [^]]
@@ -172,5 +172,5 @@ z/git/oilshell
 z/git/oilshell
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

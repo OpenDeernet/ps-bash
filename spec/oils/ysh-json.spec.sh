@@ -246,7 +246,7 @@ EOF
 echo status=$?
 ## stdout: status=127
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-json ysh-json (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### json write emits Unicode replacement char for binary data \yff
@@ -284,7 +284,7 @@ json=127
 json8=127
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-json ysh-json (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### json8 write emits b'' strings for binary data \yff
@@ -327,7 +327,7 @@ reply=
 reply=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-json ysh-json (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### JSON string can have unescaped ' and J8 string can have unescaped "
@@ -371,7 +371,7 @@ EOF
 echo json=$?
 ## stdout: reply=
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-json ysh-json (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Escaping uses \u0001 in "", but \u{1} in b''
@@ -501,7 +501,7 @@ var x = u'\yfe'
 write -n -- $x | od -A n -t x1
 ## stdout:
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-json ysh-json (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \u{dc00} can't be in surrogate range in data
@@ -597,7 +597,7 @@ echo $json | json read
 pp test_ (_reply)
 ## stdout: 8589934592
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-json ysh-json (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Encoding bytes that don't hit UTF8_REJECT immediately (bug fix)

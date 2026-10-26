@@ -25,19 +25,19 @@ readonly r=1; r=2; echo "r=$r"
 x=1; X=2; echo "$x $X"
 ## stdout: 1 2
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### LargeValue_SurvivesAssignment
 big=$(head -c 40000 /dev/zero | tr '\0' a); echo ${#big}
 ## stdout: 40000
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### DeclareInteger_EvaluatesArithmetic
 declare -i n=3; n+=2; echo $n
 ## stdout: 5
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### DeclareNameref_WritesThrough
 v=a; declare -n ref=v; ref=b; echo $v
@@ -48,31 +48,31 @@ v=a; declare -n ref=v; ref=b; echo $v
 f(){ local IFS=,; echo "$*"; }; f a b c
 ## stdout: a,b,c
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### UnexportedVariable_IsNotInChildEnvironment
 x=1; env | grep -c '^x='
 ## stdout: 0
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### ArithPostIncrement_ThenPlainExpansion
 x=5; echo $((x++)) $x
 ## stdout: 5 6
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### ArithAssign_ThenPlainExpansion
 x=1; echo $((x+=2)) $x
 ## stdout: 3 3
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### DefaultAssign_ThenPlainExpansion
 unset y; echo ${y:=d} $y
 ## stdout: d d
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### ArraySliceNextToLength
 a=(1 2 3); echo ${#a[@]} ${a[@]:1}
@@ -114,19 +114,19 @@ U
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### Funcname_InFunction
 f(){ echo "$FUNCNAME"; }; f
 ## stdout: f
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### Lineno_IsSet
 echo $LINENO
 ## stdout: 1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### Exec_RedirectOnly_PrintsNothing
 exec 5<&0; echo ok

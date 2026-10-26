@@ -17,7 +17,7 @@ hi
 escaped
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-redirect-multi redirect-multi (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### File redirect without matching any file
@@ -31,7 +31,7 @@ status=0
 zz-*-xx
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-redirect-multi redirect-multi (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### File redirect without matching any file, with failglob
@@ -48,7 +48,7 @@ status=1
 status=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-redirect-multi redirect-multi (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Redirect to $empty (in function body)
@@ -84,7 +84,7 @@ status=0
 hi
 ## END
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-redirect-multi redirect-multi (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### File redirect that globs to more than one file (bash and zsh only)
@@ -120,7 +120,7 @@ status=0
 hi
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-redirect-multi redirect-multi (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Non-file redirects don't respect glob args (we differe from bash)
@@ -139,7 +139,7 @@ should-not-be-on-stdout
 stdout
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-redirect-multi redirect-multi (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Redirect with brace expansion isn't allowed
@@ -154,7 +154,7 @@ status=1
 status=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-redirect-multi redirect-multi (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### File redirects have word splitting too!
@@ -171,5 +171,5 @@ status=1
 status=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-redirect-multi redirect-multi (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

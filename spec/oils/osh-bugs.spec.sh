@@ -12,7 +12,7 @@ echo 'unreachable'
 pp test_ (x)
 ## stdout: unreachable
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-osh-bugs osh-bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### var x = $(echo one; false; echo two) in OSH
@@ -26,5 +26,5 @@ echo 'unreachable'
 pp test_ (x)
 ## stdout: unreachable
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-osh-bugs osh-bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

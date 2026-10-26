@@ -29,7 +29,7 @@ echo $a
 readonly x=1; x=2; echo hi
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### assign readonly -- multiple lines
@@ -47,7 +47,7 @@ x=2
 echo hi
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unset readonly -- one line
@@ -92,7 +92,7 @@ status=1
 status=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### other builtins fail on writing to full disk
@@ -108,7 +108,7 @@ status=1
 status=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### autoconf word split (#1449)
@@ -187,7 +187,7 @@ fi
 42
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### process sub <(echo 42 | tee PWNED) not allowed
@@ -208,7 +208,7 @@ fi
 # bash keeps going
 ## stdout: NOPE
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unset doesn't allow command execution
@@ -233,7 +233,7 @@ PWNED
 0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### printf integer size bug
@@ -247,7 +247,7 @@ printf '%u\n' 2147483648
 2147483648
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### autotools as_fn_arith bug in configure
@@ -270,5 +270,5 @@ echo as_val=$as_val
 {1..10}
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -9,7 +9,7 @@ while is a shell keyword
 cd is a shell builtin
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type builtin-type (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -> alias external
@@ -42,7 +42,7 @@ ll is an alias for ls -l
 date is _tmp/date
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type builtin-type (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type of relative path
@@ -57,7 +57,7 @@ type _tmp/file _tmp/ex
 # mksh
 ## stdout: _tmp/ex is _tmp/ex
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type builtin-type (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -> not found
@@ -75,7 +75,7 @@ status=1
 zz: not found
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type builtin-type (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### special builtins are called out
@@ -95,5 +95,5 @@ true is a shell builtin
 export is a shell builtin
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type builtin-type (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -37,7 +37,7 @@ trap -- 'echo bye' EXIT
 bye
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap accepts/ignores --
@@ -65,7 +65,7 @@ ok
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap foo gives non-zero error
@@ -75,7 +75,7 @@ if test $? -ne 0; then
 fi
 ## stdout: ok
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap 'echo hi' KILL (regression test, caught by smoosh suite)
@@ -105,7 +105,7 @@ trap 'echo <' EXIT
 echo status=$?
 ## stdout: status=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap EXIT calling exit
@@ -126,7 +126,7 @@ cleanup() {
 trap 'cleanup x y z' EXIT
 ## stdout: cleanup [x y z]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap EXIT with PARSE error
@@ -134,7 +134,7 @@ trap 'echo FAILED' EXIT
 for
 ## stdout: FAILED
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap EXIT with PARSE error and explicit exit
@@ -142,7 +142,7 @@ trap 'echo FAILED; exit 0' EXIT
 for
 ## stdout: FAILED
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap EXIT with explicit exit
@@ -154,7 +154,7 @@ IN TRAP
 FOO
 ## END
 ## status: 42
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap EXIT sees exit status in $?
@@ -162,7 +162,7 @@ trap 'echo status=$?' EXIT
 exit 42
 ## stdout: status=42
 ## status: 42
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap EXIT saves $?, clears trap, runs a command, then exits with it
@@ -170,7 +170,7 @@ trap 'st=$?; trap - EXIT; true; exit $st' EXIT
 exit 7
 ## stdout:
 ## status: 7
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### bare exit in trap EXIT uses the status from before the trap
@@ -190,7 +190,7 @@ trap cleanup EXIT
 false
 ## stdout: cleanup
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap EXIT with command sub / subshell / pipeline
@@ -214,7 +214,7 @@ EXIT TRAP
 trap 'eval "echo hi"' 0
 ## stdout: hi
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### exit codes for traps are isolated
@@ -233,7 +233,7 @@ USR1 trap status=0
 after=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### traps are cleared in subshell (started with &)
@@ -268,7 +268,7 @@ end child
 wait status 0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap '' sets handler to empty string (SIG_IGN)
@@ -279,7 +279,7 @@ trap '' USR1
 trap
 ## stdout: trap -- '' SIGUSR1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap '' with multiple signals
@@ -291,5 +291,5 @@ trap -- '' SIGUSR1
 trap -- '' SIGUSR2
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

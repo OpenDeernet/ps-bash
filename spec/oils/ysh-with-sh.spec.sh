@@ -15,7 +15,7 @@ mylist default
 myint default
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-with-sh ysh-with-sh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Shell ${a[0]} with YSH List (issue #1092)
@@ -24,7 +24,7 @@ var a = [1, 2, 3]
 echo first ${a[0]}
 ## stdout: first
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-with-sh ysh-with-sh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Can't splice nested List
@@ -36,7 +36,7 @@ var mylist = ["ls", {name: 42}]
 echo @mylist
 ## stdout: @mylist
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-with-sh ysh-with-sh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Can't splice nested Dict
@@ -51,7 +51,7 @@ v v2
 
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-with-sh ysh-with-sh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${#x} on List and Dict
@@ -94,7 +94,7 @@ Assoc 3
 Assoc 3
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-with-sh ysh-with-sh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Can't use $x on List and Dict
@@ -120,7 +120,7 @@ Assoc abc
 Assoc abc
 ## END
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-with-sh ysh-with-sh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Iterate over array with holes (bug fix)
@@ -148,7 +148,7 @@ declare -a PIPESTATUS=([0]="127")
 declare -a array=([0]="a" [1]="b" [5]="c")
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-with-sh ysh-with-sh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Concat ++ not defined on shell array

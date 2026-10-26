@@ -56,7 +56,7 @@ status=2
 status=2
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read (&x) is usage error
@@ -111,7 +111,7 @@ echo $'u\'foo\'' | read --raw-line --j8
 write -- "$_reply"
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read --all-lines
@@ -119,7 +119,7 @@ seq 3 | read --all-lines :nums
 write --sep ' ' -- @nums
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read --all-lines --with-eol
@@ -127,7 +127,7 @@ seq 3 | read --all-lines --with-eol :nums
 write --sep '' -- @nums
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read --all
@@ -139,7 +139,7 @@ read --all (&x) < tmp.txt
 echo "[$x]"
 ## stdout: []
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read --all from directory is an error (EISDIR)
@@ -148,7 +148,7 @@ read --all < ./dir
 echo status=$?
 ## stdout: status=2
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read --num-bytes
@@ -163,7 +163,7 @@ reply=[]
 reply=[]
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read -0 is like read -r -d ''
@@ -180,7 +180,7 @@ find . -type f -a -print0 | read -0
 echo "[$REPLY]"
 ## stdout: []
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read -0 myvar doesn't do anything with IFS
@@ -196,7 +196,7 @@ echo "[$myvar]"
 []
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### long flags to test
@@ -246,7 +246,7 @@ status=127
 hi
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### redir
@@ -284,7 +284,7 @@ echo ---
 comm -23 left.txt right.txt
 ## stdout: proc
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtins ysh-builtins (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### source ///osh/two.sh and $LIB_OSH

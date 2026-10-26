@@ -12,7 +12,7 @@ false
 exit
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-sh-usage sh-usage (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Other flag parsers are not affected by - rule
@@ -22,5 +22,5 @@ exit
 echo 'foo-bar' | { read -d -; echo reply=$REPLY; }
 ## stdout: reply=foo
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-sh-usage sh-usage (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

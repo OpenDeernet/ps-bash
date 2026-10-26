@@ -13,7 +13,7 @@ x=
 x=
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### top level: var can be redefined by var/const
@@ -38,7 +38,7 @@ x=
 x=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### setvar mutates local
@@ -58,7 +58,7 @@ x=
 x=
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### top level: setvar creates global
@@ -84,7 +84,7 @@ echo $y
 
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### setglobal
@@ -103,7 +103,7 @@ x=
 x=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### setglobal of undeclared var is allowed
@@ -119,7 +119,7 @@ x=
 x=
 ## END
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### var a, b  does implicit null init
@@ -134,7 +134,7 @@ echo $x $a $b $c $d
 
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### var x, y = f()
@@ -155,7 +155,7 @@ var a, b = f()
 echo "a=$a b=$b"
 ## stdout: x= y=
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### const x, y = f()
@@ -198,7 +198,7 @@ x= y=
 x= y=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### setvar to swap List and Dict elements
@@ -221,7 +221,7 @@ json write (d)
 @x
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### circular dict - TODO 2023-06 REGRESS
@@ -249,5 +249,5 @@ var L = [1,2,3]
 #= L
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-assign ysh-assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -26,7 +26,7 @@ set -o nounset
 echo ${#undef}
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-len var-op-len (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Length operator can't be followed by test operator
@@ -39,5 +39,5 @@ x='foo'
 echo ${#x-default}
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-len var-op-len (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

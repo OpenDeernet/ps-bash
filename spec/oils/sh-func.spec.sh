@@ -118,7 +118,7 @@ f
 status=2
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-sh-func sh-func (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### return $empty
@@ -135,7 +135,7 @@ f
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-sh-func sh-func (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Subshell function
@@ -183,5 +183,5 @@ main
 test_func
 ## stdout: g = global
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-sh-func sh-func (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

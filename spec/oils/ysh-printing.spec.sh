@@ -172,7 +172,7 @@ setvar cyclic_dict["live_end"] = cyclic_dict
 = cyclic_dict
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-printing ysh-printing (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Complex Cycles
@@ -196,7 +196,7 @@ setvar dict["key_omega"] = omega
 = dict
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-printing ysh-printing (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### pp test_: List cycle

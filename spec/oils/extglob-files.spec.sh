@@ -20,7 +20,7 @@ ext=cc
 echo foo.?($ext|h)
 ## stdout: foo. foo.cc foo.h
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### *() matches 0 or more
@@ -39,7 +39,7 @@ touch eg2/_ eg2/_One eg2/_OneOne eg2/_TwoTwo eg2/_OneTwo
 echo eg2/_+(One|$(echo Two))
 ## stdout: eg2/_One eg2/_OneOne eg2/_OneTwo eg2/_TwoTwo
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### !(*.h|*.cc) to match everything except C++
@@ -118,7 +118,7 @@ argv.py @(__aa|'__<>'|__{}|__#|__&&|)
 # mksh sorts them differently
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### More glob escaping
@@ -168,7 +168,7 @@ bar.py foo.py spam.py
 bar.py foo.py
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Extended glob in assignment builtin
@@ -183,7 +183,7 @@ typeset -@(*.py) myvar
 echo status=$?
 ## stdout: status=2
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Extended glob in same word as array
@@ -205,7 +205,7 @@ argv.py star extglob "$*"*@(.py|cc)
 argv.py at extglob "$@"*@(.py|cc)
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Extended glob with word splitting
@@ -274,7 +274,7 @@ echo @(__nope__*|__nope__?|'*'|'?'|'[:alpha:]'|'|')
 @(__nope__*|__nope__?|*|?|[:alpha:]||)
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### failglob
@@ -297,5 +297,5 @@ foo
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -7,7 +7,7 @@ a=(4 5 6)
 echo $sum
 ## stdout: 15
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### (( )) with error
@@ -42,7 +42,7 @@ keys = 0
 values = 0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### bash: K in (( A[K] = V )) is a constant string
@@ -60,7 +60,7 @@ keys = K
 values = 42
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### BUG: (( V = A[K] )) doesn't retrieve the right value
@@ -77,7 +77,7 @@ A[K]=oops2
 echo V=$V
 ## stdout: V=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### bash: V in (( A["K"] = V )) gets coerced to integer
@@ -98,7 +98,7 @@ keys = K
 values = 0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### literal strings inside (( ))
@@ -109,7 +109,7 @@ A['x']=42
 echo $x ${A['y']}
 ## stdout: 42
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Assigning whole raray (( b = a ))
@@ -125,7 +125,7 @@ echo "${b[@]}"
 4
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### set associative array
@@ -134,7 +134,7 @@ declare -A A=(['foo']=bar ['spam']=42)
 echo $x
 ## stdout: 42
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Example of incrementing associative array entry with var key (ble.sh)
@@ -149,5 +149,5 @@ set -- 1 2
 echo foo=${A['foo']}
 ## stdout: foo=44
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

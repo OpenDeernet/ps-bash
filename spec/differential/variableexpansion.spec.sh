@@ -188,4 +188,4 @@ gamma
 pid=$$; if [ -n "$pid" ] && [ "$pid" -gt 0 ] 2>/dev/null; then echo pid_ok; else echo pid_bad; fi
 ## stdout: pid_ok
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-variableexpansion variableexpansion (differential): differs from bash 5.2; see docs/specs/spec-gaps.md

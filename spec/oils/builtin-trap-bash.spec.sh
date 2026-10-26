@@ -73,7 +73,7 @@ B
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### but trap DEBUG respects errexit
@@ -93,7 +93,7 @@ echo B
 echo status=$?
 ## stdout:   [10]
 ## status: 42
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG with 'return'
@@ -126,7 +126,7 @@ B
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG with 'exit'
@@ -143,7 +143,7 @@ echo B
 echo status=$?
 ## stdout:   [7]
 ## status: 42
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG and control flow
@@ -164,7 +164,7 @@ hello
   [9]
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG not run in forked interpreter for first pipeline part
@@ -187,7 +187,7 @@ pipe2
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### One 'echo' in first pipeline part - why does bash behave differently from case above?
@@ -217,7 +217,7 @@ pipeline
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG and pipeline (lastpipe difference)
@@ -259,7 +259,7 @@ b
 1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG function call
@@ -295,7 +295,7 @@ i=Y
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG case
@@ -324,7 +324,7 @@ python
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG for each
@@ -357,7 +357,7 @@ x=2
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG for expr
@@ -386,7 +386,7 @@ i=4
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap DEBUG if while
@@ -409,7 +409,7 @@ if
   [10]
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Compare trap DEBUG vs. trap ERR
@@ -452,5 +452,5 @@ err 21
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -49,7 +49,7 @@ proc name-with-hyphen {
 name-with-hyphen x y z
 ## stdout: @ARGV
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-proc ysh-proc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### proc returning wrong type
@@ -100,7 +100,7 @@ f
 g  # g is defined in the local scope of f
 ## stdout: G
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-proc ysh-proc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### declare -f -F only prints shell functions
@@ -124,5 +124,5 @@ declare -f myproc
 echo status=$?
 ## stdout: hi
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-proc ysh-proc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -27,7 +27,7 @@ touch _tmp/\"quoted.py\"
 echo _tmp/\"*.py\"
 ## stdout: _tmp/"quoted.py"
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### glob escaped
@@ -45,7 +45,7 @@ touch _tmp/foo.-
 echo _tmp/*.[[:punct:]] _tmp/*.[[:punct\:]]
 ## stdout: _tmp/foo.- _tmp/foo.-
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Glob after var manipulation
@@ -54,7 +54,7 @@ g='_tmp/*.zzzZ'
 echo $g ${g%Z}
 ## stdout: _tmp/*.zzzZ _tmp/bar.zzz _tmp/foo.zzz
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Glob after part joining
@@ -63,7 +63,7 @@ g='_tmp/*.yy'
 echo $g ${g}y
 ## stdout: _tmp/*.yy _tmp/bar.yyy _tmp/foo.yyy
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Glob flags on file system
@@ -95,7 +95,7 @@ echo ${x//[]z]/>}
 [foo>
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### PatSub of negated unescaped [[] and []]
@@ -111,7 +111,7 @@ echo ${x//[^[z]/<}  # also accepted
 [<<<<
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \ in unquoted substitutions does not match a backslash

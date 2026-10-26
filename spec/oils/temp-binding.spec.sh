@@ -37,7 +37,7 @@ y=y
 ty=ty
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-temp-binding temp-binding (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### FOO=bar $unset - temp binding, then empty argv from unquoted unset var (#2411)
@@ -45,5 +45,5 @@ foo=alive! $unset
 echo $foo
 ## stdout: alive!
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-temp-binding temp-binding (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -113,7 +113,7 @@ for x in (42) {
 }
 ## stdout: hi
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-for ysh-for (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### YSH for with brace substitution and glob

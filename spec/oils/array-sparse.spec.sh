@@ -16,7 +16,7 @@ len=4
 len=5
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### +=
@@ -31,7 +31,7 @@ declare -a sp1=([10]=a [20]=b [99]=c)
 declare -a sp1=([10]=a [20]=b [99]=c [100]=1 [101]=2 [102]=3)
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### a[i]=v
@@ -48,7 +48,7 @@ declare -a sp1=([10]=a [20]=b [30]=c)
 declare -a sp1=([10]=X [20]=b [25]=Y [30]=c [90]=Z)
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unset -v a[i]
@@ -67,7 +67,7 @@ declare -a a=([0]="1" [2]="3" [3]="4" [4]="5" [5]="6" [6]="7" [7]="8" [8]="9")
 declare -a a=([2]="3" [3]="4" [4]="5" [5]="6" [6]="7" [7]="8" [8]="9")
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ((sp[i])) and ((sp[i]++))
@@ -114,7 +114,7 @@ echo $((a[7] = 100, a[7]))
 100
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${a[@]}
@@ -147,7 +147,7 @@ a3 unset: [ ]
 a3 empty: [ ]
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${a-}
@@ -164,7 +164,7 @@ echo "$a3, ${a3-(unset)}, ${a3:-(empty)};"
 foo, foo, foo;
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### "${a[*]}"
@@ -182,5 +182,5 @@ v0v1v2v5v6v8
 v0/v1/v2/v5/v6/v8
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

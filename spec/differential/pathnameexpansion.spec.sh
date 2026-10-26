@@ -241,7 +241,7 @@ cat sub/a[1]
 touch *.txt; echo rc=$?
 ## stdout: rc=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-pathnameexpansion pathnameexpansion (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### Case
 __fs_snap() { find . | LC_ALL=C sort | while IFS= read -r p; do if [ -d "$p" ]; then echo "D $p"; else echo "F $p $(base64 -w0 "$p")"; fi; done; }

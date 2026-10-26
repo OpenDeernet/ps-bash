@@ -45,7 +45,7 @@ echo $((0?(y):(n))):$((a))
 321:321
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### recursive arith: side effects
@@ -62,7 +62,7 @@ loop='i<=100&&(s+=i,i++,loop)' s=0 i=0
 echo $((a=loop,s))
 ## stdout: 5050
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### recursive arith: array elements
@@ -72,7 +72,7 @@ text[3]='text[2]'
 echo $((a=text[3]))
 ## stdout: 123
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dynamic arith varname: assign
@@ -90,7 +90,7 @@ a_x=3 a_y=4
 b_x=5 b_y=12
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dynamic arith varname: read
@@ -105,7 +105,7 @@ vec2_load a
 echo x=$x y=$y
 ## stdout: x=12 y=34
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dynamic arith varname: copy/add
@@ -132,7 +132,7 @@ c_x=3 c_y=4
 c_x=7 c_y=24
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Sparse array with big index
@@ -154,7 +154,7 @@ a[i]=1
 echo len=${#a[@]}
 ## stdout: len=1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Issue #1069 [49] BUG: \return 0 does not work
@@ -184,7 +184,7 @@ status=3
 status=3
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Issue #1069 [56] BUG: declare -p unset does not print any error message
@@ -213,5 +213,5 @@ f() {
 f h e l l o
 ## stdout: v=hello
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

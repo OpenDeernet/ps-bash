@@ -144,7 +144,7 @@ foo="'a b c d'"
 argv.py "${foo%d'}"
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $'' allowed within VarSub arguments
@@ -157,7 +157,7 @@ a
 a
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### # operator with single quoted arg (dash/ash and bash/mksh disagree, reported by Crestwave)
@@ -174,7 +174,7 @@ echo -"${var#'a'}"-
 -'a'-
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### / operator with single quoted arg (causes syntax error in regex in OSH, reported by Crestwave)
@@ -186,7 +186,7 @@ no plus or minus ''''
 no plus or minus ''''
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### single quotes work inside character classes
@@ -194,7 +194,7 @@ x='a[[[---]]]b'
 echo "${x//['[]']}"
 ## stdout: a---b
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### comparison: :- operator with single quoted arg
@@ -205,7 +205,7 @@ a
 'a'
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Right Brace as argument (similar to #702)
@@ -221,7 +221,7 @@ echo "${var-"}"}"
 }
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Var substitution with newlines (#2492)
@@ -252,7 +252,7 @@ e
 f
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Var substitution with \n in value
@@ -266,5 +266,5 @@ c\nd
 e\nf
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

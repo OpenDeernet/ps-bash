@@ -48,5 +48,5 @@ func invertList(list) {
 error 'some error'
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-error ysh-builtin-error (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -117,7 +117,7 @@ hello $USER
 EOF
 ## stdout: hello beagle
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-redirection redirection (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### Differential_Redirect_StderrToFile_RawBytesNoCmdletPrefix
 ls /nonexistent_psb 2> e; echo rc=$?; ls /nonexistent_psb2 2>> e; cat -A e

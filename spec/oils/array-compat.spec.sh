@@ -39,7 +39,7 @@ a=(1 '2 3')
 echo $a
 ## stdout: 1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-compat array-compat (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### strict_array: ${array} is not valid in OSH, is ${array[0]} in ksh/bash
@@ -49,7 +49,7 @@ a=(1 '2 3')
 echo ${a}
 ## stdout: 1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-compat array-compat (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Assign to array index without initialization
@@ -58,7 +58,7 @@ a[6]=6
 echo "${a[@]}" ${#a[@]}
 ## stdout: 5 6 2
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-compat array-compat (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### a[40] grows array
@@ -69,7 +69,7 @@ a[10]=20
 echo "${a[@]}" "${#a[@]}"  # length is 1
 ## stdout: 1 5 3 20 30 5
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-compat array-compat (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### array decays to string when comparing with [[ a = b ]]
@@ -92,7 +92,7 @@ a=(1 10)
 echo "${a[@]}"
 ## stdout: 2 10
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-array-compat array-compat (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Apply vectorized operations on ${a[*]}

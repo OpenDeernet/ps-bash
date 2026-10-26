@@ -70,7 +70,7 @@ v=abc
 echo ${v%[[:alpha:]]}
 ## stdout: ab
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Strip unicode prefix
@@ -115,7 +115,7 @@ echo ${v%%?} | show_hex
   2d  0a
 ## END
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Bug fix: Test that you can remove everything with glob
@@ -163,7 +163,7 @@ foo]
 foo]
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### strip unquoted and quoted []
@@ -181,7 +181,7 @@ foo[]
 foo[]
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### strip unquoted and quoted ?
@@ -212,5 +212,5 @@ foo[]
 foo[]
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

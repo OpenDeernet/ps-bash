@@ -10,7 +10,7 @@ printf '\0\n' | show_hex
   00  0a
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-nul-bytes nul-bytes (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Compare \x00 byte versus \x01 byte - command sub
@@ -41,7 +41,7 @@ len=2
 len=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-nul-bytes nul-bytes (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Compare \x00 byte versus \x01 byte - read builtin
@@ -67,7 +67,7 @@ len=2
 len=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-nul-bytes nul-bytes (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Strip ops # ## % %% with NUL bytes
@@ -107,7 +107,7 @@ len=0
 len=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-nul-bytes nul-bytes (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Issue 2269 Reduction
@@ -146,5 +146,5 @@ len=1
  78
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-nul-bytes nul-bytes (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

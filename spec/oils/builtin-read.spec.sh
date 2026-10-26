@@ -11,7 +11,7 @@ EOF
 echo "[$x]"
 ## stdout: [A		B C D E]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read /dev/null
@@ -39,7 +39,7 @@ status=1
 ZZZ
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read builtin splits value across multiple vars
@@ -51,7 +51,7 @@ EOF
 echo "[$x/$y/$z]"
 ## stdout: [A/B/C D E]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read builtin with too few variables
@@ -98,7 +98,7 @@ echo '  a b  \
 [a b  \]
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read multiple vars spanning many lines
@@ -123,7 +123,7 @@ EOF
 echo "[$var]"
 ## stdout: [  a b c]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read with IFS=''
@@ -164,7 +164,7 @@ v1=d v2=e,f
 v1=g v2=h v3=i
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read -d '' (null-separated records)
@@ -183,7 +183,7 @@ v1=d v2=e,f
 v1=g v2=h v3=i
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read -rd
@@ -197,7 +197,7 @@ foo
 bar
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read -d when there's no delimiter
@@ -213,7 +213,7 @@ foo 0
 bar 1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read -t -0.5 is invalid
@@ -223,7 +223,7 @@ read -t -0.5 < /dev/null
 echo $?
 ## stdout: 1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### read -u syntax error
@@ -245,7 +245,7 @@ echo status=$?
 echo hi | { read -rn1 var; echo var=$var; }
 ## stdout: var=h
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### "backslash + newline" should be swallowed regardless of "-d <delim>"
@@ -262,7 +262,7 @@ printf '%s\n' 'a b\,c d'   | (read -d ,; argv.py "$REPLY")
 ['a bc d']
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### IFS='x ' read a b: trailing spaces (with max_split)

@@ -15,7 +15,7 @@ pwd=/tmp
 pwd=/
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### pushd usage
@@ -31,7 +31,7 @@ status=0
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### popd usage error
@@ -50,7 +50,7 @@ status=0
 status=2
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### popd returns error on empty directory stack
@@ -62,7 +62,7 @@ echo "$message" | grep -o "directory stack"
 directory stack
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### cd replaces the lowest entry on the directory stack!
@@ -97,7 +97,7 @@ popd=0
 popd=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs builtin
@@ -105,7 +105,7 @@ cd /
 dirs
 ## stdout: /
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs -c to clear the stack
@@ -124,7 +124,7 @@ dirs
 /tmp
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs -v to print numbered stack, one entry per line
@@ -148,7 +148,7 @@ dirs -v
  2  /
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs -p to print one entry per line
@@ -170,7 +170,7 @@ dirs -p
 /
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs -l to print in long format, no tilde prefix
@@ -187,7 +187,7 @@ dirs -l
 /tmp/oil_test /
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs to print using tilde-prefix format
@@ -198,7 +198,7 @@ pushd $HOME/oil_test >/dev/null
 dirs
 ## stdout: ~/oil_test /
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs test converting true home directory to tilde
@@ -209,7 +209,7 @@ pushd $HOME/oil_test/$HOME >/dev/null
 dirs
 ## stdout: ~/oil_test/tmp /
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs don't convert to tilde when $HOME is substring
@@ -224,7 +224,7 @@ dirs
 /tmp/oil_tests /
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs tilde test when $HOME is exactly $PWD
@@ -239,7 +239,7 @@ dirs
 ~ /
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs test of path alias `..`
@@ -248,7 +248,7 @@ pushd .. >/dev/null
 dirs
 ## stdout: / /tmp
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs test of path alias `.`
@@ -257,14 +257,14 @@ pushd . >/dev/null
 dirs
 ## stdout: /tmp /tmp
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### pushd does not take more than one argument
 pushd . . >/dev/null || echo too many args!
 ## stdout: too many args!
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### dirs does not take arguments
@@ -275,5 +275,5 @@ failed
 failed
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-dirs builtin-dirs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

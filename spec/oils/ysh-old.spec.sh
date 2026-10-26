@@ -10,5 +10,5 @@ declare z=1 "${empty[@]}"
 echo z=$z
 ## stdout: z=1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-old ysh-old (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

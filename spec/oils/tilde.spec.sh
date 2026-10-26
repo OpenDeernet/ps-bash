@@ -7,7 +7,7 @@ a=~/src
 echo $a
 ## stdout: /home/bob/src
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ~ expansion in readonly assignment
@@ -18,7 +18,7 @@ readonly const=~/src
 echo $const
 ## stdout: /home/bob/src
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### No ~ expansion in dynamic assignment
@@ -28,7 +28,7 @@ readonly "$binding"
 echo $const
 ## stdout: ~/src
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### No tilde expansion in word that looks like assignment but isn't
@@ -39,7 +39,7 @@ HOME=/home/bob
 echo x=~
 ## stdout: x=/home/bob
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### other user
@@ -62,7 +62,7 @@ echo ${undef:-"~"}
 ~
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${x//~/~root}
@@ -81,7 +81,7 @@ echo ${x//~/~root}
 [/root]
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### x=foo:~ has tilde expansion
@@ -109,7 +109,7 @@ foo:~,
 foo:~
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### tilde expansion an assignment keyword
@@ -121,7 +121,7 @@ f() {
 f
 ## stdout: foo:/home/bar
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### x=${undef-~:~}
@@ -134,7 +134,7 @@ echo $x
 # it's easier to agree with yash.  bash disagrees in a different way
 ## stdout: /home/bar:/home/bar:/home/bar
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### strict tilde
@@ -165,5 +165,5 @@ xx=/home/bar
 xx=/root:/home/bar:/home/bar
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

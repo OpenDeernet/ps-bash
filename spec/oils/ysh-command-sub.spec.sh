@@ -13,7 +13,7 @@ echo status=$?
 echo status=$?
 ## stdout: status=0
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-command-sub ysh-command-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### split command sub @() in expression mode
@@ -46,7 +46,7 @@ echo --
 argv.py @(echo $x)
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-command-sub ysh-command-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### @() decodes J8 Lines
@@ -113,5 +113,5 @@ write -- @(seq 2)
 write -- @(seq 3)x
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-command-sub ysh-command-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -18,7 +18,7 @@ shopt -u nullglob
 ---
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-shopt ysh-builtin-shopt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### shopt supports 'set' options
@@ -51,7 +51,7 @@ two
 three
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-shopt ysh-builtin-shopt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### shopt -p works correctly inside block
@@ -66,7 +66,7 @@ shopt -u inherit_errexit
 shopt -u inherit_errexit
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-shopt ysh-builtin-shopt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### shopt --set GROUP { }
@@ -98,7 +98,7 @@ shopt -u inherit_errexit
 shopt -u inherit_errexit
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-shopt ysh-builtin-shopt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### shopt and block status
@@ -126,7 +126,7 @@ one
 two
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-shopt ysh-builtin-shopt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### shopt -p
@@ -146,7 +146,7 @@ shopt -u nullglob
 --
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-shopt ysh-builtin-shopt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### TODO: all options as a table
@@ -165,5 +165,5 @@ shopt --table
 # Could also be T and F?  JSON is more obvious
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-shopt ysh-builtin-shopt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

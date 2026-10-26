@@ -9,7 +9,7 @@
 echo ---
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-multiline ysh-multiline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ... with pipeline
@@ -34,7 +34,7 @@ echo $(echo one
   ;
 ## stdout: one two
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-multiline ysh-multiline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ... inside command sub $()
@@ -65,7 +65,7 @@ one
 two
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-multiline ysh-multiline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### '... for' is allowed, but NOT recommended
@@ -101,7 +101,7 @@ return
     ;
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-multiline ysh-multiline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Blank line with spaces and tabs isn't OK either
@@ -144,5 +144,5 @@ return
 # cursor_was_newline might need more state?
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-multiline ysh-multiline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

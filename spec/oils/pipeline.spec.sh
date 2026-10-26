@@ -52,7 +52,7 @@ tr a-z A-Z     # transform
 echo a | egrep '[0-9]+'
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### PIPESTATUS
@@ -63,7 +63,7 @@ return3() {
 echo ${PIPESTATUS[@]}
 ## stdout: 1 2 3
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### PIPESTATUS with shopt -s lastpipe
@@ -75,14 +75,14 @@ return3() {
 echo ${PIPESTATUS[@]}
 ## stdout: 1 2 3
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### |&
 stdout_stderr.py |& cat
 ## stdout: /mnt/c/Users/andyb/AppData/Local/Temp/ps-bash/spec-record/b0820adfb1c84d0198db939c5309a11e.sh: line 1: stdout_stderr.py: command not found
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ! in if
@@ -105,7 +105,7 @@ hi
 FAILED
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ! with { }
@@ -116,7 +116,7 @@ FAILED
 FAILED
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ! with ( )
@@ -127,7 +127,7 @@ FAILED
 FAILED
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ! is not a command
@@ -145,7 +145,7 @@ echo "cmd=$cmd"
 cmd=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### bash/dash/mksh run the last command is run in its own process
@@ -153,7 +153,7 @@ echo hi | read line
 echo "line=$line"
 ## stdout: line=
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### shopt -s lastpipe (always on in OSH)
@@ -173,7 +173,7 @@ done
 echo i=$i
 ## stdout: i=3
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### SIGPIPE causes pipeline to die (regression for issue #295)
@@ -183,7 +183,7 @@ echo ${PIPESTATUS[@]}
 # hm bash gives '1 0' which seems wrong
 ## stdout: 141 0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Nested pipelines
@@ -196,7 +196,7 @@ echo ${PIPESTATUS[@]}
 10
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Pipeline in eval

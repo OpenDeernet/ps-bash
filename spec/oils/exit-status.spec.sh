@@ -30,14 +30,14 @@ status=255
 status=254
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-exit-status exit-status (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### If empty command
 if ''; then echo TRUE; else echo FALSE; fi
 ## stdout: FALSE
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-exit-status exit-status (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### If subshell true
@@ -56,7 +56,7 @@ if `sh -c 'echo X; true'`; then echo TRUE; else echo FALSE; fi
 if `true` X; then echo TRUE; else echo FALSE; fi
 ## stdout: FALSE
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-exit-status exit-status (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### If subshell false -- exit code is propagated in a weird way (strict_argv prevents)
@@ -91,7 +91,7 @@ eval false; echo $?
 1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-exit-status exit-status (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### More test cases with empty argv
@@ -110,5 +110,5 @@ status=42
 status=43
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-exit-status exit-status (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

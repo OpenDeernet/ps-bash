@@ -15,7 +15,7 @@ setvar x += :| d e |  # fatal error
 argv.py @x
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Augmented assignment respects command_sub_errexit
@@ -32,7 +32,7 @@ x=
 x=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Augmented assignment with integers
@@ -46,7 +46,7 @@ x=
 x=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Augmented assignment on string changes to Int Float
@@ -85,7 +85,7 @@ echo $x
 
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Int/Float augmented += -= *= /=
@@ -110,7 +110,7 @@ x=
 x=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Int Augmented //= %= **= and bitwise ops
@@ -167,7 +167,7 @@ x=
 shift
 ## END
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Augmented assignment of List
@@ -190,7 +190,7 @@ echo @mylist
 @mylist
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### List with nonexistent elemnt
@@ -198,7 +198,7 @@ var L = [42]
 setvar L[99] += 1
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Augmented assignment doesn't work with multiple LHS
@@ -211,5 +211,5 @@ echo $x $y
 
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-augmented ysh-augmented (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

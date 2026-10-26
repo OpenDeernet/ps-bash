@@ -78,7 +78,7 @@ getopts 'hc:' opt-
 echo status=$? opt=$opt OPTARG=$OPTARG OPTIND=$OPTIND
 ## stdout: status=1 opt= OPTARG=foo OPTIND=3
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-getopts builtin-getopts (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### getopts with invalid flag
@@ -164,7 +164,7 @@ echo h=$FLAG_h c=$FLAG_c optind=$OPTIND argv=$@
 echo $OPTIND
 ## stdout: 1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-getopts builtin-getopts (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### OPTIND after multiple getopts with same spec
@@ -192,7 +192,7 @@ OPTIND=4
 OPTIND=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-getopts builtin-getopts (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### OPTIND after multiple getopts with different spec
@@ -224,7 +224,7 @@ OPTIND=5
 OPTIND=2
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-getopts builtin-getopts (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### OPTIND narrowed down

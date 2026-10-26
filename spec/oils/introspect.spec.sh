@@ -53,7 +53,7 @@ check() {
 check
 ## stdout: 4
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-introspect introspect (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${BASH_LINENO[@]} is a stack of line numbers for function calls

@@ -6,7 +6,7 @@ cd /
 echo $PWD
 ## stdout: /
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### cd BAD/..
@@ -20,7 +20,7 @@ cd nonexistent_ZZ/..
 echo status=$?
 ## stdout: status=1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### cd with 2 or more args - with strict_arg_parse
@@ -45,7 +45,7 @@ status=0
 failed with multiple args
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### cd with 2 or more args is allowed (strict_arg_parse disabled)
@@ -54,7 +54,7 @@ mkdir -p foo
 cd foo bar
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### cd - without OLDPWD
@@ -64,7 +64,7 @@ echo status=$?
 #pwd
 ## stdout: status=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### pwd
@@ -72,7 +72,7 @@ cd /
 pwd
 ## stdout: /
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### setting $PWD doesn't affect the value of 'pwd' builtin
@@ -90,7 +90,7 @@ before foo
 after foo
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unset PWD; then pwd
@@ -108,7 +108,7 @@ PWD=
 PWD=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### remove pwd dir
@@ -127,7 +127,7 @@ status=0
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### cd to nonexistent dir
@@ -142,7 +142,7 @@ cd -- /
 echo $PWD
 ## stdout: /
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unset PWD; cd /tmp is allowed (regression)
@@ -151,7 +151,7 @@ unset PWD; cd /tmp
 pwd
 ## stdout: /tmp
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### CDPATH is respected
@@ -172,7 +172,7 @@ status=0
 /tmp/spam/foo
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### chdir is a synonym for cd - busybox ash
@@ -191,14 +191,14 @@ pwd
 #echo status=$?
 ## stdout: fail
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### arguments to pwd
 pwd /
 ## stdout: /tmp/tmp.rnPGBNmmgT
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### pwd errors out on args with strict_arg_parse

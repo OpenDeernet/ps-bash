@@ -7,7 +7,7 @@ echo $PWD | grep -q /
 echo status=$?
 ## stdout: status=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $PWD is not only set, but exported
@@ -47,7 +47,7 @@ echo $?
 33
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $#
@@ -62,7 +62,7 @@ echo $$ | egrep -q '[0-9]+'  # Test that it has decimal digits
 echo status=$?
 ## stdout: status=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $$ doesn't change with subshell or command sub
@@ -117,7 +117,7 @@ subshell OK
 command sub OK
 ## END
 ## status: 3
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Background PID $! looks like a PID
@@ -128,7 +128,7 @@ echo $pid | egrep '[0-9]+' >/dev/null
 echo status=$?
 ## stdout: status=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $PPID
@@ -137,7 +137,7 @@ echo $PPID | egrep '[0-9]+'
 # NOTE: There is also $BASHPID
 ## stdout: 2494930
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $PIPESTATUS
@@ -155,7 +155,7 @@ echo $RANDOM | egrep '[0-9]+'
 16399
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $UID and $EUID
@@ -166,7 +166,7 @@ echo $EUID | egrep -o '[0-9]+' >/dev/null
 echo status=$?
 ## stdout: status=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $OSTYPE is non-empty

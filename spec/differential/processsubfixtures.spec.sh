@@ -43,7 +43,7 @@ paste <(seq 1 5) <(seq 6 10)
 wc -l <(seq 1 100)
 ## stdout: 100 /dev/fd/63
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-processsubfixtures processsubfixtures (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### ProcessSub_Source_FunctionDefinition
 source <(echo 'greet() { echo "hi $1"; }'); greet world

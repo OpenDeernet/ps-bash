@@ -6,7 +6,7 @@ PS1='\[foo\]\$'
 echo "${PS1@P}"
 ## stdout: foo$
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### literal escapes
@@ -17,7 +17,7 @@ echo "${PS1@P}"
 
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### special case for $
@@ -41,7 +41,7 @@ $
 \$
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### PS1 evaluation order
@@ -51,7 +51,7 @@ PS1='$x$y'
 echo "${PS1@P}"
 ## stdout: \h
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \1004
@@ -59,7 +59,7 @@ PS1='\1004$'
 echo "${PS1@P}"
 ## stdout: @4$
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \001 octal literals are supported
@@ -67,7 +67,7 @@ PS1='[\045]'
 echo "${PS1@P}"
 ## stdout: [%]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \555 is beyond max octal byte of \377 and wrapped to m
@@ -75,7 +75,7 @@ PS1='\555$'
 echo "${PS1@P}"
 ## stdout: m$
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \x55 hex literals not supported
@@ -97,7 +97,7 @@ PS1='\\'
 echo "${PS1@P}"
 ## stdout: \
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \0001 octal literals are not supported
@@ -105,7 +105,7 @@ PS1='[\0455]'
 echo "${PS1@P}"
 ## stdout: [%5]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \u0001 unicode literals not supported
@@ -115,7 +115,7 @@ test "${PS1@P}" = "[${USER}0001]"
 echo status=$?
 ## stdout: status=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### constant string
@@ -141,7 +141,7 @@ status=0
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \j for number of jobs
@@ -163,7 +163,7 @@ sleep 5
 matched=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \! for history number
@@ -179,7 +179,7 @@ matched=0
 matched=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \# for command number
@@ -189,5 +189,5 @@ echo "${PS1@P}" | egrep -q "foo $((prev_cmd_num + 1)) bar"
 echo matched=$?
 ## stdout: matched=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-prompt prompt (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

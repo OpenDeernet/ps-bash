@@ -22,7 +22,7 @@ one
 two
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-trap ysh-builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap block arg is a not a closure - like cd and other builtins
@@ -42,7 +42,7 @@ proc register {
 register
 ## stdout: x = 
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-trap ysh-builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap --ignore INT USR1
@@ -51,7 +51,7 @@ trap --ignore INT USR1
 trap -p
 ## stdout:
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-trap ysh-builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap --ignore removes hooks (like trap -)
@@ -60,7 +60,7 @@ trap --ignore EXIT
 echo done
 ## stdout: done
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-trap ysh-builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### trap --ignore with uncatchable STOP signal

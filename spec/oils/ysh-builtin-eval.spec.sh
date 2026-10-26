@@ -250,7 +250,7 @@ plain
 plain=0
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-eval ysh-builtin-eval (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### io->eval(to_dict=true) - local and global
@@ -546,7 +546,7 @@ echo inner=$inner
 echo inner2=$inner2
 ## stdout: a=
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-eval ysh-builtin-eval (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### io->eval with in_captured_frame=true can express cd builtin

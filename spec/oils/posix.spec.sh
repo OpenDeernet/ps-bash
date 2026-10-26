@@ -31,7 +31,7 @@ case foo in
 esac
 ## stdout:
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-posix posix (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Last case without ;;
@@ -113,7 +113,7 @@ esac
 echo ${x:-$(ls -d /bin)}
 ## stdout: /bin
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-posix posix (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Arithmetic expansion
@@ -163,7 +163,7 @@ Sun Oct 25 11:59:44 CDT 2026
 /bin
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-posix posix (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Multiple here docs on one line

@@ -19,7 +19,7 @@ ab+( ?d)
 abc)d
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh toysh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### extglob $IFS 2
@@ -32,7 +32,7 @@ IFS=x; ABC=cxd; for i in +($ABC); do echo =$i=; done
 =d)=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh toysh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### char class / extglob
@@ -54,14 +54,14 @@ b
 [+(])
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh toysh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### patsub of $* - http://landley.net/notes.html#23-04-2020
 chicken() { echo ${*/b c/ghi}; }; chicken a b c d
 ## stdout: a b c d
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh toysh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Brace Expansion
@@ -78,7 +78,7 @@ echo ""{~,~root}/pwd
 ~/pwd ~root/pwd
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh toysh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### {abc}<<< - http://landley.net/notes-2019.html#09-12-2019
@@ -89,7 +89,7 @@ cat <&$abc
 walrus
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh toysh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### slice of @ and @ - http://landley.net/notes.html#23-04-2020
@@ -107,5 +107,5 @@ chicken() { for i in "${*:3:5}"; do echo =$i=; done; } ; chicken ab cd ef gh ij 
 =ef gh ij kl mn=
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh toysh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

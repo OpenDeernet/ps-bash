@@ -14,7 +14,7 @@ kill=0
 wait=137
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### kill -s TERM specifies the signal name
@@ -30,14 +30,14 @@ kill=0
 wait=143
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### kill -l with exit code
 kill -l 134 # 128 + 6 (ABRT)
 ## stdout: ABRT
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### kill -l with 128 is invalid
@@ -47,14 +47,14 @@ if [ $? -ne 0 ]; then
 fi
 ## stdout: invalid
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### kill -l 0 returns EXIT
 kill -l 0
 ## stdout: EXIT
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### kill -l 0 INT lists both signals
@@ -64,7 +64,7 @@ EXIT
 2
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### kill multiple pids at once
@@ -79,7 +79,7 @@ kill $pid1 $pid2 $pid3
 echo $?
 ## stdout: 0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### kill pid and job at once
@@ -90,7 +90,7 @@ kill %2 $pid
 echo $?
 ## stdout: 0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Numeric signal out of range - OSH may send it anyway
@@ -110,5 +110,5 @@ kill=1
 wait=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-kill builtin-kill (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -17,7 +17,7 @@ for i in 1 2 3 4 5 6 7 8 9 10; do true & echo $!; done; wait; echo "rc=$?"
 rc=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-backgroundjobprocess backgroundjobprocess (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### RunAsync row 2
 export PSBASH_BG_MODE=process
@@ -37,7 +37,7 @@ sleep 120 & echo $!; sleep 120 & echo $!; sleep 120 & echo $!
 2567090
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-backgroundjobprocess backgroundjobprocess (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### RunAsync row 4
 export PSBASH_BG_MODE=process
@@ -77,7 +77,7 @@ first
 done
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-backgroundjobprocess backgroundjobprocess (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### RunAsync row 8
 export PSBASH_BG_MODE=process

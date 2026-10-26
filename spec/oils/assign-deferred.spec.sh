@@ -7,7 +7,7 @@ echo status=$?
 argv.py "${!a[@]}" "${a[@]}"
 ## stdout: status=0
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-assign-deferred assign-deferred (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### typeset -a a[1]=a a[3]=c
@@ -28,7 +28,7 @@ f() {
 f
 ## stdout: status=0
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-assign-deferred assign-deferred (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### readonly a[7]=8
@@ -39,7 +39,7 @@ argv.py "${!b[@]}" "${b[@]}"
 # bash doesn't like this variable name!
 ## stdout: status=1
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-assign-deferred assign-deferred (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### export a[7]=8
@@ -49,7 +49,7 @@ argv.py "${!a[@]}" "${a[@]}"
 printenv.py a
 ## stdout: status=1
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-assign-deferred assign-deferred (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### 'builtin' prefix is allowed on assignments
@@ -57,7 +57,7 @@ builtin export e='E'
 echo e=$e
 ## stdout: e=E
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-assign-deferred assign-deferred (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### 'command' prefix is allowed on assignments
@@ -70,7 +70,7 @@ r1=R1
 r2=R2
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-assign-deferred assign-deferred (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### is 'builtin' prefix and array allowed?  OSH is smarter

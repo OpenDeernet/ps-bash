@@ -24,7 +24,7 @@ status=0
 hello
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh-posix toysh-posix (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Failed redirect in assignment, vs. export
@@ -39,7 +39,7 @@ abc=def
 abc=def
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh-posix toysh-posix (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### IFS 5
@@ -47,7 +47,7 @@ cc() { for i in $*; do echo -$i-; done;}; cc "" "" "" "" ""
 cc() { echo =$1$2=;}; cc "" ""
 ## stdout: ==
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-toysh-posix toysh-posix (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Command Sub Syntax Error

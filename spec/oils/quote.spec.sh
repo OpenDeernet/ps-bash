@@ -127,7 +127,7 @@ echo foo\
 $
 ## stdout: foo$
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-quote quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Line continuation inside double quotes
@@ -135,14 +135,14 @@ echo "foo\
 $"
 ## stdout: foo$
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-quote quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $'' octal escapes with fewer than 3 chars
 echo $'\1 \11 \11 \111' | od -A n -c | sed 's/ \+/ /g'
 ## stdout:  001 \t \t I \n
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-quote quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $"" is a synonym for ""

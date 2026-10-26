@@ -39,7 +39,7 @@ status=1
 [[ 'a b' =~ '^(a b)$' ]] && echo true
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Regex quoted with double quotes
@@ -47,7 +47,7 @@ status=1
 [[ 'a b' =~ "^(a b)$" ]] && echo true
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Fix single quotes by storing in variable
@@ -79,7 +79,7 @@ true
 true
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Regex with == and not =~ is parse error, different lexer mode required
@@ -87,7 +87,7 @@ true
 [[ '^(a b)$' == ^(a\ b)$ ]] && echo true
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Omitting ( )
@@ -102,7 +102,7 @@ true
 [[ 'a b' =~ ^)a\ b($ ]] && echo true
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Regex with |
@@ -157,7 +157,7 @@ true
 echo status=$?
 ## stdout: status=2
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Fatal error inside [[ =~ ]]
@@ -217,7 +217,7 @@ z 0
 status=0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Escaped {
@@ -274,7 +274,7 @@ status=0
 status=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### pattern a=(1)
@@ -287,7 +287,7 @@ status=0
 status=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### pattern @f(x)
@@ -318,7 +318,7 @@ one
 two
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unquoted (a  b) as pattern, (a  b|c)
@@ -346,7 +346,7 @@ two
 three
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Multiple adjacent () groups
@@ -371,7 +371,7 @@ if [[ zz =~ ([a-z]+)(()z) ]]; then
 fi
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### c|a unquoted
@@ -390,7 +390,7 @@ if [[ a =~ c a ]]; then
 fi
 ## stdout:
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### make a lisp example
@@ -406,12 +406,12 @@ status=0
 m=(
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Operators and space lose meaning inside ()
 [[ '< >' =~ (< >) ]] && echo true
 ## stdout: true
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

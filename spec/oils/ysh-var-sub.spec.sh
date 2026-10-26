@@ -6,7 +6,7 @@ x='echo hi 2>&1'
 echo "${x|html}"
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-var-sub ysh-var-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${x %05d}
@@ -15,7 +15,7 @@ printf '%05d\n' "$x"
 echo ${x %05d}
 ## stdout: 00003
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-var-sub ysh-var-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${.myproc builtin sub}

@@ -8,7 +8,7 @@ echo status=$?
 # Setting a readonly variable in osh is a hard failure.
 ## stdout: status=1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-sh-options-bash sh-options-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### SHELLOPTS and BASHOPTS are non-empty
@@ -31,7 +31,7 @@ shellopts is set
 bashopts is set
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-sh-options-bash sh-options-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### shopt -s progcomp hostcomplete are stubs (bash-completion)

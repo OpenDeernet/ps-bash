@@ -21,7 +21,7 @@ TRUE
 FALSE
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-match extglob-match (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### extglob in variable
@@ -94,7 +94,7 @@ prefix=no
   echo TRUE
 ## stdout: TRUE
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-match extglob-match (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ? matches 0 or 1
@@ -190,7 +190,7 @@ TRUE
 FALSE
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-extglob-match extglob-match (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### adjacent extglob

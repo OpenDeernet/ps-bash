@@ -11,7 +11,7 @@ caller-ok
 rc=0 after n=1
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashsource bashsource (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### RunAsync row 2
 echo "n=${#BASH_SOURCE[@]}"; [ "${BASH_SOURCE[0]}" = "$0" ] && echo same || echo different
@@ -20,7 +20,7 @@ n=1
 same
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashsource bashsource (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### RunAsync row 3
 [ "${BASH_SOURCE[0]:-$0}" = "$0" ] && echo ok
@@ -31,4 +31,4 @@ same
 echo "n=${#BASH_SOURCE[@]} [${BASH_SOURCE[0]}] fb=[${BASH_SOURCE[0]:-$0}]"
 ## stdout: n=1 [/mnt/c/Users/andyb/AppData/Local/Temp/ps-bash/spec-record/b7241c02a14c450da8b4915670592465.sh] fb=[/mnt/c/Users/andyb/AppData/Local/Temp/ps-bash/spec-record/b7241c02a14c450da8b4915670592465.sh]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-differential-bashsource bashsource (differential): differs from bash 5.2; see docs/specs/spec-gaps.md

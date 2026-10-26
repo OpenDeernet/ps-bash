@@ -23,7 +23,7 @@ echo "$max" | json read
 echo "$_reply" | to-hex
 ## stdout:  0a
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-unicode ysh-unicode (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Parsing data - J8 rejects \u{110000}
@@ -67,7 +67,7 @@ status max=127
 status too_big=127
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-unicode ysh-unicode (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### JSON and J8 reject encoded string above max code point

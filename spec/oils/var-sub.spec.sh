@@ -5,7 +5,7 @@
 echo ${a&}
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub var-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Braced block inside ${}
@@ -13,7 +13,7 @@ echo ${a&}
 echo ${foo:-$({ ls /bin/ls; })}
 ## stdout: /bin/ls
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub var-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Nested ${}
@@ -46,7 +46,7 @@ set -- '2 3' 'c d'
 echo hi 1>& "$@"
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-sub var-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Here doc with bad "$@" delimiter

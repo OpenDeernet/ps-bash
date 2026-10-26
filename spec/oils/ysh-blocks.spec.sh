@@ -38,7 +38,7 @@ command cd / {
 }
 ## stdout: builtin /tmp/tmp.RdNX1t8Lae
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-blocks ysh-blocks (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Consistency: Exit Status and Blocks

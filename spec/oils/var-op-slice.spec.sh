@@ -15,7 +15,7 @@ echo ${#v:1:3}
 # zsh actually implements this!
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-slice var-op-slice (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Out of range string slice: begin
@@ -88,7 +88,7 @@ echo -done-
 # mksh doesn't respect nounset!
 ## stdout: --
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-slice var-op-slice (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Slice UTF-8 String
@@ -128,7 +128,7 @@ assigned
 de
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-slice var-op-slice (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Slice with an assoc array
@@ -164,7 +164,7 @@ result=$(echo ${@:0:1})
 echo ${result//"$0"/'SHELL'}
 ## stdout: SHELL
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-var-op-slice var-op-slice (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Permutations of implicit begin and length

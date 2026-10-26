@@ -6,7 +6,7 @@ a=(4 5 6)
 echo "${a[b=2]} b=$b"
 ## stdout: 6 b=2
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Add one to var
@@ -34,7 +34,7 @@ echo $(($j + 42))
 echo $((${j:-5} + 1))
 ## stdout: 6
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Arith word part
@@ -48,7 +48,7 @@ foo=1; echo $((foo+1))bar$(($foo+1))
 echo $((1 + $(echo 1)${undefined:-3}))
 ## stdout: 14
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Constant with quotes like '1'
@@ -57,7 +57,7 @@ echo $((1 + $(echo 1)${undefined:-3}))
 echo $(('1' + 2))
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Arith sub within arith sub
@@ -167,7 +167,7 @@ a=(5 6 7 8)
 echo "${a[@]}" - "${undef[@]}"
 ## stdout: 6 7 6 7 - 1 1 -1 -1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Increment undefined variables with nounset
@@ -185,7 +185,7 @@ b=2
 echo $((a,(b+1)))
 ## stdout: 3
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Augmented assignment
@@ -227,7 +227,7 @@ echo $((!(1 || 2)))
 0
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Logical Ops Short Circuit
@@ -261,7 +261,7 @@ echo $((~(1|2)))
 -4
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Unary minus and plus
@@ -276,7 +276,7 @@ echo $((- a + + b))
 echo $((1 + 2.3))
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Array indexing in arith
@@ -285,7 +285,7 @@ array=(1 2 3 4)
 echo $((array[1] + array[2]*3))
 ## stdout: 11
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Constants in base 36
@@ -312,7 +312,7 @@ base=16
 echo $(( ${base}#a ))
 ## stdout: 10
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Octal constant
@@ -326,7 +326,7 @@ zero=0
 echo $(( ${zero}11 ))
 ## stdout: 9
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Dynamic hex constants
@@ -334,7 +334,7 @@ zero=0
 echo $(( ${zero}xAB ))
 ## stdout: 171
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Hex constant with capital X
@@ -349,7 +349,7 @@ x=oo
 echo $(( foo + f$x + 1 ))
 ## stdout: 11
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Recursive name evaluation is a result of runtime parse/eval
@@ -405,7 +405,7 @@ echo $a
 #   dash doesn't implement assignment
 ## stdout: 9
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Invalid LValue that looks like array
@@ -413,7 +413,7 @@ echo $a
 echo "status=$?"
 ## stdout: status=1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Invalid LValue: two sets of brackets
@@ -423,7 +423,7 @@ echo "status=$?"
 #   dash doesn't implement assignment
 ## stdout: status=1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Operator Precedence
@@ -457,7 +457,7 @@ echo $(( -3 ** 2 ))
 echo $(( 2**-1 * 5 ))
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Comment not allowed in the middle of multiline arithmetic
@@ -477,7 +477,7 @@ echo [$a]
 []
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Add integer to indexed array (a[0] decay)
@@ -485,7 +485,7 @@ declare -a array=(1 2 3)
 echo $((array + 5))
 ## stdout: 6
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Add integer to associative array (a[0] decay)
@@ -494,7 +494,7 @@ assoc[0]=42
 echo $((assoc + 5))
 ## stdout: 47
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Double subscript
@@ -503,7 +503,7 @@ echo $(( a[1] ))
 echo $(( a[1][1] ))
 ## stdout: 2
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### result of ArithSub -- array[0] decay
@@ -516,7 +516,7 @@ declared
 4
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### result of ArithSub -- assoc[0] decay
@@ -544,7 +544,7 @@ echo last=$last
 last=6
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### assignment with dynamic var name
@@ -556,7 +556,7 @@ echo xbar=$xbar
 xbar=42
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### array assignment with dynamic array name
@@ -568,7 +568,7 @@ echo 'xbar[5]='${xbar[5]}
 xbar[5]=42
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unary assignment with dynamic var name
@@ -581,7 +581,7 @@ echo xbar=$xbar
 xbar=43
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unary array assignment with dynamic var name
@@ -594,7 +594,7 @@ echo 'xbar[5]='${xbar[5]}
 xbar[5]=43
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Dynamic parsing of arithmetic
@@ -609,7 +609,7 @@ true
 status=2
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Dynamic parsing on empty string
@@ -710,5 +710,5 @@ echo status=$?
 # bash prints an error, but doesn't fail
 ## stdout: status=1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

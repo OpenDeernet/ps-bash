@@ -8,7 +8,7 @@ var empty = :||
 argv.py / @x @empty /
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-list ysh-list (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Shell arrays support tilde detection, static globbing, brace detection
@@ -23,7 +23,7 @@ var x = :| ~/src *.py {andy,bob}@example.com $no_dynamic_glob |
 argv.py @x
 ## stdout:
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-list ysh-list (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Mutate List entries, a[42] a['42'] allowed
@@ -79,5 +79,5 @@ echo -$x-  # fails with type error
 --
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-list ysh-list (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -35,7 +35,7 @@ status=0
 status=0
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-hay-isolation hay-isolation (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### variables mutated within hay eval don't persist
@@ -85,5 +85,5 @@ hay eval :result {
 4
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-hay-isolation hay-isolation (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

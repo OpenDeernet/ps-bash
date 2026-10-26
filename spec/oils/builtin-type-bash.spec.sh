@@ -14,7 +14,7 @@ alias foo=bar
 type -t foo
 ## stdout: alias
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -t -> builtin
@@ -28,7 +28,7 @@ builtin
 builtin
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -t -> keyword
@@ -42,7 +42,7 @@ keyword
 keyword
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -t control flow
@@ -59,7 +59,7 @@ builtin
 builtin
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -t -> file
@@ -100,7 +100,7 @@ type -P mv tar grep
 /tmp/grep
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -a -P gives multiple files
@@ -115,7 +115,7 @@ _tmp/pwd
 /bin/pwd
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -p builtin -> not found
@@ -128,7 +128,7 @@ type -p FOO BAR NOT_FOUND
 type -p cd type builtin command
 ## stdout:
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -P builtin -> not found
@@ -141,7 +141,7 @@ type -P FOO BAR NOT_FOUND
 type -P cd type builtin command
 ## stdout:
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -P builtin -> not a file but file found
@@ -159,7 +159,7 @@ _tmp/tar
 _tmp/grep
 ## END
 ## status: 1
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -f builtin -> not found
@@ -183,7 +183,7 @@ tar is /tmp/tar
 grep is /tmp/grep
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type prints function source code
@@ -206,7 +206,7 @@ f ()
 }
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -ap -> function
@@ -222,7 +222,7 @@ alias ll="ls -lha"
 type -a ll
 ## stdout: ll is aliased to `ls -lha'
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -ap -> alias
@@ -231,7 +231,7 @@ alias ll="ls -lha"
 type -ap ll
 ## stdout:
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-builtin-type-bash builtin-type-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### type -a -> builtin

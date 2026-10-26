@@ -34,7 +34,7 @@ status=127
 hi
 ## END
 ## status: 2
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-process ysh-builtin-process (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### forkwait
@@ -54,7 +54,7 @@ if test "$old" = "$PWD"; then
 fi
 ## stdout: hi
 ## status: 42
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-process ysh-builtin-process (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### fork
@@ -79,5 +79,5 @@ if test "$old" = "$PWD"; then
 fi
 ## stdout: hi
 ## status: 42
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-ysh-builtin-process ysh-builtin-process (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

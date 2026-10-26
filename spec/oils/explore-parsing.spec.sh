@@ -6,7 +6,7 @@ fun() { echo ${##}; }
 fun 0 1 2 3 4 5 6 7 8 
 ## stdout: 1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-explore-parsing explore-parsing (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Length of length of ARGS!  2 digit
@@ -14,7 +14,7 @@ fun() { echo ${##}; }
 fun 0 1 2 3 4 5 6 7 8 9
 ## stdout: 2
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-explore-parsing explore-parsing (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### readonly +
@@ -25,7 +25,7 @@ readonly + >/dev/null
 echo status=$?
 ## stdout: status=1
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-explore-parsing explore-parsing (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### set +
@@ -33,5 +33,5 @@ set + >/dev/null
 echo status=$?
 ## stdout: status=0
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-explore-parsing explore-parsing (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

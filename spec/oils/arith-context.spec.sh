@@ -7,7 +7,7 @@ a=(1 2 3)
 echo ${a[a[0]]} ${a[a[a[0]]]}
 ## stdout: 2 3
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith-context arith-context (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Slicing of string with constants
@@ -33,7 +33,7 @@ a[zero+5-4]=X
 echo ${a[@]}
 ## stdout: 1 X 3
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith-context arith-context (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Array index on LHS with indices
@@ -42,7 +42,7 @@ a[a[1]]=X
 echo ${a[@]}
 ## stdout: 1 2 X
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith-context arith-context (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Slicing of string with expressions
@@ -64,5 +64,5 @@ echo ${s: 0 < 1 ? 2 : 0 : 1}  # 2:1 -- TRICKY THREE COLONS
 c
 ## END
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-arith-context arith-context (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
