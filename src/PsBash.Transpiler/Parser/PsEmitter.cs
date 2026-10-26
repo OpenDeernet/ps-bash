@@ -2743,14 +2743,15 @@ public static class PsEmitter
                 sb.Append(pair.Op == AssignOp.PlusEqual ? " += @(" : " = @(");
                 // A glob element (`arr=(*.txt)`) expands to ZERO or more elements, which the comma
                 // form cannot splice (`'a',@('b','c')` is two elements). Such a list is emitted as
-                // `@( item; item; ... )`, whose statements each enumerate into one flat array.
-                bool anyGlobElement = pair.ArrayValue.Elements.Any(e => IsGlobWord(e) || IsArrayValuedWord(e));
+                // `@( item; item; ... )`, whose statements each enumerate into one flat array. An unquoted `$x` /
+                // `$(cmd)` / `${x#p}` element is word-split the same way (`a=($(sort f))` is one element PER LINE/word).
+                bool anyGlobElement = pair.ArrayValue.Elements.Any(IsUnquotedSplitWord);
                 for (int j = 0; j < pair.ArrayValue.Elements.Length; j++)
                 {
                     if (j > 0)
                         sb.Append(anyGlobElement ? "; " : ",");
                     var elem = pair.ArrayValue.Elements[j];
-                    if (anyGlobElement && (IsGlobWord(elem) || IsArrayValuedWord(elem)))
+                    if (anyGlobElement && IsUnquotedSplitWord(elem))
                     {
                         sb.Append(EmitUnquotedSplitWordArray(elem));
                         continue;

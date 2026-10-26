@@ -343,3 +343,9 @@ k 2=v2
 k3=v3
 ## END
 ## status: 0
+
+#### array literal word-splits an unquoted command substitution and variable
+a=($(printf '%s\n' c a b)); x="p q r"; g=($x); h=("$x"); i=("$(printf 'a\nb')"); u=(); u+=($(echo m n))
+echo ${#a[@]} ${#g[@]} ${#h[@]} ${#i[@]} ${#u[@]}
+## stdout: 3 3 1 1 2
+## status: 0

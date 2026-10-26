@@ -162,6 +162,24 @@ public class BashTranspilerReviewRegressionTests
         Assert.DoesNotContain("function global:o", ps);   // the outer one keeps its plain definition
     }
 
+    // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
+    // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
+
+    [Theory]
+    [InlineData("a=($(printf '%s\n' c a b))")]
+    [InlineData("a=($x)")]
+    [InlineData("a=($x $(echo 1) z)")]
+    [InlineData("a+=($(echo m n))")]
+    [InlineData("a=(${x#p})")]
+    public void Transpile_ArrayLiteralWithUnquotedExpansion_IsWordSplit(string bash)
+        => Assert.Contains("ConvertTo-BashWords", BashTranspiler.Transpile(bash));
+
+    [Theory]
+    [InlineData("a=(\"$(echo a b)\")")]
+    [InlineData("a=(\"$x\")")]
+    public void Transpile_ArrayLiteralWithQuotedExpansion_IsOneElement(string bash)
+        => Assert.DoesNotContain("ConvertTo-BashWords", BashTranspiler.Transpile(bash));
+
     // Oracle: bash `x=010; echo $((10#$x + 1))` -> 11 and `h=ff; echo $((16#$h))` -> 255; `10#$x` was a parse error (invalid arithmetic number '10#').
 
     [Theory]
