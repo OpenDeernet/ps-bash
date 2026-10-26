@@ -5076,7 +5076,7 @@ public static class PsEmitter
     /// An unrecognized escape keeps the backslash and the following character,
     /// matching bash.
     /// </summary>
-    private static string ExpandAnsiCEscapes(string s)
+    internal static string ExpandAnsiCEscapes(string s)
     {
         // \xHH / \nnn name BYTES: runs of them are UTF-8 decoded (EscapedTextBuilder), so
         // $'\xe2\x82\xac' is the euro sign, not three Latin-1 characters.

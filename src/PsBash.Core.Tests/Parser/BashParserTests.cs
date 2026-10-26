@@ -2021,6 +2021,17 @@ public class BashParserTests
         Assert.Equal("hello foo\nbar\n", hereDoc.Body);
     }
 
+    // Oracle: bash `read` loops over `<<< $'a\nb'` see two lines; the $'..' word was passed through as literal text.
+    [Theory]
+    [InlineData("cat <<< $'k1:v1\\nk2:v2'", "k1:v1\nk2:v2\n")]
+    [InlineData("cat <<< $'tab\\there'", "tab\there\n")]
+    public void Parse_HereStringAnsiCWord_IsDecodedAndNotReExpanded(string bash, string body)
+    {
+        var simple = Assert.IsType<Command.Simple>(Parse(bash));
+        Assert.Equal(body, simple.HereDocs[0].Body);
+        Assert.False(simple.HereDocs[0].Expand);
+    }
+
     [Fact]
     public void Parse_MultipleHeredocs_CollectsAllBodies()
     {

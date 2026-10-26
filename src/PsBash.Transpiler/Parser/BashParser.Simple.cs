@@ -549,7 +549,13 @@ public sealed partial class BashParser
         // SAME single char — is not sliced to a start-past-end range (raw[1..^1] on
         // length 1 threw ArgumentOutOfRangeException).
         bool expand = true;
-        if (raw.Length >= 2
+        // `<<< $'a\nb'`: an ANSI-C word is decoded here (its escapes are the text) and is never re-expanded.
+        if (raw.Length >= 3 && raw.StartsWith("$'", StringComparison.Ordinal) && raw.EndsWith('\''))
+        {
+            expand = false;
+            raw = PsEmitter.ExpandAnsiCEscapes(raw[2..^1]);
+        }
+        else if (raw.Length >= 2
             && ((raw.StartsWith('\'') && raw.EndsWith('\''))
                 || (raw.StartsWith('"') && raw.EndsWith('"'))))
         {
