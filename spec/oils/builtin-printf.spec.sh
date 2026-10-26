@@ -114,7 +114,6 @@ printf '[%05d]\n' 42
 [00042]
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### printf %6.4d -- "precision" does padding for integers
@@ -135,7 +134,6 @@ printf '[%6.d]\n' -42
 [   -42]
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### printf %6.4x X o
@@ -164,7 +162,6 @@ printf '[%6.o]\n' 42
 [    52]
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### %06d zero padding vs. %6.6d
@@ -181,7 +178,6 @@ printf '[%6.6d]\n' -42  # 6 + 1 for the - sign!!!
 [-000042]
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### %06x %06X %06o
@@ -229,7 +225,6 @@ printf '[%-6.4s]\n' spam-eggs
 [spam  ]
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### printf %6.0s and %0.0s
@@ -240,7 +235,6 @@ printf '[%0.0s]\n' foo
 []
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### printf %6.s and %0.s
@@ -251,7 +245,6 @@ printf '[%0.s]\n' foo
 []
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### printf %*.*s (width/precision from args)
@@ -268,7 +261,6 @@ printf '[%*.*s]\n' 9 3 hello
 [      hel]
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unsigned / octal / hex
@@ -290,7 +282,6 @@ printf '[%X]\n' \'ab # extra chars ignored
 [61]
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### unsigned / octal / hex big
@@ -624,7 +615,6 @@ printf '[% d]\n' -42
 [-42]
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### printf # flag

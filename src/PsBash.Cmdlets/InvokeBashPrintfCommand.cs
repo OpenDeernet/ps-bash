@@ -104,7 +104,12 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
         var converted = new List<object>(argList.Length);
         foreach (var a in argList)
         {
-            if (int.TryParse(a, out int intVal))
+            if (a.Length >= 2 && (a[0] == '\'' || a[0] == '"'))
+            {
+                // POSIX: a leading quote makes the value the character code of the next character (`printf %d \'a` -> 97).
+                converted.Add(char.ConvertToUtf32(a, 1));
+            }
+            else if (int.TryParse(a, out int intVal))
             {
                 converted.Add(intVal);
             }
@@ -146,6 +151,15 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
                     j++;
                 }
                 var width = new StringBuilder();
+                if (j < format.Length && format[j] == '*')
+                {
+                    // `%*d`: the width is the next argument; a negative one means left-justify.
+                    int starWidth = argIdx < converted.Count ? ToInt(converted[argIdx]) : 0;
+                    argIdx++;
+                    if (starWidth < 0) flags.Append('-');
+                    width.Append(Math.Abs(starWidth));
+                    j++;
+                }
                 while (j < format.Length && char.IsDigit(format[j]))
                 {
                     width.Append(format[j]);
@@ -157,6 +171,13 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
                 {
                     hasPrecision = true;
                     j++;
+                    if (j < format.Length && format[j] == '*')
+                    {
+                        int starPrec = argIdx < converted.Count ? ToInt(converted[argIdx]) : 0;
+                        argIdx++;
+                        if (starPrec >= 0) precision.Append(starPrec); else hasPrecision = false; // negative: as if omitted
+                        j++;
+                    }
                     while (j < format.Length && char.IsDigit(format[j]))
                     {
                         precision.Append(format[j]);
@@ -198,13 +219,9 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
                         {
                             // Raw text: %s must not reformat numerics (`007`, `1.50`, `1e3` print as typed).
                             string val = argList[argIdx];
-                            if (widthStr.Length > 0 && hasPrecision && precStr.Length > 0)
-                            {
-                                val = val.PadLeft(ParseFieldWidth(widthStr));
-                                int take = Math.Min(ParseFieldWidth(precStr), val.Length);
-                                val = val.Substring(0, take);
-                            }
-                            else if (widthStr.Length > 0)
+                            if (hasPrecision)
+                                val = val.Substring(0, Math.Min(precStr.Length > 0 ? ParseFieldWidth(precStr) : 0, val.Length));
+                            if (widthStr.Length > 0)
                             {
                                 val = flagStr.Contains('-')
                                     ? val.PadRight(ParseFieldWidth(widthStr))
@@ -220,16 +237,19 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
                         if (argIdx < converted.Count)
                         {
                             int val = ToInt(converted[argIdx]);
-                            if (widthStr.Length > 0)
+                            if (widthStr.Length > 0 || hasPrecision || flagStr.IndexOfAny(['+', ' ']) >= 0)
                             {
-                                bool zeroPad = flagStr.Contains('0');
                                 bool leftAlign = flagStr.Contains('-');
+                                bool zeroPad = flagStr.Contains('0') && !hasPrecision; // C: an explicit precision cancels the 0 flag
                                 bool showPlus = flagStr.Contains('+');
-                                string prefix = val >= 0 && showPlus ? "+" : string.Empty;
-                                string str = prefix + val.ToString(CultureInfo.InvariantCulture);
+                                string digits = Math.Abs((long)val).ToString(CultureInfo.InvariantCulture);
+                                if (hasPrecision) digits = digits.PadLeft(precStr.Length > 0 ? ParseFieldWidth(precStr) : 0, '0');
+                                string sign = val < 0 ? "-" : showPlus ? "+" : flagStr.Contains(' ') ? " " : string.Empty;
+                                string str = sign + digits;
+                                if (widthStr.Length == 0) { sb.Append(str); argIdx++; i = j + 1; break; }
                                 int w = ParseFieldWidth(widthStr);
                                 if (zeroPad && !leftAlign)
-                                    str = str.PadLeft(w, '0');
+                                    str = sign + digits.PadLeft(w - sign.Length, '0');
                                 else if (leftAlign)
                                     str = str.PadRight(w);
                                 else
@@ -305,10 +325,7 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
                         if (argIdx < converted.Count)
                         {
                             int val = ToInt(converted[argIdx]);
-                            string str = val.ToString("x", CultureInfo.InvariantCulture);
-                            if (flagStr.Contains('#')) str = "0x" + str;
-                            if (widthStr.Length > 0)
-                                str = str.PadLeft(ParseFieldWidth(widthStr), '0');
+                            string str = FormatRadix(val.ToString("x", CultureInfo.InvariantCulture), val != 0 && flagStr.Contains('#') ? "0x" : "", widthStr, precStr, hasPrecision, flagStr);
                             sb.Append(str);
                         }
                         argIdx++;
@@ -318,10 +335,7 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
                         if (argIdx < converted.Count)
                         {
                             int val = ToInt(converted[argIdx]);
-                            string str = val.ToString("X", CultureInfo.InvariantCulture);
-                            if (flagStr.Contains('#')) str = "0X" + str;
-                            if (widthStr.Length > 0)
-                                str = str.PadLeft(ParseFieldWidth(widthStr), '0');
+                            string str = FormatRadix(val.ToString("X", CultureInfo.InvariantCulture), val != 0 && flagStr.Contains('#') ? "0X" : "", widthStr, precStr, hasPrecision, flagStr);
                             sb.Append(str);
                         }
                         argIdx++;
@@ -331,11 +345,7 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
                         if (argIdx < converted.Count)
                         {
                             int val = ToInt(converted[argIdx]);
-                            string str = Convert.ToString(val, 8);
-                            if (flagStr.Contains('#') && !str.StartsWith("0", StringComparison.Ordinal))
-                                str = "0" + str;
-                            if (widthStr.Length > 0)
-                                str = str.PadLeft(ParseFieldWidth(widthStr), '0');
+                            string str = FormatRadix(Convert.ToString(val, 8), "", widthStr, precStr, hasPrecision, flagStr, octalAlt: flagStr.Contains('#'));
                             sb.Append(str);
                         }
                         argIdx++;
@@ -492,6 +502,19 @@ public sealed class InvokeBashPrintfCommand : PSCmdlet
         }
         return sb.ToString();
     }
+    /// <summary>C printf integer tail for %x %X %o: precision = minimum digits, then the <c>#</c> prefix, then the width
+    /// (space-padded, left-justified with <c>-</c>, zero-padded with <c>0</c> unless a precision is given).</summary>
+    private static string FormatRadix(string digits, string prefix, string widthStr, string precStr, bool hasPrecision, string flagStr, bool octalAlt = false)
+    {
+        if (hasPrecision) digits = digits.PadLeft(precStr.Length > 0 ? ParseFieldWidth(precStr) : 0, '0');
+        if (octalAlt && !digits.StartsWith('0')) digits = "0" + digits;
+        if (widthStr.Length == 0) return prefix + digits;
+        int w = ParseFieldWidth(widthStr);
+        if (flagStr.Contains('-')) return (prefix + digits).PadRight(w);
+        if (flagStr.Contains('0') && !hasPrecision) return prefix + digits.PadLeft(Math.Max(digits.Length, w - prefix.Length), '0');
+        return (prefix + digits).PadLeft(w);
+    }
+
     private static int ParseFieldWidth(string digits)
         => int.TryParse(digits, out int v) ? Math.Min(v, MaxPrintfField) : MaxPrintfField;
 

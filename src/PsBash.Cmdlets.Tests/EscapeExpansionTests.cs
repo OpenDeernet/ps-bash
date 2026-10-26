@@ -282,6 +282,19 @@ public class EscapeExpansionTests : IClassFixture<SharedPwshFixture>
     public void Printf_NulEscape_KeepsNulByte()
         => Assert.Equal("a\0b\n", Stdout(@"printf 'a\0b\n'"));
 
+    // Oracle (bash 5.2): precision, `*` width/precision and 'c char codes were ignored.
+
+    [Theory]
+    [InlineData("printf '%6.4d|' 42", "  0042|")]
+    [InlineData("printf '%5.2s|' abcdef", "   ab|")]
+    [InlineData("printf '%-6.2s|' abc", "ab    |")]
+    [InlineData("printf '%*.*s|' 6 2 abcdef", "    ab|")]
+    [InlineData("printf '%*d|' -4 9", "9   |")]
+    [InlineData("printf '%d %d' \\'a '\"a'", "97 97")]
+    [InlineData("printf '[%#x][%#o][%8.4x][%-6x][%06x]' 255 8 255 255 255", "[0xff][010][    00ff][ff    ][0000ff]")]
+    [InlineData("printf '[%+d][% d][%.3d]' 5 5 7", "[+5][ 5][007]")]
+    public void Printf_PrecisionStarWidthAndCharCodes_MatchBash(string script, string expected)
+        => Assert.Equal(expected, Stdout(script));
     [Fact]
     public void Printf_NulThenWcC_Counts4NotBackslashZero()
         => Assert.Equal("4", Stdout(@"printf 'a\0b\n' | wc -c").Trim());
