@@ -70,3 +70,79 @@ hello
 ## END
 ## status: 0
 ## timeout: 10
+
+#### setting readonly var (bash is only one where it's non-fatal)
+# https://landley.net/notes-2020.html#20-06-2020
+
+readonly abc=123
+abc=def
+echo status=$?
+## stdout: status=1
+## status: 0
+## timeout: 10
+
+#### Function def in pipeline
+# http://landley.net/notes.html#26-05-2020
+
+echo hello | potato() { echo abc; } | echo ha
+## stdout: ha
+## status: 0
+## timeout: 10
+
+#### IFS 2 - copied into spec/word-split
+# this one appears different between osh and bash
+A="   abc   def   "; for i in ""x""$A""; do echo =$i=; done
+## STDOUT:
+=x=
+=abc=
+=def=
+==
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-toysh-posix toysh-posix (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### IFS 3
+IFS=x; X="onextwoxxthree"; y=$X; echo $y
+## stdout: one two  three
+## status: 0
+## timeout: 10
+
+#### IFS 4
+
+setopt SH_WORD_SPLIT
+
+IFS=x
+
+func1() {
+  echo /$*/
+  for i in $*; do echo -$i-; done
+}
+func1 "" ""
+
+echo
+
+func2() {
+  echo /"$*"/
+  for i in =$*=; do echo -$i-; done
+}
+func2 "" ""
+## STDOUT:
+/ /
+--
+
+/x/
+-=-
+-=-
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-toysh-posix toysh-posix (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Can't parse extra }
+
+$SH -c 'for i in a"$@"b;do echo =$i=;done;}' 123 456 789
+## stdout:
+## status: 2
+## timeout: 10
+## real-launcher

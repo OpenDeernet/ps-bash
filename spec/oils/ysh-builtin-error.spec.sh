@@ -50,3 +50,125 @@ error 'some error'
 ## status: 127
 ## XFAIL ps-bash gap-oils-ysh-builtin-error ysh-builtin-error (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### Impact of errors on var declaration
+func alwaysError() {
+  error "it's an error" (status=100)
+}
+
+try {
+  var mylist = [1 + 2, alwaysError()]
+
+  echo this will never be printed
+}
+= mylist  # undefined! status becomes 1
+## stdout:
+## status: 2
+## timeout: 10
+
+#### error code should be an integer
+error 'error' (code='a string?')
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Error code should be named arg, not positional
+error msg (100)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### error cannot take word args
+error uh-oh ('error', status=1)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### error requires arguments
+error
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-ysh-builtin-error ysh-builtin-error (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### error cannot have a code of 0
+error ('error', code=0)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Handle _error.code
+
+proc failing {
+  error 'failed' (code=99)
+}
+
+try {
+  failing
+}
+if (_error.code === 99) {
+  echo PASS
+}
+
+try {
+  failing
+}
+case (_error.code) {
+  (0)    { echo success }
+  (1)    { echo one }
+  (else) { echo CASE PASS }
+}
+## stdout:
+## status: 2
+## timeout: 10
+
+#### failed builtin  usage
+
+set +o errexit
+
+try { echo ok }
+
+failed (42)
+echo status=$?
+
+try { echo ok }
+
+# Too many args
+failed a b
+echo status=$?
+## stdout:
+## status: 2
+## timeout: 10
+
+#### failed builtin
+
+try {
+  echo hi
+}
+if failed {
+  echo 'should not get here'
+} else {
+  echo 'ok 1'
+}
+
+try {
+  #test -n ''
+
+  # Hm json read sets the regular error
+  # Should we raise error.Structured?
+  #json read <<< '{'
+
+  var x = fromJson('{')
+
+  # Hm the error is in a SUBPROCESS HERE
+  #echo '{' | json read
+}
+if failed {
+  echo 'ok 2'
+} else {
+  echo 'should not get here'
+}
+## stdout: hi
+## status: 2
+## XFAIL ps-bash gap-oils-ysh-builtin-error ysh-builtin-error (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10

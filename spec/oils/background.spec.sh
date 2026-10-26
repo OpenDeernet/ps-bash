@@ -312,3 +312,121 @@ wait
 ## stdout:
 ## status: 0
 ## timeout: 10
+
+#### wait -n with arguments - arguments are respected
+case $SH in dash|mksh) exit ;; esac
+
+echo x &
+
+# here, you can't tell if it's -n or the other
+wait -n $!
+echo status=$?
+
+# by the bash error, you can tell which is preferred
+wait -n $! bad 2>err.txt
+echo status=$?
+echo
+
+n=$(wc -l < err.txt)
+if test "$n" -gt 0; then
+  echo 'got error lines'
+fi
+## STDOUT:
+x
+status=0
+status=127
+
+got error lines
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### Start background pipeline, wait %job_spec
+case $SH in mksh) exit ;; esac  # flakiness?
+
+echo hi | { exit 99; } &
+echo status=$?
+wait %1
+echo status=$?
+## STDOUT:
+status=0
+status=99
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-background background (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### wait -n
+case $SH in dash|mksh) return ;; esac
+
+{ sleep 0.09; exit 9; } &
+{ sleep 0.03; exit 3; } &
+wait -n
+echo "status=$?"
+wait -n
+echo "status=$?"
+## STDOUT:
+status=3
+status=9
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-background background (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### YSH wait --all
+case $SH in dash|bash|mksh) exit ;; esac
+
+sleep 0.01 &
+(exit 55) &
+true &
+wait
+echo wait $?
+
+sleep 0.01 &
+(exit 44) &
+true &
+wait --all
+echo wait --all $?
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-background background (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### YSH wait --verbose
+case $SH in dash|bash|mksh) exit ;; esac
+
+sleep 0.01 &
+(exit 55) &
+wait --verbose
+echo wait $?
+
+(exit 44) &
+sleep 0.01 &
+wait --all --verbose
+echo wait --all $?
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-background background (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Signal message for killed background job
+case $SH in dash|mksh) exit ;; esac
+
+sleep 1 &
+kill -HUP $!
+wait $! 2>err.txt
+echo status=$?
+grep -o "Hangup" err.txt
+## STDOUT:
+status=129
+Hangup
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-background background (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

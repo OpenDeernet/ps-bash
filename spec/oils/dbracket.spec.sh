@@ -388,3 +388,152 @@ baseN=0
 ## status: 0
 ## XFAIL ps-bash gap-oils-dbracket dbracket (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### [[ with unquoted empty var (compare with test-builtin.test.sh)
+empty=''
+[[ $empty == '' ]] && echo true
+## stdout: true
+## status: 0
+## timeout: 10
+
+#### [[ at runtime doesn't work
+dbracket=[[
+$dbracket foo == foo ]]
+## stdout:
+## status: 127
+## timeout: 10
+
+#### [[ with env prefix doesn't work
+FOO=bar [[ foo == foo ]]
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-dbracket dbracket (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### [[ over multiple lines is OK
+# Hm it seems you can't split anywhere?
+[[ foo == foo
+&& bar == bar
+]] && echo true
+## stdout: true
+## status: 0
+## XFAIL ps-bash gap-oils-dbracket dbracket (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Argument that looks like a real operator
+[[ -f < ]] && echo 'should be parse error'
+## stdout:
+## status: 2
+## XFAIL ps-bash gap-oils-dbracket dbracket (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### User array compared to "$@" (broken unless shopt -s strict_array)
+# Both are coerced to string!  It treats it more like an  UNQUOTED ${a[@]}.
+
+a=('1 3' 5)
+b=(1 2 3)
+set -- 1 '3 5'
+[[ "$@" = "${a[@]}" ]] && echo true
+[[ "$@" = "${b[@]}" ]] || echo false
+## STDOUT:
+true
+false
+## END
+## status: 0
+## timeout: 10
+
+#### Array coerces to string (shopt -s strict_array to disallow)
+a=('1 3' 5)
+[[ '1 3 5' = "${a[@]}" ]] && echo true
+[[ '1 3 4' = "${a[@]}" ]] || echo false
+## STDOUT:
+true
+false
+## END
+## status: 0
+## timeout: 10
+
+#### (( array1 == array2 )) doesn't work
+a=('1 3' 5)
+b=('1 3' 5)
+c=('1' '3 5')
+d=('1' '3 6')
+
+# shells EXPAND a and b first
+(( a == b ))
+echo status=$?
+
+(( a == c ))
+echo status=$?
+
+(( a == d ))
+echo status=$?
+## STDOUT:
+status=1
+status=1
+status=1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-dbracket dbracket (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Quotes don't matter in comparison
+[[ '3' = 3 ]] && echo true
+[[ '3' -eq 3 ]] && echo true
+## STDOUT:
+true
+true
+## END
+## status: 0
+## timeout: 10
+
+#### -eq does dynamic arithmetic parsing (not supported in OSH)
+[[ 1+2 -eq 3 ]] && echo true
+expr='1+2'
+[[ $expr -eq 3 ]] && echo true  # must be dynamically parsed
+## STDOUT:
+true
+true
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-dbracket dbracket (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### -eq coercion produces weird results
+shopt -u strict_arith || true
+[[ '' -eq 0 ]] && echo true
+## stdout: true
+## status: 0
+## timeout: 10
+
+#### [[ '(' ]] is treated as literal
+[[ '(' ]]
+echo status=$?
+## stdout: status=0
+## status: 0
+## timeout: 10
+
+#### tilde expansion with =~ (confusing)
+case $SH in mksh) exit ;; esac
+
+HOME=foo
+[[ ~ =~ $HOME ]]
+echo regex=$?
+[[ $HOME =~ ~ ]]
+echo regex=$?
+
+HOME='^a$'  # looks like regex
+[[ ~ =~ $HOME ]]
+echo regex=$?
+[[ $HOME =~ ~ ]]
+echo regex=$?
+## STDOUT:
+regex=0
+regex=0
+regex=1
+regex=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-dbracket dbracket (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

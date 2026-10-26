@@ -65,3 +65,18 @@ echo TODO
 ## stdout: TODO
 ## status: 0
 ## timeout: 10
+
+#### is-main with -c and stdin
+
+$SH -c 'echo -c; is-main; echo status=$?'
+
+echo 'echo stdin; is-main; echo status=$?' | $SH
+## STDOUT:
+-c
+status=127
+stdin
+status=127
+## END
+## status: 0
+## timeout: 10
+## real-launcher

@@ -198,3 +198,41 @@ echo =word
 ## stdout: =word
 ## status: 0
 ## timeout: 10
+
+#### Long Token - 65535 bytes
+
+python2 -c 'print("echo -n %s" % ("x" * 65535))' > tmp.sh
+$SH tmp.sh > out
+wc --bytes out
+## stdout: 0 out
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### Token that's too long for Oils - 65536 bytes
+
+python2 -c 'print("echo -n %s" % ("x" * 65536))' > tmp.sh
+$SH tmp.sh > out
+echo status=$?
+wc --bytes out
+## STDOUT:
+status=0
+0 out
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### interactive parse error (regression)
+flags=''
+case $SH in
+  bash*|*osh)
+    flags='--rcfile /dev/null'
+    ;;
+esac  
+$SH $flags -i -c 'var=)'
+## stdout:
+## status: 2
+## XFAIL ps-bash gap-oils-parse-errors parse-errors (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

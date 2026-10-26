@@ -280,3 +280,310 @@ echo done
 ## stdout: done
 ## status: 0
 ## timeout: 10
+
+#### 'declare -A' and then dict assignment
+declare -A foo
+key=bar
+foo["$key"]=value
+echo ${foo["bar"]}
+## stdout: value
+## status: 0
+## XFAIL ps-bash gap-oils-assign assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### declare in an if statement
+# bug caught by my feature detection snippet in bash-completion
+if ! foo=bar; then
+  echo BAD
+fi
+echo $foo
+if ! eval 'spam=eggs'; then
+  echo BAD
+fi
+echo $spam
+## STDOUT:
+bar
+eggs
+## END
+## status: 0
+## timeout: 10
+
+#### Modify a temporary binding
+# (regression for bug found by Michael Greenberg)
+f() {
+  echo "x before = $x"
+  x=$((x+1))
+  echo "x after  = $x"
+}
+x=5 f
+## STDOUT:
+x before = 5
+x after  = 6
+## END
+## status: 0
+## timeout: 10
+
+#### Reveal existence of "temp frame" (All shells disagree here!!!)
+f() {
+  echo "x=$x"
+
+  x=mutated-temp  # mutate temp frame
+  echo "x=$x"
+
+  # Declare a new local
+  local x='local'
+  echo "x=$x"
+
+  # Unset it
+  unset x
+  echo "x=$x"
+}
+
+x=global
+x=temp-binding f
+echo "x=$x"
+## STDOUT:
+x=temp-binding
+x=mutated-temp
+x=local
+x=
+x=global
+## END
+## status: 0
+## timeout: 10
+
+#### Test above without 'local' (which is not POSIX)
+f() {
+  echo "x=$x"
+
+  x=mutated-temp  # mutate temp frame
+  echo "x=$x"
+
+  # Unset it
+  unset x
+  echo "x=$x"
+}
+
+x=global
+x=temp-binding f
+echo "x=$x"
+## STDOUT:
+x=temp-binding
+x=mutated-temp
+x=global
+x=global
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-assign assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Using ${x-default} after unsetting local shadowing a global
+f() {
+  echo "x=$x"
+  local x='local'
+  echo "x=$x"
+  unset x
+  echo "- operator = ${x-default}"
+  echo ":- operator = ${x:-default}"
+}
+x=global
+f
+## STDOUT:
+x=global
+x=local
+- operator = default
+:- operator = default
+## END
+## status: 0
+## timeout: 10
+
+#### Using ${x-default} after unsetting a temp binding shadowing a global
+f() {
+  echo "x=$x"
+  local x='local'
+  echo "x=$x"
+  unset x
+  echo "- operator = ${x-default}"
+  echo ":- operator = ${x:-default}"
+}
+x=global
+x=temp-binding f
+## STDOUT:
+x=temp-binding
+x=local
+- operator = default
+:- operator = default
+## END
+## status: 0
+## timeout: 10
+
+#### static assignment doesn't split
+words='a b c'
+export ex=$words
+glo=$words
+readonly ro=$words
+argv.py "$ex" "$glo" "$ro"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### aliased assignment doesn't split
+shopt -s expand_aliases || true
+words='a b c'
+alias e=export
+alias r=readonly
+e ex=$words
+r ro=$words
+argv.py "$ex" "$ro"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### assignment using dynamic keyword (splits in most shells, not in zsh/osh)
+words='a b c'
+e=export
+r=readonly
+$e ex=$words
+$r ro=$words
+argv.py "$ex" "$ro"
+
+# zsh and OSH are smart
+## stdout:
+## status: 127
+## timeout: 10
+
+#### assignment using dynamic var names doesn't split
+words='a b c'
+arg_ex=ex=$words
+arg_ro=ro=$words
+
+# no quotes, this is split of course
+export $arg_ex
+readonly $arg_ro
+
+argv.py "$ex" "$ro"
+
+arg_ex2=ex2=$words
+arg_ro2=ro2=$words
+
+# quotes, no splitting
+export "$arg_ex2"
+readonly "$arg_ro2"
+
+argv.py "$ex2" "$ro2"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### redirect after declare -p
+case $SH in *dash) exit 99 ;; esac  # stderr unpredictable
+
+foo=bar
+typeset -p foo 1>&2
+
+# zsh and mksh agree on exact output, which we don't really care about
+## stdout:
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### declare -a arr does not remove existing arrays (OSH regression)
+case $SH in dash) exit 99 ;; esac # dash does not support arrays
+
+declare -a arr
+arr=(foo bar baz)
+declare -a arr
+echo arr:${#arr[@]}
+## stdout: arr:3
+## status: 0
+## XFAIL ps-bash gap-oils-assign assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### declare -A dict does not remove existing arrays (OSH regression)
+case $SH in dash|mksh) exit 99 ;; esac # dash/mksh does not support associative arrays
+
+declare -A dict
+dict['foo']=hello
+dict['bar']=oil
+dict['baz']=world
+declare -A dict
+echo dict:${#dict[@]}
+## stdout: dict:3
+## status: 0
+## XFAIL ps-bash gap-oils-assign assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### "readonly -a arr" and "readonly -A dict" should not not remove existing arrays
+# mksh's readonly does not support the -a option.
+# dash/mksh does not support associative arrays.
+case $SH in dash|mksh) exit 99 ;; esac
+
+declare -a arr
+arr=(foo bar baz)
+declare -A dict
+dict['foo']=hello
+dict['bar']=oil
+dict['baz']=world
+
+readonly -a arr
+echo arr:${#arr[@]}
+readonly -A dict
+echo dict:${#dict[@]}
+## STDOUT:
+arr:3
+dict:3
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-assign assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### "declare -a arr" and "readonly -a a" creates an empty array (OSH)
+case $SH in dash|mksh) exit 99 ;; esac # dash/mksh does not support associative arrays
+
+declare -a arr1
+readonly -a arr2
+declare -A dict1
+readonly -A dict2
+
+declare -p arr1 arr2 dict1 dict2
+## STDOUT:
+declare -a arr1
+declare -r arr2
+declare -A dict1
+declare -r dict2
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-assign assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### "var d = {}; declare -p d" does not print anything (OSH)
+case $SH in bash-4.4|dash|mksh|zsh) exit 99 ;; esac
+
+# We pretend that the variable does not exist when the variable is not
+# representable with the "declare -p" format.
+
+var d = {}
+declare -p d
+## stdout:
+## status: 1
+## XFAIL ps-bash gap-oils-assign assign (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### readonly array should not be modified by a+=(1)
+case $SH in dash) exit 99 ;; esac # dash/mksh does not support associative arrays
+
+a=(1 2 3)
+readonly -a a
+eval 'a+=(4)'
+argv.py "${a[@]}"
+eval 'declare -n r=a; r+=(4)'
+argv.py "${a[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher

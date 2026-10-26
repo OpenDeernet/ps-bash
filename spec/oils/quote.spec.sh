@@ -140,7 +140,7 @@ $"
 
 #### $'' octal escapes with fewer than 3 chars
 echo $'\1 \11 \11 \111' | od -A n -c | sed 's/ \+/ /g'
-## stdout:  001 \t \t I \n
+## stdout: 001 \t \t I \n
 ## status: 0
 ## XFAIL ps-bash gap-oils-quote quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
@@ -165,3 +165,167 @@ c3	c4
 ## END
 ## status: 0
 ## timeout: 10
+
+#### $? split over multiple lines
+# Same with $$, etc.  OSH won't do this because $? is a single token.
+echo $\
+?
+
+#
+# Bad quotes
+#
+
+# TODO: Also test unterminated quotes inside ${} and $()
+## stdout: 0
+## status: 0
+## XFAIL ps-bash gap-oils-quote quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Unterminated single quote
+
+## stdout:
+## status: 0
+## timeout: 10
+
+#### Unterminated double quote
+
+
+#
+# TODO: Might be another section?
+#
+## stdout:
+## status: 0
+## timeout: 10
+
+#### Semicolon
+echo separated; echo by semi-colon
+
+#
+# TODO: Variable substitution operators.
+#
+## STDOUT:
+separated
+by semi-colon
+## END
+## status: 0
+## timeout: 10
+
+#### No tab escapes within single quotes
+# dash and mksh allow this, which is a BUG.
+# POSIX says: "Enclosing characters in single-quotes ( '' ) shall preserve the
+# literal value of each character within the single-quotes. A single-quote
+# cannot occur within single-quotes"
+echo 'a\tb'
+
+# See if it supports ANSI C escapes.  Bash supports this, but dash does NOT.  I
+# guess dash you would do IFS=$(printf '\n\t')
+## stdout: a\tb
+## status: 0
+## timeout: 10
+
+#### $''
+echo $'foo'
+## stdout: foo
+## status: 0
+## timeout: 10
+
+#### $'' with quotes
+echo $'single \' double \"'
+## stdout: single ' double "
+## status: 0
+## timeout: 10
+
+#### $'' with newlines
+echo $'col1\ncol2\ncol3'
+# In dash, \n is special within single quotes
+## STDOUT:
+col1
+col2
+col3
+## END
+## status: 0
+## timeout: 10
+
+#### $'' octal escapes don't have leading 0
+# echo -e syntax is echo -e \0377
+echo -n $'\001' $'\377' | od -A n -c | sed 's/ \+/ /g'
+## stdout:  001 377
+## status: 0
+## XFAIL ps-bash gap-oils-quote quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### OSH allows invalid backslashes
+case $SH in dash|mksh) exit ;; esac
+
+w=$'\uZ'
+x=$'\u{03bc'
+y=$'\z'
+echo $w $x $y
+## stdout: \uZ \u{03bc \z
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### $'' supports \cA escape for Ctrl-A - mask with 0x1f
+
+# note: AT&T ksh supports this too
+
+case $SH in dash|ash) exit ;; esac
+
+show_bytes() {
+  # -A n - no file offset
+  od -A n -t c -t x1
+}
+
+# this isn't special
+# mksh doesn't like it
+#echo -n $'\c' | show_bytes
+
+echo -n $'\c0\c9-' | show_bytes
+echo
+
+# control chars are case insensitive
+echo -n $'\ca\cz' | show_bytes
+echo
+
+echo -n $'\cA\cZ' | show_bytes
+echo
+
+echo -n $'\c-\c+\c"' | show_bytes
+## STDOUT:
+ 020 031   -
+  10  19  2d
+
+ 001 032
+  01  1a
+
+ 001 032
+  01  1a
+
+  \r  \v 002
+  0d  0b  02
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-quote quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### \c' is an escape, unlike bash
+
+# mksh and ksh agree this is an esacpe
+
+case $SH in dash|ash) exit ;; esac
+
+show_bytes() {
+  # -A n - no file offset
+  od -A n -t c -t x1
+}
+
+# this isn't special
+# mksh doesn't like it
+echo -n $'\c'' | show_bytes
+## stdout:
+## status: 2
+## XFAIL ps-bash gap-oils-quote quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

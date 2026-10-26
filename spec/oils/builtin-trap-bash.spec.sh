@@ -91,7 +91,7 @@ echo A
 echo status=$?
 echo B
 echo status=$?
-## stdout:   [10]
+## stdout: [10]
 ## status: 42
 ## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
@@ -141,7 +141,7 @@ echo A
 echo status=$?
 echo B
 echo status=$?
-## stdout:   [7]
+## stdout: [7]
 ## status: 42
 ## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
@@ -454,3 +454,138 @@ ok
 ## status: 0
 ## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### trap DEBUG with non-compound commands
+case $SH in dash|mksh) exit ;; esac
+
+debuglog() {
+  echo "  [$@]"
+}
+trap 'debuglog $LINENO' DEBUG
+
+echo a
+echo b; echo c
+
+echo d && echo e
+echo f || echo g
+
+(( h = 42 ))
+[[ j == j ]]
+
+var=value
+
+readonly r=value
+## STDOUT:
+  [9]
+a
+  [10]
+b
+  [10]
+c
+  [12]
+d
+  [12]
+e
+  [13]
+f
+  [15]
+  [16]
+  [18]
+  [20]
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### trap DEBUG and command sub / subshell
+case $SH in dash|mksh) exit ;; esac
+
+debuglog() {
+  echo "  [$@]"
+}
+trap 'debuglog $LINENO' DEBUG
+
+echo "result = $(echo command sub; echo two)"
+( echo subshell
+  echo two
+)
+echo done
+## STDOUT:
+  [9]
+result = command sub
+two
+subshell
+two
+  [13]
+done
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Combine DEBUG trap and USR1 trap
+
+case $SH in dash|mksh|ash) exit ;; esac
+
+trap 'false; echo $LINENO usr1' USR1
+trap 'false; echo $LINENO dbg' DEBUG
+
+sh -c "kill -USR1 $$"
+echo after=$?
+## STDOUT:
+8 dbg
+1 dbg
+1 dbg
+1 usr1
+9 dbg
+after=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Combine ERR trap and USR1 trap
+
+case $SH in dash|mksh|ash) exit ;; esac
+
+trap 'false; echo $LINENO usr1' USR1
+trap 'false; echo $LINENO err' ERR
+
+sh -c "kill -USR1 $$"
+echo after=$?
+## STDOUT:
+1 err
+1 usr1
+after=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Combine DEBUG trap and ERR trap
+
+case $SH in dash|mksh|ash) exit ;; esac
+
+trap 'false; echo $LINENO err' ERR
+trap 'false; echo $LINENO debug' DEBUG
+
+false
+echo after=$?
+## STDOUT:
+8 err
+8 debug
+8 debug
+8 debug
+8 err
+9 err
+9 debug
+after=1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap-bash builtin-trap-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

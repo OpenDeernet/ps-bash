@@ -958,3 +958,168 @@ octal 5
 ## status: 0
 ## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### printf -v dynamic scope
+case $SH in mksh|zsh|dash|ash) echo not implemented; exit ;; esac
+# OK so printf is like assigning to a var.
+# printf -v foo %q "$bar" is like
+# foo=${bar@Q}
+dollar='dollar'
+f() {
+  local mylocal=foo
+  printf -v dollar %q '$'  # assign foo to a quoted dollar
+  printf -v mylocal %q 'mylocal'
+  echo dollar=$dollar
+  echo mylocal=$mylocal
+}
+echo dollar=$dollar
+echo --
+f
+echo --
+echo dollar=$dollar
+echo mylocal=$mylocal
+## STDOUT:
+dollar=dollar
+--
+dollar=\$
+mylocal=mylocal
+--
+dollar=\$
+mylocal=
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### Too large
+case $SH in mksh) echo 'weird bug'; exit ;; esac
+
+echo too large
+too_large=$(python2 -c 'print("\xF4\x91\x84\x91")')
+printf '%x\n' \'$too_large
+printf '%u\n' \'$too_large
+printf '%o\n' \'$too_large
+echo
+
+
+
+
+# osh rejects code points that are too large for a DIFFERENT reason
+## STDOUT:
+too large
+0
+0
+0
+
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### printf %c unicode - prints the first BYTE of a string - it does not respect UTF-8
+
+# TODO: in YSH, this should be deprecated
+case $SH in dash|ash) exit ;; esac
+
+show_bytes() {
+  od -A n -t x1
+}
+twomu=$'\u03bc\u03bc'
+printf '[%s]\n' "$twomu"
+
+# Hm this cuts off a UTF-8 character?
+printf '%c' "$twomu" | show_bytes
+## STDOUT:
+[μμ]
+ ce
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### printf %d with + prefix (positive sign)
+
+echo decimal
+printf '%d\n' +42
+
+echo octal
+printf '%d\n' +077
+
+echo hex lowercase
+printf '%d\n' +0xab
+
+echo hex uppercase
+printf '%d\n' +0XAB
+## STDOUT:
+decimal
+42
+octal
+63
+hex lowercase
+171
+hex uppercase
+171
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### leading spaces are accepted in value given to %d %X, but not trailing spaces
+
+case $SH in zsh) exit ;; esac
+
+# leading space is allowed
+printf '%d\n' ' -123'
+echo status=$?
+printf '%d\n' ' -123 '
+echo status=$?
+
+echo ---
+
+printf '%d\n' ' +077'
+echo status=$?
+
+printf '%d\n' ' +0xff'
+echo status=$?
+
+printf '%X\n' ' +0xff'
+echo status=$?
+
+printf '%x\n' ' +0xff'
+echo status=$?
+## STDOUT:
+-123
+status=0
+-123
+status=1
+---
+63
+status=0
+255
+status=0
+FF
+status=0
+ff
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Arbitrary base 64#a is rejected (unlike in shell arithmetic)
+
+printf '%d\n' '64#a'
+echo status=$?
+
+# bash, dash, and mksh print 64 and return status 1
+# zsh and ash print 0 and return status 1
+# OSH rejects it completely (prints nothing) and returns status 1
+## STDOUT:
+64
+status=1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-printf builtin-printf (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10

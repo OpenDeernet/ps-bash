@@ -354,3 +354,445 @@ argv.py star $*
 ## stdout:
 ## status: 127
 ## timeout: 10
+
+#### IFS='' with $@ and $* and printf (bug #627)
+set -- a 'b c'
+IFS=''
+printf '[%s]\n' $@
+printf '[%s]\n' $*
+## STDOUT:
+[a]
+[b c]
+[a]
+[b c]
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-word-split word-split (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### IFS='' with ${a[@]} and ${a[*]} (bug #627)
+case $SH in dash | ash) exit 0 ;; esac
+
+myarray=(a 'b c')
+IFS=''
+argv.py at ${myarray[@]}
+argv.py star ${myarray[*]}
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### IFS='' with ${!prefix@} and ${!prefix*} (bug #627)
+case $SH in dash | mksh | ash | yash) exit 0 ;; esac
+
+gLwbmGzS_var1=1
+gLwbmGzS_var2=2
+IFS=''
+argv.py at ${!gLwbmGzS_@}
+argv.py star ${!gLwbmGzS_*}
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### IFS='' with ${!a[@]} and ${!a[*]} (bug #627)
+case $SH in dash | mksh | ash | yash) exit 0 ;; esac
+
+IFS=''
+a=(v1 v2 v3)
+argv.py at ${!a[@]}
+argv.py star ${!a[*]}
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### Bug #628 split on : with : in literal word
+
+# 2025-03: What's the cause of this bug?
+#
+# OSH is very wrong here
+#   ['a', '\\', 'b']
+# Is this a fundamental problem with the IFS state machine?
+# It definitely relates to the use of backslashes.
+# So we have at least 4 backslash bugs
+
+IFS=':'
+word='a:'
+argv.py ${word}:b
+argv.py ${word}:
+
+echo ---
+
+# Same thing happens for 'z'
+IFS='z'
+word='az'
+argv.py ${word}zb
+argv.py ${word}z
+## stdout: ---
+## status: 127
+## timeout: 10
+
+#### Bug #698, similar crash
+var='\'
+set -f
+echo $var
+## stdout: \
+## status: 0
+## timeout: 10
+
+#### Bug #1664, \\ with noglob
+
+# Note that we're not changing IFS
+
+argv.py [\\]_
+argv.py "[\\]_"
+
+# TODO: no difference observed here, go back to original bug
+
+#argv.py [\\_
+#argv.py "[\\_"
+
+echo noglob
+
+# repeat cases with -f, noglob
+set -f
+
+argv.py [\\]_
+argv.py "[\\]_"
+
+#argv.py [\\_
+#argv.py "[\\_"
+## stdout: noglob
+## status: 127
+## timeout: 10
+
+#### Empty IFS bug #2141 (from pnut)
+
+res=0
+sum() {
+  # implement callee-save calling convention using `set`
+  # here, we save the value of $res after the function parameters
+  set $@ $res           # $1 $2 $3 are now set
+  res=$(($1 + $2))
+  echo "$1 + $2 = $res"
+  res=$3                # restore the value of $res
+}
+
+unset IFS
+sum 12 30 # outputs "12 + 30 = 42"
+
+IFS=' '
+sum 12 30 # outputs "12 + 30 = 42"
+
+IFS=
+sum 12 30 # outputs "1230 + 0 = 1230"
+
+# I added this
+IFS=''
+sum 12 30
+
+set -u
+IFS=
+sum 12 30 # fails with "fatal: Undefined variable '2'" on res=$(($1 + $2))
+## STDOUT:
+12 + 30 = 42
+12 + 30 = 42
+12 + 30 = 42
+12 + 30 = 42
+12 + 30 = 42
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-word-split word-split (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Unicode in IFS
+
+# bash, zsh, and yash support unicode in IFS, but dash/mksh/ash don't.
+
+# for zsh, though we're not testing it here
+setopt SH_WORD_SPLIT
+
+x=çx IFS=ç
+printf "<%s>\n" $x
+## STDOUT:
+<>
+<x>
+## END
+## status: 0
+## timeout: 10
+
+#### 4 x 3 table: (default IFS, IFS='', IFS=zx) x ( $* "$*" $@ "$@" )
+
+setopt SH_WORD_SPLIT  # for zsh
+
+set -- 'a b' c ''
+
+# default IFS
+argv.py '  $*  '  $*
+argv.py ' "$*" ' "$*"
+argv.py '  $@  '  $@
+argv.py ' "$@" ' "$@"
+echo
+
+IFS=''
+argv.py '  $*  '  $*
+argv.py ' "$*" ' "$*"
+argv.py '  $@  '  $@
+argv.py ' "$@" ' "$@"
+echo
+
+IFS=zx
+argv.py '  $*  '  $*
+argv.py ' "$*" ' "$*"
+argv.py '  $@  '  $@
+argv.py ' "$@" ' "$@"
+
+
+# zsh disagrees on
+# - $@ with default IFS an
+# - $@ with IFS=zx
+## STDOUT:
+
+
+## END
+## status: 127
+## timeout: 10
+
+#### 4 x 3 table - with for loop
+case $SH in yash) exit ;; esac  # no echo -n
+
+setopt SH_WORD_SPLIT  # for zsh
+
+set -- 'a b' c ''
+
+# default IFS
+echo -n '  $*  ';  for i in  $*;  do echo -n ' '; echo -n -$i-; done; echo
+echo -n ' "$*" ';  for i in "$*"; do echo -n ' '; echo -n -$i-; done; echo
+echo -n '  $@  ';  for i in  $@;  do echo -n ' '; echo -n -$i-; done; echo
+echo -n ' "$@" ';  for i in "$@"; do echo -n ' '; echo -n -$i-; done; echo
+echo
+
+IFS=''
+echo -n '  $*  ';  for i in  $*;  do echo -n ' '; echo -n -$i-; done; echo
+echo -n ' "$*" ';  for i in "$*"; do echo -n ' '; echo -n -$i-; done; echo
+echo -n '  $@  ';  for i in  $@;  do echo -n ' '; echo -n -$i-; done; echo
+echo -n ' "$@" ';  for i in "$@"; do echo -n ' '; echo -n -$i-; done; echo
+echo
+
+IFS=zx
+echo -n '  $*  ';  for i in  $*;  do echo -n ' '; echo -n -$i-; done; echo
+echo -n ' "$*" ';  for i in "$*"; do echo -n ' '; echo -n -$i-; done; echo
+echo -n '  $@  ';  for i in  $@;  do echo -n ' '; echo -n -$i-; done; echo
+echo -n ' "$@" ';  for i in "$@"; do echo -n ' '; echo -n -$i-; done; echo
+## STDOUT:
+  $*   -a- -b- -c-
+ "$*"  -a b c -
+  $@   -a- -b- -c-
+ "$@"  -a b- -c- --
+
+  $*   -a b- -c-
+ "$*"  -a bc-
+  $@   -a b- -c-
+ "$@"  -a b- -c- --
+
+  $*   -a b- -c-
+ "$*"  -a b c -
+  $@   -a b- -c-
+ "$@"  -a b- -c- --
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-word-split word-split (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### IFS=x and '' and $@ - same bug as spec/toysh-posix case #12
+case $SH in yash) exit ;; esac  # no echo -n
+
+setopt SH_WORD_SPLIT  # for zsh
+
+set -- one '' two
+
+IFS=zx
+echo -n '  $*  ';  for i in  $*;  do echo -n ' '; echo -n -$i-; done; echo
+echo -n ' "$*" ';  for i in "$*"; do echo -n ' '; echo -n -$i-; done; echo
+echo -n '  $@  ';  for i in  $@;  do echo -n ' '; echo -n -$i-; done; echo
+echo -n ' "$@" ';  for i in "$@"; do echo -n ' '; echo -n -$i-; done; echo
+
+argv.py '  $*  '  $*
+argv.py ' "$*" ' "$*"
+argv.py '  $@  '  $@
+argv.py ' "$@" ' "$@"
+## STDOUT:
+  $*   -one- -- -two-
+ "$*"  -one  two-
+  $@   -one- -- -two-
+ "$@"  -one- -- -two-
+## END
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### IFS=x and '' and $@ (#2)
+setopt SH_WORD_SPLIT  # for zsh
+
+set -- "" "" "" "" ""
+argv.py =$@=
+argv.py =$*=
+echo
+
+IFS=
+argv.py =$@=
+argv.py =$*=
+echo
+
+IFS=x
+argv.py =$@=
+argv.py =$*=
+
+
+
+# yash-2.49 seems to behave in a strange way, but this behavior seems to have
+# been fixed at least in yash-2.57.
+## STDOUT:
+
+
+## END
+## status: 127
+## timeout: 10
+
+#### IFS=x and '' and $@ (#3)
+setopt SH_WORD_SPLIT  # for zsh
+
+IFS=x
+set -- "" "" "" "" ""
+
+argv.py $*
+set -- $*
+argv.py $*
+set -- $*
+argv.py $*
+set -- $*
+argv.py $*
+set -- $*
+argv.py $*
+
+
+
+['', '', '']
+['']
+[]
+[]
+[]
+
+['', '', '', '', '']
+['', '', '', '', '']
+['', '', '', '', '']
+['', '', '', '', '']
+['', '', '', '', '']
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-word-split word-split (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### ""$A"" - empty string on both sides - derived from spec/toysh-posix #15
+
+A="   abc   def   "
+
+argv.py $A
+argv.py ""$A""
+
+unset IFS
+
+argv.py $A
+argv.py ""$A""
+
+echo
+
+# Do the same thing in a for loop - this is IDENTICAL behavior
+
+for i in $A; do echo =$i=; done
+echo
+
+for i in ""$A""; do echo =$i=; done
+echo
+
+unset IFS
+
+for i in $A; do echo =$i=; done
+echo
+
+for i in ""$A""; do echo =$i=; done
+## STDOUT:
+
+=abc=
+=def=
+
+==
+=abc=
+=def=
+==
+
+=abc=
+=def=
+
+==
+=abc=
+=def=
+==
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-word-split word-split (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Regression: "${!v*}"x should not be split
+case $SH in dash|mksh|ash|yash) exit 99;; esac
+IFS=x
+axb=1
+echo "${!axb*}"
+echo "${!axb*}"x
+## STDOUT:
+axb
+axbx
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### Regression: ${!v} should be split
+v=hello
+IFS=5
+echo ${#v}
+echo "${#v}"
+## STDOUT:
+
+5
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-word-split word-split (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Regression: "${v:-AxBxC}"x should not be split
+IFS=x
+v=
+echo "${v:-AxBxC}"
+echo "${v:-AxBxC}"x  # <-- osh failed this
+echo ${v:-AxBxC}
+echo ${v:-AxBxC}x
+echo ${v:-"AxBxC"}
+echo ${v:-"AxBxC"}x
+echo "${v:-"AxBxC"}"
+echo "${v:-"AxBxC"}"x
+## STDOUT:
+AxBxC
+AxBxCx
+A B C
+A B Cx
+AxBxC
+AxBxCx
+AxBxC
+AxBxCx
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-word-split word-split (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10

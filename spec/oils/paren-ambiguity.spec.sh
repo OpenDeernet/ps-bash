@@ -101,3 +101,39 @@ echo bye
 ## status: 0
 ## XFAIL ps-bash gap-oils-paren-ambiguity paren-ambiguity (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### (( closed with )) after multiple lines is parse error - #2337
+
+$SH -c '
+(( echo 1
+echo 2
+(( x ))
+: $(( x ))
+echo 3
+))
+'
+if test $? -ne 0; then
+  echo ok
+fi
+## stdout: ok
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### $(( closed with )) after multiple lines is parse error - #2337
+
+$SH -c '
+echo $(( echo 1
+echo 2
+(( x ))
+: $(( x ))
+echo 3
+))
+'
+if test $? -ne 0; then
+  echo ok
+fi
+## stdout: ok
+## status: 0
+## timeout: 10
+## real-launcher

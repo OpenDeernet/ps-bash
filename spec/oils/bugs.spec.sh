@@ -272,3 +272,136 @@ echo as_val=$as_val
 ## status: 127
 ## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### file with NUL byte
+echo -e 'echo one \0 echo two' > tmp.sh
+$SH tmp.sh
+## stdout:
+## status: 126
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### fastlex: PS1 format string that's incomplete / with NUL byte
+case $SH in bash) exit ;; esac
+
+x=$'\\D{%H:%M'  # leave off trailing }
+echo x=${x@P}
+
+
+# bash just ignores the missing }
+
+# These shells don't understand @P
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### subshell while running a script (regression)
+# Ensures that spawning a subshell doesn't cause a seek on the file input stream
+# representing the current script (issue #1233).
+cat >tmp.sh <<'EOF'
+echo start
+(:)
+echo end
+EOF
+$SH tmp.sh
+## STDOUT:
+start
+end
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### for loop (issue #1446)
+case $SH in dash|mksh|ash) exit ;; esac
+
+for (( n=0; n<(3-(1)); n++ )) ; do echo $n; done
+## STDOUT:
+0
+1
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### for loop 2 (issue #1446)
+case $SH in dash|mksh|ash) exit ;; esac
+
+
+for (( n=0; n<(3- (1)); n++ )) ; do echo $n; done
+## STDOUT:
+0
+1
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### (( status bug
+case $SH in dash|ash) exit ;; esac
+
+# from Koiche on Zulip
+
+(( 1 << 32 ))
+echo status=$?
+
+(( 1 << 32 )) && echo yes
+## STDOUT:
+status=0
+yes
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### OSH can use ARGV name
+case $SH in dash|ash) exit ;; esac
+
+foo() {
+  if test -v ARGV; then
+    echo 'BUG local'
+  fi
+  ARGV=( a b )
+  echo len=${#ARGV[@]}
+}
+
+if test -v ARGV; then
+  echo 'BUG global'
+fi
+foo
+## stdout: len=2
+## status: 0
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### #2640 Hanging when reading from character devices
+# Relies on timeout from GNU coreutils
+timeout 0.5 $SH -c 'cat /dev/zero | cat | head -c 5 | tr \\0 0; echo'
+
+# The exact cause of the issue is:
+#
+#  $ cat /dev/zero | cat | head -c 5
+#
+# A pipe through cat is necessary and the first cat MUST be reading from a
+# character device.
+
+# Other cases without the bug above
+printf '\0\0\0\0\0\0\0' > tmp.txt
+$SH -c 'cat </dev/zero | head -c 5 | tr \\0 0; echo'
+$SH -c 'cat /dev/zero | head -c 5 | tr \\0 0; echo'
+$SH -c 'cat tmp.txt | cat | head -c 5 | tr \\0 0; echo'
+## STDOUT:
+00000
+00000
+00000
+00000
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-bugs bugs (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

@@ -167,3 +167,23 @@ xx=/root:/home/bar:/home/bar
 ## status: 0
 ## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### a[x]=foo:~ has tilde expansion
+case $SH in dash|zsh) exit ;; esac
+
+HOME=/home/bar
+declare -a a
+a[0]=foo:~
+echo ${a[0]}
+
+declare -A A
+A['x']=foo:~
+echo ${A['x']}
+## STDOUT:
+foo:/home/bar
+foo:/home/bar
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-tilde tilde (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

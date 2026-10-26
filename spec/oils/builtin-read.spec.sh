@@ -396,3 +396,403 @@ echo 'x\  \ ' | (read a b; argv.py "$a" "$b")
 ## stdout:
 ## status: 127
 ## timeout: 10
+
+#### read -n doesn't strip whitespace (bug fix)
+case $SH in dash|zsh) exit ;; esac
+
+echo '  a b  ' | (read -n 4; echo "[$REPLY]")
+echo '  a b  ' | (read -n 5; echo "[$REPLY]")
+echo '  a b  ' | (read -n 6; echo "[$REPLY]")
+echo
+
+echo 'one var strips whitespace'
+echo '  a b  ' | (read -n 4 myvar; echo "[$myvar]")
+echo '  a b  ' | (read -n 5 myvar; echo "[$myvar]")
+echo '  a b  ' | (read -n 6 myvar; echo "[$myvar]")
+echo
+
+echo 'three vars'
+echo '  a b  ' | (read -n 4 x y z; echo "[$x] [$y] [$z]")
+echo '  a b  ' | (read -n 5 x y z; echo "[$x] [$y] [$z]")
+echo '  a b  ' | (read -n 6 x y z; echo "[$x] [$y] [$z]")
+## STDOUT:
+[  a ]
+[  a b]
+[  a b ]
+
+one var strips whitespace
+[a]
+[a b]
+[a b]
+
+three vars
+[a] [] []
+[a] [b] []
+[a] [b] []
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -d -n - respects delimiter and splits
+
+case $SH in dash|zsh|ash) exit ;; esac
+
+echo 'delim c'
+echo '  a b c ' | (read -d 'c' -n 3; echo "[$REPLY]")
+echo '  a b c ' | (read -d 'c' -n 4; echo "[$REPLY]")
+echo '  a b c ' | (read -d 'c' -n 5; echo "[$REPLY]")
+echo
+
+echo 'one var'
+echo '  a b c ' | (read -d 'c' -n 3 myvar; echo "[$myvar]")
+echo '  a b c ' | (read -d 'c' -n 4 myvar; echo "[$myvar]")
+echo '  a b c ' | (read -d 'c' -n 5 myvar; echo "[$myvar]")
+echo
+
+echo 'three vars'
+echo '  a b c ' | (read -d 'c' -n 3 x y z; echo "[$x] [$y] [$z]")
+echo '  a b c ' | (read -d 'c' -n 4 x y z; echo "[$x] [$y] [$z]")
+echo '  a b c ' | (read -d 'c' -n 5 x y z; echo "[$x] [$y] [$z]")
+## STDOUT:
+delim c
+[  a]
+[  a ]
+[  a b]
+
+one var
+[a]
+[a]
+[a b]
+
+three vars
+[a] [] []
+[a] [] []
+[a] [b] []
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -n from pipe
+case $SH in dash|ash|zsh) exit ;; esac
+
+echo abcxyz | { read -n 3; echo reply=$REPLY; }
+
+# zsh appears to hang with -k
+## stdout: reply=abc
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### read -s from pipe, not a terminal
+case $SH in dash|zsh) exit ;; esac
+
+# It's hard to really test this because it requires a terminal.  We hit a
+# different code path when reading through a pipe.  There can be bugs there
+# too!
+
+echo foo | { read -s; echo $REPLY; }
+echo bar | { read -n 2 -s; echo $REPLY; }
+
+# Hm no exit 1 here?  Weird
+echo b | { read -n 2 -s; echo $?; echo $REPLY; }
+## STDOUT:
+foo
+ba
+0
+b
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### read -a reads into array
+
+# read -a is used in bash-completion
+# none of these shells implement it
+case $SH in
+  *mksh|*dash|*zsh|*/ash)
+    exit 2;
+    ;;
+esac
+
+read -a myarray <<'EOF'
+a b c\ d
+EOF
+argv.py "${myarray[@]}"
+
+# arguments are ignored here
+read -r -a array2 extra arguments <<'EOF'
+a b c\ d
+EOF
+argv.py "${array2[@]}"
+argv.py "${extra[@]}"
+argv.py "${arguments[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### read -t 0 tests if input is available
+case $SH in dash|zsh|mksh) exit ;; esac
+
+# is there input available?
+read -t 0 < /dev/null
+echo $?
+
+# floating point
+read -t 0.0 < /dev/null
+echo $?
+
+# floating point
+echo foo | { read -t 0; echo reply=$REPLY; }
+echo $?
+## STDOUT:
+0
+0
+reply=
+0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -t 0.5
+case $SH in dash) exit ;; esac
+
+read -t 0.5 < /dev/null
+echo $?
+## stdout: 1
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### read -u
+case $SH in dash|mksh) exit ;; esac
+
+# file descriptor
+read -u 3 3<<EOF
+hi
+EOF
+echo reply=$REPLY
+## stdout: reply=hi
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -u -s
+case $SH in dash|mksh) exit ;; esac
+
+# file descriptor
+read -s -u 3 3<<EOF
+hi
+EOF
+echo reply=$REPLY
+## stdout: reply=hi
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -u 3 -d 5
+case $SH in dash|mksh) exit ;; esac
+
+# file descriptor
+read -u 3 -d 5 3<<EOF
+123456789
+EOF
+echo reply=$REPLY
+## stdout: reply=1234
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -u 3 -d b -N 6
+case $SH in ash|zsh) exit ;; esac
+
+# file descriptor
+read -u 3 -d b -N 4 3<<EOF
+ababababa
+EOF
+echo reply=$REPLY
+# test end on EOF
+read -u 3 -d b -N 6 3<<EOF
+ab
+EOF
+echo reply=$REPLY
+## STDOUT:
+reply=abab
+reply=ab
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -N doesn't respect delimiter, while read -n does
+case $SH in dash|zsh|ash) exit ;; esac
+
+echo foobar | { read -n 5 -d b; echo $REPLY; }
+echo foobar | { read -N 5 -d b; echo $REPLY; }
+## STDOUT:
+foo
+fooba
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -p (not fully tested)
+
+# hm DISABLED if we're not going to the terminal
+# so we're only testing that it accepts the flag here
+
+case $SH in dash|mksh|zsh) exit ;; esac
+
+echo hi | { read -p 'P'; echo $REPLY; }
+echo hi | { read -p 'P' -n 1; echo $REPLY; }
+## STDOUT:
+hi
+h
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### read -r -d '' for NUL strings, e.g. find -print0
+
+
+case $SH in dash|zsh|mksh) exit ;; esac  # NOT IMPLEMENTED
+
+mkdir -p read0
+cd read0
+rm -f *
+
+touch a\\b\\c\\d  # -r is necessary!
+
+find . -type f -a -print0 | { read -r -d ''; echo "[$REPLY]"; }
+## stdout: [./a\b\c\d]
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -n from directory
+
+case $SH in dash|ash) return ;; esac  # not implemented
+
+# same hanging bug
+case $SH in mksh) return ;; esac
+
+mkdir -p dir
+read -n 3 x < ./dir
+echo status=$?
+## stdout: status=1
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### read -n 0
+case $SH in zsh) exit 99;; esac  # read -n not implemented
+
+echo 'a\b\c\d\e\f' | (read -n 0; argv.py "$REPLY")
+
+# ash appears to treat 0 as unspecified
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### read -n and backslash escape
+case $SH in zsh) exit 99;; esac  # read -n not implemented
+
+echo 'a\b\c\d\e\f' | (read -n 5; argv.py "$REPLY")
+echo 'a\ \ \ \ \ ' | (read -n 5; argv.py "$REPLY")
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### read -n 4 with incomplete backslash
+case $SH in zsh) exit 99;; esac  # read -n not implemented
+
+echo 'abc\def\ghijklmn' | (read -n 4; argv.py "$REPLY")
+echo '   \xxx\xxxxxxxx' | (read -n 4; argv.py "$REPLY")
+
+# bash implements "-n NUM" as number of characters
+# ash implements "-n NUM" as number of bytes
+['abc']
+['   ']
+# mksh implements "-n NUM" as number of bytes, and also "read" (without
+# variable names) in mksh is equivalent to "read REPLY, i.e., consideres IFS.
+['abc']
+['']
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### read -n 4 with backslash + delim
+case $SH in zsh) exit 99;; esac  # read -n not implemented
+
+echo $'abc\\\ndefg' | (read -n 4; argv.py "$REPLY")
+
+# mksh and ash implements "-n NUM" as number of bytes.
+['abc']
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-builtin-read builtin-read (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### empty input and splitting
+case $SH in mksh|ash|dash|zsh) exit 99; esac
+echo '' | (read -a a; argv.py "${a[@]}")
+IFS=x
+echo '' | (read -a a; argv.py "${a[@]}")
+IFS=
+echo '' | (read -a a; argv.py "${a[@]}")
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### IFS='x ' read -a: trailing spaces (unlimited split)
+case $SH in mksh|ash|dash|zsh) exit 99; esac
+IFS='x '
+echo 'a b'     | (read -a a; argv.py "${a[@]}")
+echo 'a b '    | (read -a a; argv.py "${a[@]}")
+echo 'a bx'    | (read -a a; argv.py "${a[@]}")
+echo 'a bx '   | (read -a a; argv.py "${a[@]}")
+echo 'a b x'   | (read -a a; argv.py "${a[@]}")
+echo 'a b x '  | (read -a a; argv.py "${a[@]}")
+echo 'a b x x' | (read -a a; argv.py "${a[@]}")
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### IFS='x ' read -a: intermediate spaces (unlimited split)
+case $SH in mksh|ash|dash|zsh) exit 99; esac
+IFS='x '
+echo 'a x b'   | (read -a a; argv.py "${a[@]}")
+echo 'a xx b'  | (read -a a; argv.py "${a[@]}")
+echo 'a xxx b' | (read -a a; argv.py "${a[@]}")
+echo 'a x xb'  | (read -a a; argv.py "${a[@]}")
+echo 'a x x b' | (read -a a; argv.py "${a[@]}")
+echo 'ax b'    | (read -a a; argv.py "${a[@]}")
+echo 'ax xb'   | (read -a a; argv.py "${a[@]}")
+echo 'ax  xb'  | (read -a a; argv.py "${a[@]}")
+echo 'ax x xb' | (read -a a; argv.py "${a[@]}")
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher

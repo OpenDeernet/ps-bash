@@ -21,7 +21,7 @@ echo "$max" | py-decode | to-hex
 
 echo "$max" | json read
 echo "$_reply" | to-hex
-## stdout:  0a
+## stdout: 0a
 ## status: 0
 ## XFAIL ps-bash gap-oils-ysh-unicode ysh-unicode (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
@@ -113,3 +113,48 @@ status=127
 ## END
 ## status: 0
 ## timeout: 10
+
+#### Parsing source code - YSH source code rejects encoded string
+
+max=$(bash <<'EOF'
+echo $'\U0010ffff'
+EOF
+)
+
+# bash allows the bad one
+too_big=$(bash <<'EOF'
+echo $'\U00110000'
+EOF
+)
+
+echo "var x = u'"$max"'; = x" | $SH
+echo status=$?
+#pp test_ (_reply)
+
+echo "var x = u'"$too_big"'; = x" | $SH
+echo status=$?
+#pp test_ (_reply)
+## STDOUT:
+status=127
+status=127
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-ysh-unicode ysh-unicode (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Max code point: json, json8, = keyword, pp test_
+
+var max = u'\u{10ffff}'
+
+json write (max)
+json8 write (max)
+
+= max
+pp test_ (max)
+
+#echo "var x = u'"$max"'; = x" | $SH
+## stdout:
+## status: 2
+## timeout: 10
+## real-launcher

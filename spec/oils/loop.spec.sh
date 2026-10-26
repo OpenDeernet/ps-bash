@@ -305,3 +305,256 @@ status=99
 ## END
 ## status: 5
 ## timeout: 10
+
+#### Tilde expansion within for loop
+HOME=/home/bob
+for name in ~/src ~/git; do
+  echo $name
+done
+## STDOUT:
+/home/bob/src
+/home/bob/git
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-loop loop (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Brace Expansion within Array
+for i in -{a,b} {c,d}-; do
+  echo $i
+  done
+## STDOUT:
+-a
+-b
+c-
+d-
+## END
+## status: 0
+## timeout: 10
+
+#### using loop var outside loop
+fun() {
+  for i in a b c; do
+    echo $i
+  done
+  echo $i
+}
+fun
+## STDOUT:
+a
+b
+c
+c
+## END
+## status: 0
+## timeout: 10
+
+#### continue
+for i in a b c; do
+  echo $i
+  if test $i = b; then
+    continue
+  fi
+  echo $i
+done
+## STDOUT:
+a
+a
+b
+c
+c
+## END
+## status: 0
+## timeout: 10
+
+#### break
+for i in a b c; do
+  echo $i
+  if test $i = b; then
+    break
+  fi
+done
+## STDOUT:
+a
+b
+## END
+## status: 0
+## timeout: 10
+
+#### while in while condition
+# This is a consequence of the grammar
+while while true; do echo cond; break; done
+do
+  echo body
+  break
+done
+## STDOUT:
+cond
+body
+## END
+## status: 0
+## timeout: 10
+
+#### while in pipe
+x=$(find spec/ | wc -l)
+y=$(find spec/ | while read path; do
+  echo $path
+done | wc -l
+)
+test $x -eq $y
+echo status=$?
+## stdout: status=0
+## status: 0
+## timeout: 10
+
+#### while in pipe with subshell
+i=0
+seq 3 | ( while read foo; do
+  i=$((i+1))
+  #echo $i
+done
+echo $i )
+## stdout: 3
+## status: 0
+## XFAIL ps-bash gap-oils-loop loop (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### until loop
+# This is just the opposite of while?  while ! cond?
+until false; do
+  echo hi
+  break
+done
+## stdout: hi
+## status: 0
+## timeout: 10
+
+#### continue at top level
+if true; then
+  echo one
+  continue
+  echo two
+fi
+# zsh behaves like strict_control_flow!
+## STDOUT:
+one
+two
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-loop loop (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### continue in subshell
+for i in $(seq 2); do
+  echo "> $i"
+  ( if true; then continue; fi; echo "Should not print" )
+  echo subshell status=$?
+  echo ". $i"
+done
+## STDOUT:
+> 1
+Should not print
+subshell status=0
+. 1
+> 2
+Should not print
+subshell status=0
+. 2
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-loop loop (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### continue in subshell aborts with errexit
+# The other shells don't let you recover from this programming error!
+set -o errexit
+for i in $(seq 2); do
+  echo "> $i"
+  ( if true; then continue; fi; echo "Should not print" )
+  echo 'should fail after subshell'
+  echo ". $i"
+done
+
+
+> 1
+should fail after subshell
+. 1
+> 2
+should fail after subshell
+. 2
+## STDOUT:
+> 1
+Should not print
+should fail after subshell
+. 1
+> 2
+Should not print
+should fail after subshell
+. 2
+## END
+## status: 127
+## XFAIL ps-bash gap-oils-loop loop (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### top-level break/continue/return (without strict_control_flow)
+$SH -c 'break; echo break=$?'
+$SH -c 'continue; echo continue=$?'
+$SH -c 'return; echo return=$?'
+## STDOUT:
+break=0
+continue=0
+return=2
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-loop loop (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### builtin,command break,continue,return,exit
+case $SH in dash|zsh) exit ;; esac
+
+echo '- break'
+for i in 1 2 3; do
+  echo $i
+  builtin break
+done
+
+echo '- continue'
+for i in 1 2 3; do
+  if test $i = 2; then
+    command continue
+  fi
+  echo $i
+done
+
+f() {
+  echo '- return'
+  for i in 1 2 3; do
+    echo $i
+    if test $i = 2; then
+      builtin command return 99
+    fi
+  done
+}
+f
+echo status=$?
+
+echo '- exit'
+command builtin exit 5
+echo 'not executed'
+## STDOUT:
+- break
+1
+- continue
+1
+3
+- return
+1
+2
+status=99
+- exit
+## END
+## status: 5
+## XFAIL ps-bash gap-oils-loop loop (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

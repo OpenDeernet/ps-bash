@@ -432,3 +432,121 @@ after errexit 99
 ## END
 ## status: 99
 ## timeout: 10
+
+#### set -o errtrace: trap ERR runs in subprograms
+case $SH in mksh) exit ;; esac
+
+set -o errtrace
+trap 'echo line=$LINENO' ERR
+
+( false; echo subshell )
+
+x=$( false; echo command sub )
+
+false
+echo ok
+
+
+# ash doesn't reject errtrace, but doesn't implement it
+## STDOUT:
+line=7
+subshell
+line=11
+ok
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap-err builtin-trap-err (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### set -o errtrace: trap ERR with &
+case $SH in mksh) exit ;; esac
+
+set -o errtrace
+trap 'echo line=$LINENO' ERR
+
+false & wait
+
+{ false; echo async; } & wait
+## STDOUT:
+line=9
+async
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap-err builtin-trap-err (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### trap ERR and pipelines - PIPESTATUS difference
+case $SH in ash) exit ;; esac
+
+err() {
+  echo "err [$@] status=$? [${PIPESTATUS[@]}]"
+}
+trap 'err' ERR 
+
+echo A
+
+false
+
+# succeeds
+echo B | grep B
+
+# fails
+echo C | grep zzz
+
+echo D | grep zzz | cat
+
+set -o pipefail
+echo E | grep zzz | cat
+
+trap - ERR  # disable trap
+
+echo F | grep zz
+echo ok
+
+
+# we don't set PIPESTATUS unless we get a pipeline
+## STDOUT:
+A
+err [] status=1 [1]
+B
+err [] status=1 [0 1]
+err [] status=1 [0 1 0]
+ok
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap-err builtin-trap-err (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### error in trap ERR (recursive)
+case $SH in dash) exit ;; esac
+
+err() {
+  echo err status $?
+  false
+  ( exit 2 )  # not recursively triggered
+  echo err 2
+}
+trap 'err' ERR 
+
+echo A
+false
+echo B
+
+# Try it with errexit
+set -e
+false
+echo C
+## STDOUT:
+A
+err status 1
+err 2
+B
+err status 1
+## END
+## status: 1
+## XFAIL ps-bash gap-oils-builtin-trap-err builtin-trap-err (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
