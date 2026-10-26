@@ -20,6 +20,20 @@ namespace PsBash.Differential.Tests;
 /// </summary>
 public class BackgroundJobDifferentialTests
 {
+    /// <summary>
+    /// `kill $!` stops a backgrounded job and `wait` then reports 128+SIGTERM; `kill -0` probes a live job;
+    /// `kill %1` takes a jobspec. Agents start a server with `&` and stop it with `kill $!`: the synthetic
+    /// `$!` id found no process ("No such process") and `wait` returned 0.
+    /// </summary>
+    [SkippableTheory]
+    [InlineData("sleep 30 & k=$!; kill -0 $k && echo alive; kill $k; echo kill=$?; wait $k; echo wait=$?")]
+    [InlineData("sleep 30 & kill %1; wait; echo w=$?")]
+    [InlineData("sleep 30 & k=$!; kill -9 $k; wait $k; echo wait=$?")]
+    public async Task Differential_Background_KillLastPid_StopsJobAndWaitReportsSignal(string script)
+    {
+        await AssertOracle.EqualAsync(script, timeout: TimeSpan.FromSeconds(60), liveOnly: true);
+    }
+
     // -----------------------------------------------------------------------
     // cmd &  — backgrounding operator
     // -----------------------------------------------------------------------

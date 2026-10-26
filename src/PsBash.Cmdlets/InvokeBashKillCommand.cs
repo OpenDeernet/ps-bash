@@ -57,6 +57,7 @@ public sealed class InvokeBashKillCommand : PSCmdlet
 
         string? signalName = null;
         var pids = new List<int>();
+        var jobSpecs = new List<string>();   // %N / %% / %+ : routed to the in-process background job table
 
         int i = 0;
         while (i < args.Length)
@@ -91,6 +92,8 @@ public sealed class InvokeBashKillCommand : PSCmdlet
             var mLong = LongSignal.Match(a);
             if (mLong.Success) { signalName = ResolveSignal(mLong.Groups[1].Value); i++; continue; }
 
+            if (a.Length > 0 && a[0] == '%') { jobSpecs.Add(a); i++; continue; }
+
             var mPid = PidSpec.Match(a);
             if (mPid.Success) { pids.Add(BashRuntime.ParseCountClamped(mPid.Groups[1].Value)); i++; continue; }
 
@@ -98,7 +101,7 @@ public sealed class InvokeBashKillCommand : PSCmdlet
             i++;
         }
 
-        if (pids.Count == 0)
+        if (pids.Count == 0 && jobSpecs.Count == 0)
         {
             FileSystemHelpers.WriteBashError(this,
                 "kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]");
@@ -109,6 +112,24 @@ public sealed class InvokeBashKillCommand : PSCmdlet
         bool existenceOnly = signalName == "SIG0";
         bool hadError = false;
         bool signalSelf = false;
+        int sigNum = SignalNumber(signalName ?? "SIGTERM");
+        if (existenceOnly) sigNum = 0;
+        // A background job of the in-process table (`$!` is a synthetic id, `%N` a jobspec), as `wait` resolves them.
+        bool StopBgJob(string spec)
+        {
+            try
+            {
+                var r = InvokeCommand.InvokeScript("param($s,$n,$p) Stop-BashBgJob $s $n $p", spec, sigNum, existenceOnly);
+                return r.Count > 0 && r[0]?.BaseObject is true;
+            }
+            catch (CommandNotFoundException) { return false; }   // PsBash module not loaded: no job table
+        }
+        foreach (var spec in jobSpecs)
+        {
+            if (StopBgJob(spec)) continue;
+            FileSystemHelpers.WriteBashError(this, $"kill: {spec}: no such job");
+            hadError = true;
+        }
         foreach (var procId in pids)
         {
             // `kill $$` signals the SHELL. Here the shell process is the shared ps-bash host, which
@@ -120,6 +141,7 @@ public sealed class InvokeBashKillCommand : PSCmdlet
                 signalSelf = true;
                 continue;
             }
+            if (StopBgJob(procId.ToString(System.Globalization.CultureInfo.InvariantCulture))) continue;
             // A background job runs in its own host process: stop its whole tree and let `wait` report the signal.
             if (!existenceOnly && PsBash.Core.BackgroundJobTable.TrySignal(procId, SignalNumber(signalName ?? "SIGTERM")))
                 continue;

@@ -2530,6 +2530,36 @@ function Complete-BashBgJob {
 # buffered output forever. Past this many entries Invoke-BashBackground reaps finished jobs first.
 $script:BashBgMaxJobs = 256
 
+function Stop-BashBgJob {
+    <#
+    .SYNOPSIS
+        `kill $!` / `kill %N` for a background job of the in-process table. $Spec is the synthetic id or a
+        %N jobspec (%% / %+ / % = the newest). Returns $true when the job exists (kill -0 probes only).
+        A terminating signal stops the job and records 128+signal so `wait` reports it (143 for TERM).
+    #>
+    param([string]$Spec, [int]$Signal = 15, [bool]$Probe = $false)
+    $job = $null
+    if ($Spec.StartsWith('%')) {
+        $num = $Spec.Substring(1)
+        if ($num -in @('', '%', '+')) {
+            if ($script:BashBgJobs.Count -gt 0) { $job = $script:BashBgJobs[$script:BashBgJobs.Count - 1] }
+        } elseif ($num -match '^\d+$') {
+            $idx = [int]$num - 1
+            if ($idx -ge 0 -and $idx -lt $script:BashBgJobs.Count) { $job = $script:BashBgJobs[$idx] }
+        }
+    } elseif ($Spec -match '^\d+$') {
+        $wantId = [int]$Spec
+        $job = $script:BashBgJobs | Where-Object { $_.Id -eq $wantId } | Select-Object -First 1
+    }
+    if ($null -eq $job) { return $false }
+    # SIGCONT / SIGWINCH do not end a job; a finished job is a zombie that kill still finds.
+    if ($Probe -or $Signal -in 18, 28 -or $job.Done -or $job.AsyncResult.IsCompleted) { return $true }
+    $job.ExitCode = 128 + $Signal
+    try { $job.PowerShell.Stop() } catch { }
+    $job.Done = $true
+    return $true
+}
+
 function Remove-BashBgFinished {
     <#
     .SYNOPSIS
