@@ -6,7 +6,6 @@ v=abcde
 echo ${v/c*/XX}
 ## stdout: abXX
 ## status: 0
-## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Pattern replacement on unset variable
@@ -28,7 +27,6 @@ s='begin <html></html> end'
 echo ${s/<*>/[]}
 ## stdout: begin [] end
 ## status: 0
-## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### When LC_ALL=C, pattern ? doesn't match multibyte character
@@ -180,7 +178,6 @@ s=xx_xx
 echo ${s/xx/yy} ${s//xx/yy} ${s/#xx/yy} ${s/%xx/yy}
 ## stdout: yy_xx yy_yy yy_xx xx_yy
 ## status: 0
-## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Replace char class
@@ -188,7 +185,6 @@ s=xx_xx_xx
 echo ${s//[[:alpha:]]/y} ${s//[^[:alpha:]]/-}
 ## stdout: yy_yy_yy xx-xx-xx
 ## status: 0
-## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Replace hard glob
@@ -196,7 +192,6 @@ s='aa*bb+cc'
 echo ${s//\**+/__}  # Literal *, then any sequence of characters, then literal +
 ## stdout: aa__cc
 ## status: 0
-## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${v/} is empty search and replacement
@@ -340,7 +335,6 @@ foo and _μ_
 _μ_ and foo
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Chromium from http://www.oilshell.org/blog/2016/11/07.html

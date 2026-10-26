@@ -67,6 +67,21 @@ public class BashTranspilerReviewRegressionTests
         Assert.DoesNotMatch(@"'[^']*\$\(", ps); // command text never sits inside a single-quoted item
     }
 
+    // Oracle: bash `v=abcde; echo ${v/c*/XX}` -> abXX; `${s/#xx/yy}` / `${s/%xx/yy}` anchor at the start / end.
+    // The find was always matched as literal text, so globs never matched and the anchors were literal `#`/`%`.
+
+    [Theory]
+    [InlineData("echo ${v/c*/XX}", "(?s)c.*")]
+    [InlineData("echo ${s/#xx/yy}", "(?s)^xx")]
+    [InlineData("echo ${s/%xx/yy}", "(?s)xx$")]
+    [InlineData("echo ${s//[.]/_}", "(?s)[.]")]
+    public void Transpile_PatternSubstitutionFind_IsAGlobWithAnchors(string bash, string regexStart)
+    {
+        var ps = BashTranspiler.Transpile(bash);
+        Assert.Contains("'" + regexStart, ps);
+        Assert.DoesNotContain("[regex]::Escape", ps);
+    }
+
     // ── Finding: subshell input redirect fell to the raw 0<file fallback ────
     // (cmd) < file -> "'<' is reserved for future use". Must become Invoke-BashCat -RawStdinBytes | & {}.
 

@@ -6269,9 +6269,19 @@ public static class PsEmitter
 
         // The `find` of ${VAR/find/rep}: an extglob pattern is matched as one (`${v//@(a|z)/Y}`);
         // anything else stays the historical LITERAL match (plain-glob find is not modelled).
-        static string ReplaceFindRegex(string find) => BashPattern.HasExtGlob(find)
-            ? $"'(?s){SqEsc(BashPattern.ToRegex(find))}'"
-            : $"[regex]::Escape('{SqEsc(find)}')";
+        // A leading `#` / `%` anchors the match to the start / end of the value (`${s/#xx/yy}`, `${s/%xx/yy}`); a
+        // plain-glob `*` `?` `[` is matched as a glob (`${v/c*/XX}`), longest-first like bash.
+        static string ReplaceFindRegex(string find)
+        {
+            string pre = "", post = "";
+            if (find.Length > 0 && find[0] == '#') { pre = "^"; find = find[1..]; }
+            else if (find.Length > 0 && find[0] == '%') { post = "$"; find = find[1..]; }
+            bool isGlob = BashPattern.HasExtGlob(find) || find.IndexOfAny(['*', '?', '[']) >= 0;
+            if (!isGlob && pre.Length == 0 && post.Length == 0)
+                return $"[regex]::Escape('{SqEsc(find)}')";
+            string body = isGlob ? SqEsc(BashPattern.ToRegex(find)) : SqEsc(System.Text.RegularExpressions.Regex.Escape(find));
+            return $"'(?s){pre}{body}{post}'";
+        }
 
         // Slice: ${VAR:offset:length} or ${VAR:offset}. The body is trimmed so a
         // negative offset written with the disambiguating space — ${VAR: -2}
