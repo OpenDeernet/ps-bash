@@ -241,3 +241,145 @@ write @x
 ## stdout:
 ## status: 2
 ## timeout: 10
+
+#### read-lines can be built on top of read --all and Str.lines()
+
+proc read-lines (; out) {
+  read --all 
+  call out->setValue(_reply.lines())
+}
+
+seq 4 7 > tmp.txt
+
+read-lines (&x) < tmp.txt
+
+pp test_ (x)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict => values()
+var en2fr = {}
+setvar en2fr["hello"] = "bonjour"
+setvar en2fr["friend"] = "ami"
+setvar en2fr["cat"] = "chat"
+pp test_ (en2fr => values())
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> erase()
+var book = {title: "The Histories", author: "Herodotus"}
+call book->erase("author")
+pp test_ (book)
+# confirm method is idempotent
+call book->erase("author")
+pp test_ (book)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> clear()
+var book = {title: "The Histories", author: "Herodotus"}
+call book->clear()
+pp test_ (book)
+# confirm method is idempotent
+call book->clear()
+pp test_ (book)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> get()
+var book = {title: "Hitchhiker's Guide", published: 1979}
+pp test_ (book => get("title", ""))
+pp test_ (book => get("published", 0))
+pp test_ (book => get("author", ""))
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> inc() with ints
+var histogram = {a: 1979}
+
+call histogram->inc('a', 3)
+assert [{"a": 1982} === histogram]
+
+call histogram->inc('b', 3)
+assert [{"a": 1982, "b": 3} === histogram]
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> inc() with invalid value
+var d = {k: 'foo'}
+call d->inc('k', 42)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> inc() with floats
+var histogram = {a: 2.5}
+call histogram->inc('a', 2)
+pp test_ (histogram)
+call histogram->inc('a', 3.5)
+pp test_ (histogram)
+call histogram->inc('b', 3.5)
+pp test_ (histogram)
+call histogram->inc('b', 2)
+pp test_ (histogram)
+call histogram->inc('c', 1)
+pp test_ (histogram)
+call histogram->inc('c', 3.0)
+pp test_ (histogram)
+
+var d = {k: 'foo'}
+call d->inc('k', 42.14)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> append()
+var mydict = {a: [1]}
+call mydict->append('a', 2)
+assert [{"a": [1,2]} === mydict]
+call mydict->append('a', 'b')
+assert [{"a": [1,2,'b']} === mydict]
+call mydict->append('b', 1)
+assert [{"a": [1,2,'b'], "b": [1]} === mydict]
+call mydict->append('c', [1,2])
+
+# list of lists
+assert [{"a": [1,2,'b'], "b": [1], "c": [[1,2]]} === mydict]
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> append() with invalid value
+var d = {k: 'foo'}
+call d->append('k', 'bar')
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Dict -> update()
+var d = {a: 2, b: 3}
+var alias = d
+var other = {a: 42}
+call d->update(other)
+assert [{a: 42, b: 3} === d]
+assert [{a: 42, b: 3} === alias]
+## stdout:
+## status: 2
+## timeout: 10
+
+#### concat operator (++) on dicts
+var d = {a: 2, b: 3}
+var other = {a: 42}
+assert [{a: 42, b: 3} === d ++ other]
+# old dict is untouched - shallow copy was done
+assert [{a: 2, b: 3} === d]
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-ysh-methods ysh-methods (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10

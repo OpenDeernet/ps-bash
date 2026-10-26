@@ -47,3 +47,112 @@ status=0
 ## END
 ## status: 0
 ## timeout: 10
+
+#### SHELLOPTS is updated when options are changed
+echo $SHELLOPTS | grep -q xtrace
+echo $?
+set -x
+echo $SHELLOPTS | grep -q xtrace
+echo $?
+set +x
+echo $SHELLOPTS | grep -q xtrace
+echo $?
+## STDOUT:
+1
+0
+1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-sh-options-bash sh-options-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### SHELLOPTS reflects flags like sh -x
+
+$SH -x -c 'echo $SHELLOPTS' | grep -o xtrace
+## stdout: xtrace
+## status: 0
+## XFAIL ps-bash gap-oils-sh-options-bash sh-options-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### export SHELLOPTS does cross-process tracing
+
+$SH -c '
+export SHELLOPTS
+set -x
+echo 1
+$SH -c "echo 2"
+' 2>&1 | sed 's/.*sh /sh /g'
+## STDOUT:
++ echo 1
+1
++ -c 'echo 2'
+bash: line 5: -c: command not found
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-sh-options-bash sh-options-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### export SHELLOPTS does cross-process tracing with bash
+
+# calling bash
+$SH -c '
+export SHELLOPTS
+set -x
+#echo SHELLOPTS=$SHELLOPTS
+echo 1
+bash -c "echo 2"
+' 2>&1 | sed 's/.*sh /sh /g'
+## STDOUT:
++ echo 1
+1
+sh -c 'echo 2'
++ echo 2
+2
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-sh-options-bash sh-options-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### OSH calling bash with SHELLOPTS does not change braceexpand
+
+#echo outside=$SHELLOPTS
+
+# sed pattern to normalize spaces
+normalize='s/[ \t]\+/ /g'
+
+bash -c '
+#echo bash=$SHELLOPTS
+set -o | grep braceexpand | sed "$1"
+' unused "$normalize"
+
+env SHELLOPTS= bash -c '
+#echo bash2=$SHELLOPTS
+set -o | grep braceexpand | sed "$1"
+' unused "$normalize"
+## STDOUT:
+braceexpand on
+braceexpand on
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-sh-options-bash sh-options-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### If shopt --set xtrace is allowed, it should update SHELLOPTS, not BASHOPTS
+case $SH in bash) exit ;; esac
+
+shopt --set xtrace
+echo SHELLOPTS=$SHELLOPTS
+set -x
+echo SHELLOPTS=$SHELLOPTS
+set +x
+echo SHELLOPTS=$SHELLOPTS
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-sh-options-bash sh-options-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

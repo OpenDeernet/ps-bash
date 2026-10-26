@@ -193,3 +193,165 @@ printenv.py VAR1 VAR2
 ## status: 127
 ## XFAIL ps-bash gap-oils-builtin-set builtin-set (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### set -u with undefined variable exits the interpreter
+
+# non-interactive
+$SH -c 'set -u; echo before; echo $x; echo after'
+if test $? -ne 0; then
+  echo OK
+fi
+
+# interactive
+$SH -i -c 'set -u; echo before; echo $x; echo after'
+if test $? -ne 0; then
+  echo OK
+fi
+## STDOUT:
+before
+OK
+before
+OK
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-set builtin-set (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### set -u with undefined var in interactive shell does NOT exit the interpreter
+
+# In bash, it aborts the LINE only.  The next line is executed!
+
+# non-interactive
+$SH -c 'set -u; echo before; echo $x; echo after
+echo line2
+'
+if test $? -ne 0; then
+  echo OK
+fi
+
+# interactive
+$SH -i -c 'set -u; echo before; echo $x; echo after
+echo line2
+'
+if test $? -ne 0; then
+  echo OK
+fi
+## STDOUT:
+before
+OK
+before
+line2
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-set builtin-set (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### set -u error can break out of nested evals
+$SH -c '
+set -u
+test_function_2() {
+  x=$blarg
+}
+test_function() {
+  eval "test_function_2"
+}
+
+echo before
+eval test_function
+echo after
+'
+# status must be non-zero: bash uses 1, ash/dash exit 2
+if test $? -ne 0; then
+  echo OK
+fi
+## STDOUT:
+before
+OK
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### set - stops option processing like set --
+case $SH in zsh) exit ;; esac
+
+show_options() {
+  case $- in
+    *v*) echo verbose-on ;;
+  esac
+  case $- in
+    *x*) echo xtrace-on ;;
+  esac
+}
+
+set -x - -v
+
+show_options
+echo argv "$@"
+## stdout: argv -v
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-set builtin-set (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### A single + is an ignored flag; not an argument
+case $SH in zsh) exit ;; esac
+
+show_options() {
+  case $- in
+    *v*) echo verbose-on ;;
+  esac
+  case $- in
+    *x*) echo xtrace-on ;;
+  esac
+}
+
+set +
+echo plus "$@"
+
+set -x + -v x y
+show_options
+echo plus "$@"
+## STDOUT:
+plus
+verbose-on
+xtrace-on
+plus x y
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-set builtin-set (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### variables set before set -a are not exported
+BEFORE=before_value
+set -a
+AFTER=after_value
+printenv.py BEFORE AFTER
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-builtin-set builtin-set (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### set -a exports local variables
+set -a
+f() {
+  local ZZZ=zzz
+  printenv.py ZZZ
+}
+f
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-builtin-set builtin-set (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### set -a exports declare variables
+set -a
+declare ZZZ=zzz
+printenv.py ZZZ
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-builtin-set builtin-set (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10

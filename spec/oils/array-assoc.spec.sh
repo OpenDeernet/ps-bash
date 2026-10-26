@@ -572,3 +572,226 @@ typo=1
 ## status: 0
 ## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### lookup with unquoted $key and quoted "$i$i"
+declare -A A
+A["aa"]=b
+A["foo"]=bar
+
+key=foo
+echo ${A[$key]}
+i=a
+echo ${A["$i$i"]}   # note: ${A[$i$i]} doesn't work in OSH
+## STDOUT:
+bar
+b
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### lookup by unquoted string doesn't work in OSH because it's a variable
+declare -A a
+a["aa"]=b
+a["foo"]=bar
+a['a+1']=c
+echo "${a[a+1]}"
+## stdout: c
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### bash bug: "i+1" and i+1 are the same key
+
+i=1
+array=(5 6 7)
+echo array[i]="${array[i]}"
+echo array[i+1]="${array[i+1]}"
+
+# arithmetic does NOT work here in bash.  These are unquoted strings!
+declare -A assoc
+assoc[i]=$i
+assoc[i+1]=$i+1
+
+assoc["i"]=string
+assoc["i+1"]=string+1
+
+echo assoc[i]="${assoc[i]}" 
+echo assoc[i+1]="${assoc[i+1]}"
+
+echo assoc[i]="${assoc["i"]}" 
+echo assoc[i+1]="${assoc["i+1"]}"
+## STDOUT:
+array[i]=6
+array[i+1]=7
+assoc[i]=string
+assoc[i+1]=string+1
+assoc[i]=string
+assoc[i+1]=string+1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Array stored in associative array gets converted to string (without strict_array)
+
+array=('1 2' 3)
+declare -A d
+d['key']="${array[@]}"
+argv.py "${d['key']}"
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Indexed array as key of associative array coerces to string (without shopt -s strict_array)
+
+declare -a array=(1 2 3)
+declare -A assoc
+assoc[42]=43
+assoc["${array[@]}"]=foo
+
+echo "${assoc["${array[@]}"]}"
+for entry in "${!assoc[@]}"; do
+  echo $entry
+done | sort
+## STDOUT:
+foo
+1 2 3
+42
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Append to associative array value A['x']+='suffix'
+declare -A A
+A['x']='foo'
+A['x']+='bar'
+A['x']+='bar'
+argv.py "${A["x"]}"
+## stdout:
+## status: 127
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Slice of associative array doesn't make sense in bash
+declare -A a
+a[xx]=1
+a[yy]=2
+a[zz]=3
+a[aa]=4
+a[bb]=5
+#argv.py ${a["xx"]}
+argv.py ${a[@]: 0: 3}
+argv.py ${a[@]: 1: 3}
+argv.py ${a[@]: 2: 3}
+argv.py ${a[@]: 3: 3}
+argv.py ${a[@]: 4: 3}
+argv.py ${a[@]: 5: 3}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### bash variable can have an associative array part and a string part
+
+# and $assoc is equivalent to ${assoc[0]}, just like regular arrays
+declare -A assoc
+assoc[1]=1
+assoc[2]=2
+echo ${assoc[1]} ${assoc[2]} ${assoc}
+assoc[0]=zero
+echo ${assoc[1]} ${assoc[2]} ${assoc}
+assoc=string
+echo ${assoc[1]} ${assoc[2]} ${assoc}
+## STDOUT:
+1 2
+1 2 zero
+1 2 string
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Associative array expressions inside (( )) with keys that look like numbers
+declare -A assoc
+assoc[0]=42
+(( var = ${assoc[0]} ))
+echo $var
+(( var = assoc[0] ))
+echo $var
+## STDOUT:
+42
+42
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### (( A[5] += 42 ))
+declare -A A
+(( A[5] = 10 ))
+(( A[5] += 6 ))
+echo ${A[5]}
+## stdout: 16
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### (( A[5] += 42 )) with empty cell
+shopt -u strict_arith  # default zero cell
+declare -A A
+(( A[5] += 6 ))
+echo ${A[5]}
+## stdout: 6
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### setting key to itself (from bash-bug mailing list)
+declare -A foo
+foo=(["key"]="value1")
+echo ${foo["key"]}
+foo=(["key"]="${foo["key"]} value2")
+echo ${foo["key"]}
+## STDOUT:
+value1
+value1 value2
+## END
+## status: 0
+## timeout: 10
+
+#### BashAssoc a+=()
+
+declare -A a=([apple]=red [orange]=orange)
+a+=([lemon]=yellow [banana]=yellow)
+echo "apple is ${a['apple']}"
+echo "orange is ${a['orange']}"
+echo "lemon is ${a['lemon']}"
+echo "banana is ${a['banana']}"
+## STDOUT:
+apple is red
+orange is orange
+lemon is yellow
+banana is yellow
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### BashAssoc ${a[@]@Q}
+
+declare -A a=()
+a['symbol1']=\'\'
+a['symbol2']='"'
+a['symbol3']='()<>&|'
+a['symbol4']='[]*?'
+echo "[${a[@]@Q}]"
+echo "[${a[*]@Q}]"
+## STDOUT:
+['[]*?' '()<>&|' '"' ''\'''\''']
+['[]*?' '()<>&|' '"' ''\'''\''']
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10

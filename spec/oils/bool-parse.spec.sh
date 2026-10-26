@@ -114,3 +114,16 @@ status=1
 ## END
 ## status: 0
 ## timeout: 10
+
+#### [[ -f -f ]] and [[ -f == ]]
+[[ -f -f ]]
+echo status=$?
+
+[[ -f == ]]
+echo status=$?
+## STDOUT:
+status=1
+status=1
+## END
+## status: 0
+## timeout: 10

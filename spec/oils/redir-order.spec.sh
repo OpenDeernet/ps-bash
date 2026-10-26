@@ -48,3 +48,22 @@ cat OSCFLAGS
 ## status: 0
 ## XFAIL ps-bash gap-oils-redir-order redir-order (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### [[ + redirect order
+case $SH in dash|ash) exit ;; esac
+
+echo hello > OSCFLAGS
+
+[[ `cat OSCFLAGS` = hello ]] > OSCFLAGS
+echo status=$?
+
+# it is the empty string!
+[[ `cat OSCFLAGS` = '' ]] > OSCFLAGS
+echo status=$?
+## STDOUT:
+status=1
+status=0
+## END
+## status: 0
+## timeout: 10
+## real-launcher

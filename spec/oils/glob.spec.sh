@@ -194,3 +194,108 @@ echo hi .*
 ## stdout: hi .*
 ## status: 0
 ## timeout: 10
+
+#### glob backslash escape
+echo \*.sh
+## stdout: *.sh
+## status: 0
+## timeout: 10
+
+#### 0 char glob -- does NOT work
+echo []bin
+## stdout: []bin
+## status: 0
+## timeout: 10
+
+#### looks like glob at the start, but isn't
+echo [bin
+## stdout: [bin
+## status: 0
+## timeout: 10
+
+#### looks like glob plus negation at the start, but isn't
+echo [!bin
+## stdout: [!bin
+## status: 0
+## timeout: 10
+
+#### glob after var expansion
+touch _tmp/a.A _tmp/aa.A _tmp/b.B
+f="_tmp/*.A"
+g="$f _tmp/*.B"
+echo $g
+## stdout: _tmp/a.A _tmp/aa.A _tmp/b.B
+## status: 0
+## timeout: 10
+
+#### quoted var expansion with glob meta characters
+touch _tmp/a.A _tmp/aa.A _tmp/b.B
+f="_tmp/*.A"
+echo "[ $f ]"
+## stdout: [ _tmp/*.A ]
+## status: 0
+## timeout: 10
+
+#### glob after "$@" expansion
+fun() {
+  echo "$@"
+}
+fun '_tmp/*.B'
+## stdout: _tmp/*.B
+## status: 0
+## timeout: 10
+
+#### glob after $@ expansion
+touch _tmp/b.B
+fun() {
+  echo $@
+}
+fun '_tmp/*.B'
+## stdout: _tmp/b.B
+## status: 0
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### no glob after ~ expansion
+HOME=*
+echo ~/*.py
+## stdout: */*.py
+## status: 0
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### store literal globs in array then expand
+touch _tmp/a.A _tmp/aa.A _tmp/b.B
+g=("_tmp/*.A" "_tmp/*.B")
+echo ${g[@]}
+## stdout: _tmp/a.A _tmp/aa.A _tmp/b.B
+## status: 0
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### glob inside array
+touch _tmp/a.A _tmp/aa.A _tmp/b.B
+g=(_tmp/*.A _tmp/*.B)
+echo "${g[@]}"
+## stdout: _tmp/a.A _tmp/aa.A _tmp/b.B
+## status: 0
+## timeout: 10
+
+#### glob with escaped - in char class
+touch _tmp/foo.-
+touch _tmp/c.C
+echo _tmp/*.[C-D] _tmp/*.[C\-D]
+## stdout: _tmp/c.C _tmp/c.C _tmp/foo.-
+## status: 0
+## timeout: 10
+
+#### shopt -u globskipdots shows . and ..
+case $SH in dash|ash|mksh) exit ;; esac
+
+shopt -u globskipdots
+echo hi .*
+## stdout: hi . ..
+## status: 0
+## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

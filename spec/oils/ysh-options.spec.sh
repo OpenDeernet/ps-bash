@@ -410,3 +410,57 @@ status=0 pipestatus=0
 ## status: 0
 ## XFAIL ps-bash gap-oils-ysh-options ysh-options (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### parse_at can be specified through sh -O
+$SH +O parse_at -c 'words=(a "b c"); argv.py @words'
+$SH -O parse_at -c 'words=(a "b c"); argv.py @words'
+## stdout:
+## status: 2
+## timeout: 10
+## real-launcher
+
+#### osh -O errexit: use -O everywhere, even for Bourne options
+$SH -O errexit -c 'shopt -p -o errexit'
+#$SH -O errexit -c 'shopt -p errexit'  # bash doesn't allow this, but Oils does
+## stdout:
+## status: 2
+## timeout: 10
+## real-launcher
+
+#### osh -O invalid
+$SH -O errexit -c 'echo hi'
+echo status=$?
+$SH -O invalid -c 'echo hi'
+echo status=$?
+## STDOUT:
+status=2
+status=2
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### osh -o new_option is also accepted
+
+$SH -o nullglob -c 'echo nullglob'
+echo $? flag nullglob
+
+$SH -o oil:upgrade -c 'proc p { echo upgrade }; p'
+echo $? flag oil:upgrade
+
+# Should disallow these
+
+set -o nullglob
+echo $? set builtin nullglob
+set -o oil:upgrade
+echo $? set builtin oil:upgrade
+## STDOUT:
+2 flag nullglob
+2 flag oil:upgrade
+2 set builtin nullglob
+2 set builtin oil:upgrade
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-ysh-options ysh-options (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

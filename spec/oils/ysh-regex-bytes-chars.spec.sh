@@ -74,3 +74,53 @@ pp test_ (/ [\u{110000}] /)
 ## stdout:
 ## status: 2
 ## timeout: 10
+
+#### NUL byte can be expressed in Eggex, but not in ERE
+
+$SH <<'EOF'
+pp test_ (b'\y01' ~ / [\y01] /)
+pp test_ (b'\y00' ~ / [\y00] /)
+EOF
+echo status=$?
+
+$SH <<'EOF'
+pp test_ (b'\y01' ~ / [\u{1}] /)
+pp test_ (b'\y00' ~ / [\u{0}] /)
+EOF
+echo status=$?
+
+
+# legacy synonym
+
+$SH <<'EOF'
+pp test_ (b'\y01' ~ / [\x01] /)
+pp test_ (b'\y00' ~ / [\x00] /)
+EOF
+echo status=$?
+## STDOUT:
+status=2
+status=2
+status=2
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### High bytes 0x80 0xff can be matched with plain ERE and LC_ALL=C
+
+export LC_ALL=C
+
+$SH <<'EOF'
+var yes = b'foo \yff'
+var no = b'foo'
+
+# POSIX ERE string
+var ere = b'[\yff]'
+
+pp test_ (yes ~ ere)
+pp test_ (no ~ ere)
+EOF
+## stdout:
+## status: 2
+## timeout: 10
+## real-launcher

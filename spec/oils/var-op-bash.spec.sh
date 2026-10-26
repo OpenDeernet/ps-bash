@@ -371,3 +371,115 @@ A
 ## status: 0
 ## XFAIL ps-bash gap-oils-var-op-bash var-op-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### undef and @P @Q @a
+$SH -c 'echo ${undef@P}'
+echo status=$?
+$SH -c 'echo ${undef@Q}'
+echo status=$?
+$SH -c 'echo ${undef@a}'
+echo status=$?
+## STDOUT:
+
+status=0
+
+status=0
+
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-bash var-op-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### argv array and @P @Q @a
+$SH -c 'echo ${@@P}' dummy a b c
+echo status=$?
+$SH -c 'echo ${@@Q}' dummy a 'b\nc'
+echo status=$?
+$SH -c 'echo ${@@a}' dummy a b c
+echo status=$?
+## STDOUT:
+a b c
+status=0
+'a' 'b\nc'
+status=0
+
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-bash var-op-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### assoc array and @P @Q @a
+
+# note: "y z" causes a bug!
+$SH -c 'declare -A A=(["x"]="y"); echo ${A@P} - ${A[@]@P}'
+echo status=$?
+
+# note: "y z" causes a bug!
+$SH -c 'declare -A A=(["x"]="y"); echo ${A@Q} - ${A[@]@Q}' | sed 's/^- y$/- '\''y'\''/'
+echo status=$?
+
+$SH -c 'declare -A A=(["x"]=y); echo ${A@a} - ${A[@]@a}'
+echo status=$?
+## STDOUT:
+- y
+status=0
+- 'y'
+status=0
+A - A
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-bash var-op-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### ${!var[@]@X}
+# note: "y z" causes a bug!
+$SH -c 'declare -A A=(["x"]="y"); echo ${!A[@]@P}'
+if test $? -ne 0; then echo fail; fi
+
+# note: "y z" causes a bug!
+$SH -c 'declare -A A=(["x y"]="y"); echo ${!A[@]@Q}'
+if test $? -ne 0; then echo fail; fi
+
+$SH -c 'declare -A A=(["x"]=y); echo ${!A[@]@a}'
+if test $? -ne 0; then echo fail; fi
+# STDOUT:
+
+
+
+# END
+## STDOUT:
+
+
+
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-bash var-op-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### ${#var@X} is a parse error
+# note: "y z" causes a bug!
+$SH -c 'declare -A A=(["x"]="y"); echo ${#A[@]@P}'
+if test $? -ne 0; then echo fail; fi
+
+# note: "y z" causes a bug!
+$SH -c 'declare -A A=(["x"]="y"); echo ${#A[@]@Q}'
+if test $? -ne 0; then echo fail; fi
+
+$SH -c 'declare -A A=(["x"]=y); echo ${#A[@]@a}'
+if test $? -ne 0; then echo fail; fi
+## STDOUT:
+fail
+fail
+fail
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-bash var-op-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

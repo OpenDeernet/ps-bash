@@ -214,3 +214,140 @@ foo[]
 ## status: 0
 ## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### Nested % and # operators (bug reported by Crestwave)
+var=$'\n'
+argv.py "${var#?}"
+argv.py "${var%''}"
+argv.py "${var%"${var#?}"}"
+var='a'
+argv.py "${var#?}"
+argv.py "${var%''}"
+argv.py "${var%"${var#?}"}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### strip * (bug regression)
+x=abc
+argv.py "${x#*}"
+argv.py "${x##*}"
+argv.py "${x%*}"
+argv.py "${x%%*}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### strip ?
+x=abc
+argv.py "${x#?}"
+argv.py "${x##?}"
+argv.py "${x%?}"
+argv.py "${x%%?}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### strip all
+x=abc
+argv.py "${x#abc}"
+argv.py "${x##abc}"
+argv.py "${x%abc}"
+argv.py "${x%%abc}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### strip none
+x=abc
+argv.py "${x#}"
+argv.py "${x##}"
+argv.py "${x%}"
+argv.py "${x%%}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### strip all unicode
+x=μabcμ
+echo "${x#?abc?}"
+echo "${x##?abc?}"
+echo "${x%?abc?}"
+echo "${x%%?abc?}"
+## STDOUT:
+
+
+
+
+## END
+## status: 0
+## timeout: 10
+
+#### strip none unicode
+x=μabcμ
+argv.py "${x#}"
+argv.py "${x##}"
+argv.py "${x%}"
+argv.py "${x%%}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Strip Right Brace (#702)
+var='$foo'
+echo 1 "${var#$foo}"
+echo 2 "${var#\$foo}"
+
+var='}'
+echo 10 "${var#}}"
+echo 11 "${var#\}}"
+echo 12 "${var#'}'}"
+echo 13 "${var#"}"}"
+## STDOUT:
+1 $foo
+2 
+10 }}
+11 
+12 
+13 
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### \(\) in pattern (regression)
+x='foo()' 
+echo 1 ${x%*\(\)}
+echo 2 ${x%%*\(\)}
+echo 3 ${x#*\(\)}
+echo 4 ${x##*\(\)}
+## STDOUT:
+1 foo
+2
+3
+4
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### extglob in pattern
+case $SH in dash|zsh|ash) exit ;; esac
+
+shopt -s extglob
+
+x='foo()' 
+echo 1 ${x%*(foo|bar)'()'}
+echo 2 ${x%%*(foo|bar)'()'}
+echo 3 ${x#*(foo|bar)'()'}
+echo 4 ${x##*(foo|bar)'()'}
+## STDOUT:
+1 foo
+2
+3
+4
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-strip var-op-strip (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

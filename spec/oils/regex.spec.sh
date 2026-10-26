@@ -415,3 +415,144 @@ m=(
 ## status: 0
 ## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### unquoted [a  b] as pattern, [a  b|c]
+
+$SH <<'EOF'
+[[ a =~ [ab] ]] && echo yes
+EOF
+echo "[ab]=$?"
+
+$SH <<'EOF'
+[[ a =~ [a b] ]] && echo yes
+EOF
+echo "[a b]=$?"
+
+$SH <<'EOF'
+[[ a =~ ([a b]) ]] && echo yes
+EOF
+echo "[a b]=$?"
+## STDOUT:
+yes
+[ab]=0
+[a b]=2
+yes
+[a b]=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Operator chars ; & but not |
+
+# Hm semicolon is still an operator in bash
+$SH <<'EOF'
+[[ ';' =~ ; ]] && echo semi
+EOF
+echo semi=$?
+
+$SH <<'EOF'
+[[ ';' =~ (;) ]] && echo semi paren
+EOF
+echo semi paren=$?
+
+echo
+
+$SH <<'EOF'
+[[ '&' =~ & ]] && echo amp
+EOF
+echo amp=$?
+
+# Oh I guess this is not a bug?  regcomp doesn't reject this trivial regex?
+$SH <<'EOF'
+[[ '|' =~ | ]] && echo pipe1
+[[ 'a' =~ | ]] && echo pipe2
+EOF
+echo pipe=$?
+
+$SH <<'EOF'
+[[ '|' =~ a| ]] && echo four
+EOF
+echo pipe=$?
+
+# This is probably special because > operator is inside foo [[ a > b ]]
+$SH <<'EOF'
+[[ '<>' =~ <> ]] && echo angle
+EOF
+echo angle=$?
+
+# Bug: OSH allowed this!
+$SH <<'EOF'
+[[ $'a\nb' =~ a
+b ]] && echo newline
+EOF
+echo newline=$?
+## STDOUT:
+semi=2
+semi paren
+semi paren=0
+
+amp=2
+pipe1
+pipe2
+pipe=0
+four
+pipe=0
+angle=2
+newline=2
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Quotes '' "" $'' $"" in pattern
+
+$SH <<'EOF'
+[[ '|' =~ '|' ]] && echo sq
+EOF
+echo sq=$?
+
+$SH <<'EOF'
+[[ '|' =~ "|" ]] && echo dq
+EOF
+echo dq=$?
+
+$SH <<'EOF'
+[[ '|' =~ $'|' ]] && echo dollar-sq
+EOF
+echo dollar-sq=$?
+
+$SH <<'EOF'
+[[ '|' =~ $"|" ]] && echo dollar-dq
+EOF
+echo dollar-dq=$?
+## STDOUT:
+sq
+sq=0
+dq
+dq=0
+dollar-sq
+dollar-sq=0
+dollar-dq
+dollar-dq=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-regex regex (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Unicode in pattern
+
+$SH <<'EOF'
+[[ μ =~ μ ]] && echo mu
+EOF
+echo mu=$?
+## STDOUT:
+mu
+mu=0
+## END
+## status: 0
+## timeout: 10
+## real-launcher

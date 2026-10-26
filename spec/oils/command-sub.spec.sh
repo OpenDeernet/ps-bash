@@ -183,3 +183,142 @@ echo "5 `echo \\\\$`"
 ## END
 ## status: 0
 ## timeout: 10
+
+#### Quoting \ within ``
+# You need FOUR backslashes to make a literal \.
+echo [1 `echo \ `]
+echo [2 `echo \\ `]
+echo [3 `echo \\\\ `]
+## STDOUT:
+[1 ]
+[2 ]
+[3 \]
+## END
+## status: 0
+## timeout: 10
+
+#### Quoting \ within `` within double quotes
+echo "[1 `echo \ `]"
+echo "[2 `echo \\ `]"
+echo "[3 `echo \\\\ `]"
+## STDOUT:
+[1  ]
+[2  ]
+[3 \]
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-command-sub command-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Quoting ( within ``
+echo 1 `echo \(`
+echo 2 `echo \\(`
+echo 3 `echo \\ \\(`
+## STDOUT:
+1 (
+2 (
+3 (
+## END
+## status: 0
+## timeout: 10
+
+#### Quoting ( within `` within double quotes
+echo "1 `echo \(`"
+echo "2 `echo \\(`"
+echo "3 `echo \\ \\(`"
+## STDOUT:
+1 (
+2 (
+3  (
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-command-sub command-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Quoting non-special characters within ``
+echo [1 `echo \z]`
+echo [2 `echo \\z]`
+echo [3 `echo \\\z]`
+echo [4 `echo \\\\z]`
+## STDOUT:
+[1 z]
+[2 z]
+[3 \z]
+[4 \z]
+## END
+## status: 0
+## timeout: 10
+
+#### Quoting non-special characters within `` within double quotes
+echo "[1 `echo \z`]"
+echo "[2 `echo \\z`]"
+echo "[3 `echo \\\z`]"
+echo "[4 `echo \\\\z`]"
+## STDOUT:
+[1 z]
+[2 z]
+[3 \z]
+[4 \z]
+## END
+## status: 0
+## timeout: 10
+
+#### Quoting double quotes within backticks
+echo \"foo\"   # for comparison
+echo `echo \"foo\"`
+echo `echo \\"foo\\"`
+## STDOUT:
+"foo"
+"foo"
+"foo"
+## END
+## status: 0
+## timeout: 10
+
+#### More levels of double quotes in backticks
+
+# Shells don't agree here, some of them give you form feeds!
+# There are two levels of processing I don't understand.
+
+#echo BUG
+#exit
+
+echo `echo \\\"foo\\\"` -
+echo `echo \\\\"foo\\\\"` -
+echo `echo \\\\\"foo\\\\\"` -
+## STDOUT:
+\foo\ -
+\foo\ -
+\"foo\" -
+## END
+## status: 0
+## timeout: 10
+
+#### Syntax errors with double quotes within backticks
+
+# bash does print syntax errors but somehow it exits 0
+
+$SH -c 'echo `echo "`'
+echo status=$?
+$SH -c 'echo `echo \\\\"`'
+echo status=$?
+## STDOUT:
+
+status=0
+
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-command-sub command-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Empty command sub $() (command::NoOp)
+
+# IMPORTANT: catch assert() failure in child process!!!
+shopt -s command_sub_errexit
+
+echo -$()- ".$()."
+## stdout: -- ..
+## status: 0
+## timeout: 10

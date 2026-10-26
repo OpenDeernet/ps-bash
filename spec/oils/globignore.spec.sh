@@ -233,3 +233,20 @@ bar.cc bar.h
 ## status: 0
 ## XFAIL ps-bash gap-oils-globignore globignore (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### When GLOBIGNORE is set, no_dash_glob isn't respected
+case $SH in bash) exit ;; esac
+
+touch -- foo.txt -foo.txt
+
+shopt -s no_dash_glob  # YSH option
+
+echo *  # expansion does NOT include -foo.txt
+
+GLOBIGNORE=f*.txt
+echo *  # expansion includes -foo.txt, because it doesn't match GLOBIGNORE
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-globignore globignore (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

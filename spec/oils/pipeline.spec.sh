@@ -204,3 +204,80 @@ ls /dev/null | eval 'cat | cat' | wc -l
 ## stdout: 1
 ## status: 0
 ## timeout: 10
+
+#### Initial value of PIPESTATUS is empty string
+case $SH in dash|zsh) exit ;; esac
+
+echo pipestatus ${PIPESTATUS[@]}
+## stdout: pipestatus 0
+## status: 0
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### PIPESTATUS is set on simple commands
+case $SH in dash|zsh) exit ;; esac
+
+false
+echo pipestatus ${PIPESTATUS[@]}
+
+exit 55 | (exit 44)
+echo pipestatus ${PIPESTATUS[@]}
+
+true
+echo pipestatus ${PIPESTATUS[@]}
+## STDOUT:
+pipestatus 1
+pipestatus 55 44
+pipestatus 0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-pipeline pipeline (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### ! turns non-zero into zero
+! $SH -c 'exit 42'; echo $?
+## stdout: 0
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### ! turns zero into 1
+! $SH -c 'exit 0'; echo $?
+## stdout: 1
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### shopt -s lastpipe and shopt -s no_last_fork interaction
+
+case $SH in dash) exit ;; esac
+
+$SH -c '
+shopt -s lastpipe
+set -o errexit
+set -o pipefail
+
+ls | false | wc -l'
+echo status=$?
+
+# Why does this give status 0?  It should fail
+
+$SH -c '
+shopt -s lastpipe
+shopt -s no_fork_last  # OSH only
+set -o errexit
+set -o pipefail
+
+ls | false | wc -l'
+echo status=$?
+## STDOUT:
+0
+status=1
+0
+status=1
+## END
+## status: 0
+## timeout: 10
+## real-launcher

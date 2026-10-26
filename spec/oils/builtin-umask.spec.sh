@@ -179,3 +179,236 @@ umask | tail -c 4
 ## END
 ## status: 0
 ## timeout: 10
+
+#### 'umask -p' prints a form that can be eval'd
+umask -p
+echo status=$?
+## STDOUT:
+umask 0022
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-umask builtin-umask (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### set umask with symbolic mode: u-rw  ...  u=,g+,o-  ...
+
+umask 0000
+umask u-rw
+echo status0=$?
+umask | tail -c 4
+
+umask 0700
+umask u=r
+echo status1=$?
+umask | tail -c 4
+
+umask 0000
+umask u=r,g=w,o=x
+echo status2=$?
+umask | tail -c 4
+
+umask 0777
+umask u+r,g+w,o+x
+echo status3=$?
+umask | tail -c 4
+
+umask 0000
+umask u-r,g-w,o-x
+echo status4=$?
+umask | tail -c 4
+
+umask 0137
+umask u=,g+,o-
+echo status5=$?
+umask | tail -c 4
+## STDOUT:
+status0=0
+600
+status1=0
+300
+status2=0
+356
+status3=0
+356
+status4=0
+421
+status5=0
+737
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-umask builtin-umask (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### umask with too many arguments (i.e. extra spaces)
+umask 0111
+# spaces are an error in bash
+# dash & mksh only interpret the first one
+umask u=, g+, o-
+if test $? -ne 0; then
+  echo ok
+fi
+umask | tail -c 4
+## STDOUT:
+ok
+111
+## END
+## status: 0
+## timeout: 10
+
+#### umask allow overwriting and duplicates
+umask 0111
+umask u=rwx,u=rw,u=r,u=,g=rwx
+umask | tail -c 4
+## stdout: 701
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-umask builtin-umask (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### umask a is valid who
+umask 0732
+umask a=rwx
+umask | tail -c 4
+
+umask 0124
+umask a+r
+umask | tail -c 4
+
+umask 0124
+umask a-r
+umask | tail -c 4
+## STDOUT:
+000
+120
+564
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-umask builtin-umask (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### umask X perm
+umask 0124
+umask a=X
+echo ret0 = $?
+umask | tail -c 4
+
+umask 0246
+umask a=X
+echo ret1 = $?
+umask | tail -c 4
+
+umask 0246
+umask a-X
+echo ret2 = $?
+umask | tail -c 4
+## STDOUT:
+ret0 = 1
+124
+ret1 = 1
+246
+ret2 = 1
+246
+## END
+## status: 0
+## timeout: 10
+
+#### umask s perm
+umask 0124
+umask a-s
+echo ret0 = $?
+umask | tail -c 4
+
+umask 0124
+umask a+s
+echo ret1 = $?
+umask | tail -c 4
+
+umask 0124
+umask a=s
+echo ret2 = $?
+umask | tail -c 4
+## STDOUT:
+ret0 = 1
+124
+ret1 = 1
+124
+ret2 = 1
+124
+## END
+## status: 0
+## timeout: 10
+
+#### umask t perm
+umask 0124
+umask a-t
+echo ret0 = $?
+umask | tail -c 4
+
+umask 0124
+umask a+t
+echo ret1 = $?
+umask | tail -c 4
+
+umask 0124
+umask a=t
+echo ret2 = $?
+umask | tail -c 4
+## STDOUT:
+ret0 = 1
+124
+ret1 = 1
+124
+ret2 = 1
+124
+## END
+## status: 0
+## timeout: 10
+
+#### umask default who
+umask 0124
+umask =
+umask | tail -c 4
+
+umask 0124
+umask =rx
+echo ret = $?
+umask | tail -c 4
+
+umask 0124
+umask +
+umask | tail -c 4
+
+umask 0124
+# zsh ALSO treats this as just `umask`
+umask - >/dev/null
+umask | tail -c 4
+## STDOUT:
+777
+ret = 0
+222
+124
+124
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-umask builtin-umask (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### umask bare op
+umask 0124
+umask =+=
+umask | tail -c 4
+
+umask 0124
+umask +=
+umask | tail -c 4
+
+umask 0124
+umask =+rwx+rx
+umask | tail -c 4
+## STDOUT:
+124
+124
+124
+## END
+## status: 0
+## timeout: 10

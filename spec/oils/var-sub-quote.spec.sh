@@ -268,3 +268,68 @@ e\nf
 ## status: 0
 ## XFAIL ps-bash gap-oils-var-sub-quote var-sub-quote (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### Multiple words: no quotes
+argv.py ${Unset:-a b c}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Multiple words: no outer quotes, inner single quotes
+argv.py ${Unset:-'a b c'}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Mixed inner quotes
+argv.py ${Unset:-"a b" c}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Mixed inner quotes with outer quotes
+argv.py "${Unset:-"a b" c}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### part_value tree with multiple words
+argv.py ${a:-${a:-"1 2" "3 4"}5 "6 7"}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### part_value tree on RHS
+v=${a:-${a:-"1 2" "3 4"}5 "6 7"}
+argv.py "${v}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Var with multiple words: no quotes
+var='a b c'
+argv.py ${Unset:-$var}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### "${undef-'c d'}" and "${foo%'c d'}" are parsed differently
+
+# quotes are LITERAL here
+argv.py "${undef-'c d'}" "${undef-'c  d'}"
+argv.py ${undef-'c d'} ${undef-'c  d'}
+
+echo ---
+
+# quotes are RESPECTED here
+foo='a b c d'
+argv.py "${foo%'c d'}" "${foo%'c  d'}"
+
+case $SH in dash) exit ;; esac
+
+argv.py "${foo//'c d'/zzz}" "${foo//'c  d'/zzz}"
+argv.py "${foo//'c d'/'zzz'}" "${foo//'c  d'/'zzz'}"
+## stdout: ---
+## status: 127
+## timeout: 10
+## real-launcher

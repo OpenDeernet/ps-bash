@@ -160,3 +160,33 @@ declare -a b=(x y)
 ## stdout:
 ## status: 127
 ## timeout: 10
+
+#### Can't x+= on other YSH types
+
+$SH -c '
+var x = /d+/
+x+=1
+'
+echo eggex $?
+
+$SH -c '
+var d = {}
+d+=1
+'
+echo Dict $?
+
+# This is unspecified for now, could try to match bash
+$SH -c '
+declare -A A=()
+A+=1
+'
+echo BashAssoc $?
+## STDOUT:
+eggex 0
+Dict 0
+BashAssoc 0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-ysh-with-sh ysh-with-sh (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

@@ -109,3 +109,47 @@ fun "a b" "c d"
 ## stdout:
 ## status: 127
 ## timeout: 10
+
+#### $@ $*
+fun() {
+  argv.py $@ $*
+}
+fun "a b" "c d"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### failed command
+ls /nonexistent-zzZZ
+## stdout:
+## status: 2
+## timeout: 10
+
+#### subshell
+(echo 1; echo 2)
+## STDOUT:
+1
+2
+## END
+## status: 0
+## timeout: 10
+
+#### for loop
+for i in a b c
+do
+  echo $i
+done
+## STDOUT:
+a
+b
+c
+## END
+## status: 0
+## timeout: 10
+
+#### vars
+a=5
+echo $a ${a} "$a ${a}"
+## stdout: 5 5 5 5
+## status: 0
+## timeout: 10

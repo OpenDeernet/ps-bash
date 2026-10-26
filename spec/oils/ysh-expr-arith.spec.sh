@@ -241,3 +241,158 @@ echo $b
 ## stdout:
 ## status: 127
 ## timeout: 10
+
+#### Minus operator is left associative
+
+var a = 1 - 0 - 1
+var b = (1 - 0) - 1
+echo a=$a b=$b
+
+var a = 3 - 1 - 2
+var b = (3 - 1) - 2
+echo a=$a b=$b
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Division operators are left associative
+
+var a = 10 / 4 / 2
+var b = 10 / 4 / 2
+echo a=$a b=$b
+
+var a = 9 // 3 // 3
+var b = (9 // 3) // 3
+echo a=$a b=$b
+
+var a = 11 % 6 % 3
+var b = (11 % 6) % 3
+echo a=$a b=$b
+## stdout: a= b=
+## status: 2
+## XFAIL ps-bash gap-oils-ysh-expr-arith ysh-expr-arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Exponentiation is right associative
+
+var a = 3 ** 2 ** 2
+var b = 3 ** (2 ** 2)
+echo a=$a b=$b
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Floating Point Division with /
+
+var i = '1.0' / '0.05'
+
+echo $i
+## STDOUT:
+
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-ysh-expr-arith ysh-expr-arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Big float constants becomes inf and -inf, tiny become 0.0 and -0.0
+
+$SH -c '
+var x = 0.12345
+pp test_ (x)
+'
+echo float=$?
+
+$SH -c '
+# Becomes infinity
+var x = 0.123456789e1234567
+pp test_ (x)
+
+var x = -0.123456789e1234567
+pp test_ (x)
+'
+echo float=$?
+
+$SH -c '
+# Becomes infinity
+var x = 0.123456789e-1234567
+pp test_ (x)
+
+var x = -0.123456789e-1234567
+pp test_ (x)
+'
+echo float=$?
+## STDOUT:
+float=2
+float=2
+float=2
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### Int constants bigger than 64 bits
+
+# Decimal
+$SH -c '
+var x = 1111
+pp test_ (x)
+'
+echo dec=$?
+
+$SH -c '
+var x = 1111_2222_3333_4444_5555_6666
+pp test_ (x)
+'
+echo dec=$?
+
+# Binary
+$SH -c '
+var x = 0b11
+pp test_ (x)
+'
+echo bin=$?
+
+$SH -c '
+var x = 0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111
+pp test_ (x)
+'
+echo bin=$?
+
+# Octal
+$SH -c '
+var x = 0o77
+pp test_ (x)
+'
+echo oct=$?
+
+$SH -c '
+var x = 0o1111_2222_3333_4444_5555_6666
+pp test_ (x)
+'
+echo oct=$?
+
+# Hex
+$SH -c '
+var x = 0xff
+pp test_ (x)
+'
+echo hex=$?
+
+$SH -c '
+var x = 0xaaaa_bbbb_cccc_dddd_eeee_ffff
+pp test_ (x)
+'
+echo hex=$?
+## STDOUT:
+dec=2
+dec=2
+bin=2
+bin=2
+oct=2
+oct=2
+hex=2
+hex=2
+## END
+## status: 0
+## timeout: 10
+## real-launcher

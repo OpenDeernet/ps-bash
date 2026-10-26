@@ -287,3 +287,287 @@ echo status=$?
 ## stdout: status=2
 ## status: 0
 ## timeout: 10
+
+#### first and second word are the same alias, but no trailing space
+shopt -s expand_aliases  # bash requires this
+x=x
+alias echo-x='echo $x'  # nothing is evaluated here
+echo-x echo-x
+## stdout: x echo-x
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### first and second word are the same alias, with trailing space
+shopt -s expand_aliases  # bash requires this
+x=x
+alias echo-x='echo $x '  # nothing is evaluated here
+echo-x echo-x
+## stdout: x echo x
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Invalid syntax of alias
+shopt -s expand_aliases  # bash requires this
+alias echo_alias_= 'echo --; echo'  # bad space here
+echo_alias_ x
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Dynamic alias definition
+shopt -s expand_aliases  # bash requires this
+x=x
+name='echo_alias_'
+val='=echo'
+alias "$name$val"
+echo_alias_ X
+## stdout: X
+## status: 0
+## timeout: 10
+
+#### Alias name with punctuation
+# NOTE: / is not OK in bash, but OK in other shells.  Must less restrictive
+# than var names.
+shopt -s expand_aliases  # bash requires this
+alias e_+.~x='echo'
+e_+.~x X
+## stdout: X
+## status: 0
+## timeout: 10
+
+#### Syntax error after expansion
+shopt -s expand_aliases  # bash requires this
+alias e_=';; oops'
+e_ x
+## stdout:
+## status: 2
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Loop split across alias and arg works
+shopt -s expand_aliases  # bash requires this
+alias e_='for i in 1 2 3; do echo $i;'
+e_ done
+## STDOUT:
+1
+2
+3
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Loop split across alias in another way
+shopt -s expand_aliases
+alias e_='for i in 1 2 3; do echo '
+e_ $i; done
+## STDOUT:
+1
+2
+3
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Loop split across both iterative and recursive aliases
+shopt -s expand_aliases  # bash requires this
+alias FOR1='for '
+alias FOR2='FOR1 '
+alias eye1='i '
+alias eye2='eye1 '
+alias IN='in '
+alias onetwo='$one "2" '  # NOTE: this does NOT work in any shell except bash.
+one=1
+FOR2 eye2 IN onetwo 3; do echo $i; done
+## STDOUT:
+1
+2
+3
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Alias with a quote in the middle is a syntax error
+shopt -s expand_aliases
+alias e_='echo "'
+var=x
+e_ '${var}"'
+## stdout:
+## status: 2
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Alias with internal newlines
+shopt -s expand_aliases
+alias e_='echo 1
+echo 2
+echo 3'
+var='echo foo'
+e_ ${var}
+## STDOUT:
+1
+2
+3 echo foo
+## END
+## status: 0
+## timeout: 10
+
+#### Alias trailing newline
+shopt -s expand_aliases
+alias e_='echo 1
+echo 2
+echo 3
+'
+var='echo foo'
+e_ ${var}
+## STDOUT:
+1
+2
+3
+foo
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Two aliases in pipeline
+shopt -s expand_aliases
+alias SEQ='seq '
+alias THREE='3 '
+alias WC='wc '
+SEQ THREE | WC -l
+## stdout: 3
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Alias not respected inside $()
+# This could be parsed correctly, but it is only defined in a child process.
+shopt -s expand_aliases
+echo $(alias sayhi='echo hello')
+sayhi
+## STDOUT:
+
+## END
+## status: 127
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Alias can be defined and used on a single line
+shopt -s expand_aliases
+alias sayhi='echo hello'; sayhi same line
+sayhi other line
+## stdout: hello other line
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Alias is respected inside eval
+shopt -s expand_aliases
+eval "alias sayhi='echo hello'
+sayhi inside"
+sayhi outside
+## STDOUT:
+hello inside
+hello outside
+## END
+## status: 0
+## timeout: 10
+
+#### alias with environment bindings works
+shopt -s expand_aliases
+alias p_=printenv.py
+FOO=1 printenv.py FOO
+FOO=2 p_ FOO
+## stdout:
+## status: 127
+## timeout: 10
+
+#### alias with line continuation in the middle
+shopt -s expand_aliases
+alias e_='echo '
+alias one='ONE '
+alias two='TWO '
+alias three='THREE'  # no trailing space
+e_ one \
+  two one \
+  two three two \
+  one
+## stdout: ONE TWO ONE TWO THREE two one
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### alias for left brace
+shopt -s expand_aliases
+alias LEFT='{'
+LEFT echo one; echo two; }
+## STDOUT:
+one
+two
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### alias for left paren
+shopt -s expand_aliases
+alias LEFT='('
+LEFT echo one; echo two )
+## STDOUT:
+one
+two
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-alias alias (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### alias used in subshell and command sub
+# This spec seems to be contradictoary?
+# http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_03_01
+# "When used as specified by this volume of POSIX.1-2017, alias definitions
+# shall not be inherited by separate invocations of the shell or by the utility
+# execution environments invoked by the shell; see Shell Execution
+# Environment."
+shopt -s expand_aliases
+alias echo_='echo [ '
+( echo_ subshell; )
+echo $(echo_ commandsub)
+## STDOUT:
+[ subshell
+[ commandsub
+## END
+## status: 0
+## timeout: 10
+
+#### alias used in here doc
+shopt -s expand_aliases
+alias echo_='echo [ '
+cat <<EOF
+$(echo_ ])
+EOF
+## stdout: [ ]
+## status: 0
+## timeout: 10
+
+#### Alias and PS4
+# dash enters an infinite loop!
+case $SH in
+  dash)
+    exit 1
+    ;;
+esac
+
+set -x
+PS4='+$(echo trace) '
+shopt -s expand_aliases
+alias a=argv.py
+a foo bar
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher

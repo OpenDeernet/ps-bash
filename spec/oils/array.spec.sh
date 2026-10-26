@@ -625,3 +625,237 @@ e=()
 ## stdout:
 ## status: 1
 ## timeout: 10
+
+#### Array syntax in wrong place
+ls foo=(1 2)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### Single array with :-
+
+# 2024-06 - bash 5.2 and mksh now match, bash 4.4 differed.
+# Could change OSH
+# zsh agrees with OSH, but it fails most test cases
+# 2025-01 We changed OSH.
+
+single=('')
+argv.py ${single[@]:-none} x "${single[@]:-none}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Stripping a whole array unquoted
+# Problem: it joins it first.
+files=('foo.c' 'sp ace.h' 'bar.c')
+argv.py ${files[@]%.c}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Stripping a whole array quoted
+files=('foo.c' 'sp ace.h' 'bar.c')
+argv.py "${files[@]%.c}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Multiple subscripts not allowed
+# NOTE: bash 4.3 had a bug where it ignored the bad subscript, but now it is
+# fixed.
+a=('123' '456')
+argv.py "${a[0]}" "${a[0][0]}"
+## stdout:
+## status: 1
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Length op, index op, then transform op is not allowed
+a=('123' '456')
+echo "${#a[0]}" "${#a[0]/1/xxx}"
+## stdout:
+## status: 1
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### ${mystr[@]} and ${mystr[*]} are no-ops
+s='abc'
+echo ${s[@]}
+echo ${s[*]}
+## STDOUT:
+abc
+abc
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### ${mystr[@]} and ${mystr[*]} disallowed with strict_array
+
+$SH -c 'shopt -s strict_array; s="abc"; echo ${s[@]}'
+echo status=$?
+
+$SH -c 'shopt -s strict_array; s="abc"; echo ${s[*]}'
+echo status=$?
+## STDOUT:
+abc
+status=0
+abc
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Create a "user" array out of the argv array
+set -- 'a b' 'c'
+array1=('x y' 'z')
+array2=("$@")
+argv.py "${array1[@]}" "${array2[@]}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Tilde expansion within array
+HOME=/home/bob
+a=(~/src ~/git)
+echo "${a[@]}"
+## stdout: /home/bob/src /home/bob/git
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Brace Expansion within Array
+a=(-{a,b} {c,d}-)
+echo "${a[@]}"
+## stdout: -a -b c- d-
+## status: 0
+## timeout: 10
+
+#### array default
+default=('1 2' '3')
+argv.py "${undef[@]:-${default[@]}}"
+## stdout:
+## status: 127
+## timeout: 10
+
+#### Singleton Array Copy and Assign.  OSH can't index strings with ints
+a=( '12 3' )
+b=( "${a[@]}" )
+c="${a[@]}"  # This decays it to a string
+d=${a[*]}  # This decays it to a string
+echo ${#a[0]} ${#b[0]}
+echo ${#a[@]} ${#b[@]}
+
+# osh is intentionally stricter, and these fail.
+echo ${#c[0]} ${#d[0]}
+echo ${#c[@]} ${#d[@]}
+## STDOUT:
+4 4
+1 1
+4 4
+1 1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### a+=() modifies existing instance of BashArray
+case $SH in mksh|bash) exit ;; esac
+
+a=(1 2 3)
+var b = a
+a+=(4 5)
+echo "a=(${a[*]})"
+echo "b=(${b[*]})"
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Regression: unset a[-2]: out-of-bound negative index should cause error
+case $SH in mksh) exit ;; esac
+
+a=(1)
+unset -v 'a[-2]'
+## stdout:
+## status: 1
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Regression: Out-of-bound negative offset for ${a[@]:offset}
+case $SH in mksh) exit ;; esac
+
+a=(1 2 3 4)
+echo "a=(${a[*]})"
+echo "begin=-1 -> (${a[*]: -1})"
+echo "begin=-2 -> (${a[*]: -2})"
+echo "begin=-3 -> (${a[*]: -3})"
+echo "begin=-4 -> (${a[*]: -4})"
+echo "begin=-5 -> (${a[*]: -5})"
+## STDOUT:
+a=(1 2 3 4)
+begin=-1 -> (4)
+begin=-2 -> (3 4)
+begin=-3 -> (2 3 4)
+begin=-4 -> (1 2 3 4)
+begin=-5 -> ()
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Regression: Array length after unset
+case $SH in mksh) exit ;; esac
+
+a=(x)
+a[9]=y
+echo "len ${#a[@]};"
+
+unset -v 'a[-1]'
+echo "len ${#a[@]};"
+echo "last ${a[@]: -1};"
+## STDOUT:
+len 2;
+len 1;
+last x;
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Regression: ${a[@]@Q} crash with `a[0]=x a[2]=y`
+case $SH in mksh) exit ;; esac
+
+a[0]=x
+a[2]=y
+echo "quoted = (${a[@]@Q})"
+## stdout: quoted = ('x' 'y')
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Regression: silent out-of-bound negative index in ${a[-2]} and $((a[-2]))
+case $SH in mksh) exit ;; esac
+
+a=(x)
+echo "[${a[-2]}]"
+echo $?
+echo "[$((a[-2]))]"
+echo $?
+## STDOUT:
+[]
+0
+[0]
+0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

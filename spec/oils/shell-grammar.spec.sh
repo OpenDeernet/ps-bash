@@ -220,3 +220,142 @@ name_a() {
 ## stdout:
 ## status: 0
 ## timeout: 10
+
+#### Command sub
+#echo $(echo word_a; echo word_b;)
+echo
+## STDOUT:
+
+## END
+## status: 0
+## timeout: 10
+
+#### Subshell on multiple lines
+(echo
+echo
+echo
+)
+## STDOUT:
+
+
+
+## END
+## status: 0
+## timeout: 10
+
+#### For loop
+# TODO: need to add variables
+for name in word_a word_b word_c
+do
+  echo word_x
+  echo word_y
+done
+## STDOUT:
+word_x
+word_y
+word_x
+word_y
+word_x
+word_y
+## END
+## status: 0
+## timeout: 10
+
+#### While loop with empty lines
+while ! echo word_a
+do
+
+  echo word_b
+
+  echo word_c
+
+done
+## stdout: word_a
+## status: 0
+## timeout: 10
+
+#### Until loop
+until echo word_a
+do
+  echo word_b
+  echo word_c
+done
+## stdout: word_a
+## status: 0
+## timeout: 10
+
+#### If
+if echo
+then
+  echo
+else
+  echo
+fi
+## STDOUT:
+
+
+## END
+## status: 0
+## timeout: 10
+
+#### If with then on same line
+if echo; then
+  echo
+else
+  echo
+fi
+## STDOUT:
+
+
+## END
+## status: 0
+## timeout: 10
+
+#### If with then on same line missing semicolon
+# My ANTLR parsers fail to flag this.  The 'else' keyword should be unexpected.
+if echo then
+  echo
+else
+  echo
+fi
+## stdout:
+## status: 2
+## timeout: 10
+
+#### If on one line
+if echo; then echo; else echo; fi
+## STDOUT:
+
+
+## END
+## status: 0
+## timeout: 10
+
+#### If pipe
+if echo | echo word_b; then
+  echo
+else
+  echo
+fi
+## STDOUT:
+word_b
+
+## END
+## status: 0
+## timeout: 10
+
+#### Empty case
+case word_a in
+esac
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-shell-grammar shell-grammar (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Case without last dsemi
+case word_a in
+  word_b) echo
+esac
+## stdout:
+## status: 0
+## timeout: 10

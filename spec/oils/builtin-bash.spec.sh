@@ -207,3 +207,88 @@ n=3
 ## END
 ## status: 0
 ## timeout: 10
+
+#### mapfile -t doesn't remove \r
+type mapfile >/dev/null 2>&1 || exit 0
+printf '%s\r\n' {1..5..2} | {
+  mapfile -t arr
+  argv.py "${arr[@]}"
+}
+## stdout:
+## status: 127
+## timeout: 10
+
+#### mapfile -t bugs (ble.sh)
+
+# empty line
+mapfile -t lines <<< $'hello\n\nworld'
+echo len=${#lines[@]}
+#declare -p lines
+
+# initial newline
+mapfile -t lines <<< $'\nhello'
+echo len=${#lines[@]}
+#declare -p lines
+
+# trailing newline
+mapfile -t lines <<< $'hello\n'
+echo len=${#lines[@]}
+#declare -p lines
+## STDOUT:
+len=3
+len=2
+len=2
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-bash builtin-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### mapfile (store position): -O start
+type mapfile >/dev/null 2>&1 || exit 0
+printf '%s\n' a{0..2} | {
+  arr=(x y z)
+  mapfile -O 2 -t arr
+  echo "n=${#arr[@]}"
+  printf '[%s]\n' "${arr[@]}"
+}
+## STDOUT:
+n=5
+[x]
+[y]
+[a0]
+[a1]
+[a2]
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-bash builtin-bash (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### mapfile (input range): -s start -n count
+type mapfile >/dev/null 2>&1 || exit 0
+printf '%s\n' a{0..10} | {
+  mapfile -s 5 -n 3 -t arr
+  echo "n=${#arr[@]}"
+  printf '[%s]\n' "${arr[@]}"
+}
+## STDOUT:
+n=3
+[a5]
+[a6]
+[a7]
+## END
+## status: 0
+## timeout: 10
+
+#### mapfile / readarray stdin  TODO: Fix me.
+shopt -s lastpipe  # for bash
+
+seq 2 | mapfile m
+seq 3 | readarray r
+echo ${#m[@]}
+echo ${#r[@]}
+## STDOUT:
+2
+3
+## END
+## status: 0
+## timeout: 10

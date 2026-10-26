@@ -668,3 +668,50 @@ json write (assoc)
 ## stdout:
 ## status: 2
 ## timeout: 10
+
+#### decode integer larger than 2^64
+
+$SH <<'EOF'
+json read <<< '123456789123456789123456789'
+echo status=$?
+pp test_ (_reply)
+EOF
+
+$SH <<'EOF'
+json read <<< '-123456789123456789123456789'
+echo status=$?
+pp test_ (_reply)
+EOF
+
+echo ok
+## STDOUT:
+status=127
+status=127
+ok
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-ysh-json ysh-json (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Float too big
+
+$SH <<'EOF'
+json read <<< '123456789123456789123456789.12345e67890'
+echo status=$?
+pp test_ (_reply)
+EOF
+
+$SH <<'EOF'
+json read <<< '-123456789123456789123456789.12345e67890'
+echo status=$?
+pp test_ (_reply)
+EOF
+## STDOUT:
+status=127
+status=127
+## END
+## status: 2
+## XFAIL ps-bash gap-oils-ysh-json ysh-json (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

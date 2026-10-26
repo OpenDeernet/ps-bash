@@ -143,3 +143,109 @@ echo ok
 ## stdout: ok
 ## status: 0
 ## timeout: 10
+
+#### unset PS4
+case $SH in dash) echo 'weird bug'; exit ;; esac
+
+set -x
+echo 1
+unset PS4
+echo 2
+## STDOUT:
+1
+2
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### xtrace with unprintable chars
+case $SH in dash) exit ;; esac
+
+$SH >stdout 2>stderr <<'EOF'
+
+s=$'a\x03b\004c\x00d'
+set -o xtrace
+echo "$s"
+EOF
+
+show_hex() { od -A n -t c -t x1; }
+
+echo STDOUT
+cat stdout | show_hex
+echo
+
+echo STDERR
+grep 'echo' stderr 
+## STDOUT:
+STDOUT
+   a 003   b 004   c  \n
+  61  03  62  04  63  0a
+
+STDERR
++ echo $'a\003b\004c'
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-xtrace xtrace (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### xtrace with unicode chars
+case $SH in dash) exit ;; esac
+
+mu1='[μ]'
+mu2=$'[\u03bc]'
+
+set -o xtrace
+echo "$mu1" "$mu2"
+## stdout: [μ] [μ]
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### xtrace with tabs
+case $SH in dash) exit ;; esac
+
+set -o xtrace
+echo $'[\t]'
+# this is a bug because it's hard to see
+## stdout: [	]
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### [[ ]]
+case $SH in dash|mksh) exit ;; esac
+
+set -x
+
+dir=/
+if [[ -d $dir ]]; then
+  (( a = 42 ))
+fi
+## stdout:
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### Regression: xtrace for "declare -a a+=(v)"
+case $SH in dash|mksh) exit ;; esac
+
+a=(1)
+set -x
+declare a+=(2)
+## stdout:
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### Regression: xtrace for "a+=(v)"
+case $SH in dash|mksh) exit ;; esac
+
+a=(1)
+set -x
+a+=(2)
+## stdout:
+## status: 0
+## timeout: 10
+## real-launcher

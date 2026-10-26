@@ -103,3 +103,82 @@ argv.py "${a[*]#-}"
 ## stdout:
 ## status: 127
 ## timeout: 10
+
+#### value.BashArray internal representation - Indexed
+
+case $SH in mksh) exit ;; esac
+
+z=()
+declare -a | grep z=
+
+z+=(b c)
+declare -a | grep z=
+
+# z[5]= finds the index, or puts it in SORTED order I think
+z[5]=d
+declare -a | grep z=
+
+z[1]=ZZZ
+declare -a | grep z=
+
+# Adds after last index
+z+=(f g)
+declare -a | grep z=
+
+# This is the equivalent of z[0]+=mystr
+z+=-mystr
+declare -a | grep z=
+
+z[1]+=-append
+declare -a | grep z=
+
+argv.py keys "${!z[@]}"  # 0 1 5 6 7
+argv.py values "${z[@]}"
+
+# can't do this conversion
+declare -A z
+declare -A | grep z=
+
+echo status=$?
+## STDOUT:
+declare -a z=()
+declare -a z=([0]="b" [1]="c")
+declare -a z=([0]="b" [1]="c" [5]="d")
+declare -a z=([0]="b" [1]="ZZZ" [5]="d")
+declare -a z=([0]="b" [1]="ZZZ" [5]="d" [6]="f" [7]="g")
+declare -a z=([0]="b-mystr" [1]="ZZZ" [5]="d" [6]="f" [7]="g")
+declare -a z=([0]="b-mystr" [1]="ZZZ-append" [5]="d" [6]="f" [7]="g")
+status=1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-compat array-compat (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### value.BashArray internal representation - Assoc (ordering is a problem)
+
+case $SH in mksh) exit ;; esac
+
+declare -A A=([k]=v)
+declare -A | grep A=
+
+argv.py keys "${!A[@]}"
+argv.py values "${A[@]}"
+
+exit
+
+# Huh this actually works, we don't support it
+# Hm the order here is all messed up, in bash 5.2
+A+=([k2]=v2 [0]=foo [9]=9 [9999]=9999)
+declare -A | grep A=
+
+A+=-append
+declare -A | grep A=
+
+argv.py keys "${!A[@]}"
+argv.py values "${A[@]}"
+## stdout: declare -A A=([k]="v" )
+## status: 127
+## XFAIL ps-bash gap-oils-array-compat array-compat (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

@@ -151,3 +151,36 @@ echo foo=${A['foo']}
 ## status: 0
 ## XFAIL ps-bash gap-oils-dparen dparen (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### (( )) result
+(( 1 )) && echo True
+(( 0 )) || echo False
+## STDOUT:
+True
+False
+## END
+## status: 0
+## timeout: 10
+
+#### negative number is true
+(( -1 )) && echo True
+## stdout: True
+## status: 0
+## timeout: 10
+
+#### (( )) in if statement
+if (( 3 > 2)); then
+  echo True
+fi
+## stdout: True
+## status: 0
+## timeout: 10
+
+#### (( ))
+# What is the difference with this and let?  One difference: spaces are allowed.
+(( x = 1 ))
+(( y = x + 2 ))
+echo $x $y
+## stdout: 1 3
+## status: 0
+## timeout: 10

@@ -285,3 +285,189 @@ status=0
 ## status: 0
 ## XFAIL ps-bash gap-oils-errexit errexit (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### errexit with subshell
+set -o errexit
+( echo one; false; echo two; )
+echo three
+## stdout: one
+## status: 1
+## timeout: 10
+
+#### set -o errexit while it's being ignored (moot with strict_errexit)
+set -o errexit
+# osh aborts early here
+if { echo 1; false; echo 2; set -o errexit; echo 3; false; echo 4; }; then
+  echo 5;
+fi
+echo 6
+false  # this is the one that makes shells fail
+echo 7
+## STDOUT:
+1
+2
+3
+4
+5
+6
+## END
+## status: 1
+## timeout: 10
+
+#### set +o errexit while it's being ignored (moot with strict_errexit)
+set -o errexit
+if { echo 1; false; echo 2; set +o errexit; echo 3; false; echo 4; }; then
+  echo 5;
+fi
+echo 6
+false  # does NOT fail, because we restored it.
+echo 7
+## STDOUT:
+1
+2
+3
+4
+5
+6
+7
+## END
+## status: 0
+## timeout: 10
+
+#### set +o errexit with 2 levels of ignored
+set -o errexit
+if { echo 1; ! set +o errexit; echo 2; }; then
+  echo 3
+fi
+echo 6
+false
+echo 7
+## STDOUT:
+1
+2
+3
+6
+7
+## END
+## status: 0
+## timeout: 10
+
+#### setting errexit in a subshell works but doesn't affect parent shell
+( echo 1; false; echo 2; set -o errexit; echo 3; false; echo 4; )
+echo 5
+false
+echo 6
+## STDOUT:
+1
+2
+3
+5
+6
+## END
+## status: 0
+## timeout: 10
+
+#### set errexit while it's ignored in a subshell (moot with strict_errexit)
+set -o errexit
+if ( echo 1; false; echo 2; set -o errexit; echo 3; false; echo 4 ); then
+  echo 5;
+fi
+echo 6  # This is executed because the subshell just returns false
+false 
+echo 7
+## STDOUT:
+1
+2
+3
+4
+5
+6
+## END
+## status: 1
+## timeout: 10
+
+#### shopt -s strict:all || true while errexit is on
+set -o errexit
+shopt -s strict:all || true
+echo one
+false  # fail
+echo two
+## stdout: one
+## status: 1
+## timeout: 10
+
+#### errexit double guard
+# OSH bug fix.  ErrExit needs a counter, not a boolean.
+set -o errexit
+if { ! false; false; true; } then
+  echo true
+fi
+false
+echo done
+## stdout: true
+## status: 1
+## timeout: 10
+
+#### background processes respect errexit
+set -o errexit
+{ echo one; false; echo two; exit 42; } &
+wait $!
+## stdout: one
+## status: 1
+## XFAIL ps-bash gap-oils-errexit errexit (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### pipeline process respects errexit
+set -o errexit
+# It is respected here.
+{ echo one; false; echo two; } | cat
+
+# Also respected here.
+{ echo three; echo four; } | while read line; do
+  echo "[$line]"
+  false
+done
+echo four
+## STDOUT:
+one
+[three]
+## END
+## status: 1
+## XFAIL ps-bash gap-oils-errexit errexit (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### simple command that's an alias - redir failure checked
+
+# bash 5.2 fixed bash 4.4 bug: this is now checked
+
+$SH -c '
+shopt -s expand_aliases
+
+set -o errexit
+alias zz="{ echo 1; echo 2; }"
+zz > /
+echo alias status=$?
+'
+echo status=$?
+## stdout: status=1
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### brace group - redir failure checked
+
+# bash 5.2 fixed bash 4.4 bug: this is now checked
+
+# case from
+# https://lists.gnu.org/archive/html/bug-bash/2020-05/msg00066.html
+
+set -o errexit
+
+{ cat ; } < not_exist.txt   
+
+echo status=$?
+echo 'should not get here'
+## stdout:
+## status: 1
+## XFAIL ps-bash gap-oils-errexit errexit (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10

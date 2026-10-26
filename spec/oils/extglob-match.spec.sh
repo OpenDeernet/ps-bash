@@ -242,3 +242,153 @@ FALSE
 ## END
 ## status: 0
 ## timeout: 10
+
+#### case with extglob
+shopt -s extglob
+for word in --help --verbose --unmatched -- -zxzx -; do
+  case $word in
+    --@(help|verbose) )
+      echo A
+      continue
+      ;;
+    ( --?(b|c) )
+      echo B
+      continue
+      ;;
+    ( -+(x|z) )
+      echo C
+      continue
+      ;;
+    ( -*(x|z) )
+      echo D
+      continue
+      ;;
+    *)
+      echo U
+      continue
+      ;;
+  esac
+done
+## STDOUT:
+A
+A
+U
+B
+C
+D
+## END
+## status: 0
+## timeout: 10
+
+#### [[ $x == !($str) ]]
+shopt -s extglob
+empty=''
+str='x'
+[[ $empty == !($str) ]] && echo TRUE  # test glob match
+[[ $str == !($str) ]]   || echo FALSE
+## STDOUT:
+TRUE
+FALSE
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-extglob-match extglob-match (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Turning extglob on changes the meaning of [[ !(str) ]] in bash
+empty=''
+str='x'
+[[ !($empty) ]]  && echo TRUE   # test if $empty is empty
+[[ !($str) ]]    || echo FALSE  # test if $str is empty
+shopt -s extglob  # mksh doesn't have this
+[[ !($empty) ]]  && echo TRUE   # negated glob
+[[ !($str) ]]    && echo TRUE   # negated glob
+## STDOUT:
+TRUE
+FALSE
+TRUE
+TRUE
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-extglob-match extglob-match (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### With extglob on, !($str) on the left or right of == has different meanings
+shopt -s extglob
+str='x'
+[[ 1 == !($str) ]]  && echo TRUE   # glob match
+## stdout: TRUE
+## status: 0
+## timeout: 10
+
+#### extglob inside arg word
+shopt -s extglob
+[[ foo == @(foo|bar) ]] && echo rhs
+[[ foo == ${unset:-@(foo|bar)} ]] && echo 'rhs arg'
+[[ fo == ${unset:-@(foo|bar)} ]] || echo nope
+## STDOUT:
+rhs
+rhs arg
+nope
+## END
+## status: 0
+## timeout: 10
+
+#### extglob is not detected in regex!
+shopt -s extglob
+[[ foo =~ ^@(foo|bar)$ ]] || echo FALSE
+## stdout: FALSE
+## status: 0
+## timeout: 10
+
+#### regular glob of single unicode char
+shopt -s extglob
+[[ __a__ == __?__ ]]
+echo $?
+[[ __μ__ == __?__ ]]
+echo $?
+## STDOUT:
+0
+0
+## END
+## status: 0
+## timeout: 10
+
+#### extended glob of single unicode char
+shopt -s extglob
+[[ __a__ == @(__?__) ]]
+echo $?
+[[ __μ__ == @(__?__) ]]
+echo $?
+## STDOUT:
+0
+0
+## END
+## status: 0
+## timeout: 10
+
+#### Extended glob in ${x//pat/replace}
+# not supported in OSH due to GlobToERE() strategy for positional info
+
+shopt -s extglob
+x=foo.py
+echo ${x//@(?.py)/Z}
+## stdout: foZ
+## status: 0
+## timeout: 10
+
+#### Extended glob in ${x%PATTERN}
+
+shopt -s extglob
+x=foo.py
+echo 'strip % ' ${x%.@(py|cc)}
+echo 'strip %%' ${x%%.@(py|cc)}
+echo 'strip # ' ${x#@(foo)}
+echo 'strip ##' ${x##@(foo)}
+## STDOUT:
+strip %  foo
+strip %% foo
+strip #  .py
+strip ## .py
+## END
+## status: 0
+## timeout: 10

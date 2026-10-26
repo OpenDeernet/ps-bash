@@ -495,3 +495,112 @@ compgen -F _comp_cmd_test
 ## status: 0
 ## XFAIL ps-bash gap-oils-builtin-completion builtin-completion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### compgen -k shows the same keywords as bash
+
+# bash adds ]] and } and coproc
+
+# Use bash as an oracle
+bash -c 'compgen -k' | sort > bash.txt
+
+# osh vs. bash, or bash vs. bash
+$SH -c 'compgen -k' | sort > this-shell.txt
+
+#comm bash.txt this-shell.txt
+
+# show lines in both files
+comm -12 bash.txt this-shell.txt | egrep -v 'coproc|select'
+## STDOUT:
+!
+[[
+]]
+case
+do
+done
+elif
+else
+esac
+fi
+for
+function
+if
+in
+then
+time
+until
+while
+{
+}
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-completion builtin-completion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### compgen doesn't respect -X for user-defined functions
+# WORKAROUND: wrap in bash -i -c because non-interactive bash behaves
+# differently!
+case $SH in
+  *bash|*osh)
+    $SH --rcfile /dev/null -i -c '
+shopt -s extglob
+fun() {
+  COMPREPLY=(one two three bin)
+}
+compgen -X "@(two|bin)" -F fun
+echo --
+compgen -X "!@(two|bin)" -F fun
+'
+esac
+## STDOUT:
+one
+three
+--
+two
+bin
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-completion builtin-completion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### compgen -W words -X filter
+# WORKAROUND: wrap in bash -i -c because non-interactive bash behaves
+# differently!
+case $SH in
+  *bash|*osh)
+      $SH --rcfile /dev/null -i -c 'shopt -s extglob; compgen -X "@(two|bin)" -W "one two three bin"'
+esac
+## STDOUT:
+one
+three
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-completion builtin-completion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### compadjust with empty COMP_ARGV
+case $SH in bash) exit ;; esac
+
+COMP_ARGV=()
+compadjust words
+argv.py "${words[@]}"
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-completion builtin-completion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### compadjust with sparse COMP_ARGV
+case $SH in bash) exit ;; esac
+
+COMP_ARGV=({0..9})
+unset -v 'COMP_ARGV['{1,3,4,6,7,8}']'
+compadjust words
+argv.py "${words[@]}"
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-completion builtin-completion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

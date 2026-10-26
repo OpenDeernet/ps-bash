@@ -293,3 +293,264 @@ trap -- '' SIGUSR2
 ## status: 0
 ## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### SIGINT and INT are aliases
+trap - SIGINT
+echo $?
+trap - INT
+echo $?
+## STDOUT:
+0
+0
+## END
+## status: 0
+## timeout: 10
+
+#### trap without args prints traps
+trap 'echo exit' EXIT
+echo status=$?
+
+trap
+echo status=$?
+## STDOUT:
+status=0
+trap -- 'echo exit' EXIT
+status=0
+exit
+## END
+## status: 0
+## timeout: 10
+
+#### print trap handler with multiple lines
+trap 'echo 1
+echo 2
+echo 3' INT
+
+trap
+## STDOUT:
+trap -- 'echo 1
+echo 2
+echo 3' SIGINT
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### trap -p is like trap: it prints the handlers and full signal names
+case $SH in dash) exit ;; esac
+trap "echo INT" INT
+trap "echo EXIT" EXIT
+trap -p
+## STDOUT:
+trap -- 'echo EXIT' EXIT
+trap -- 'echo INT' SIGINT
+EXIT
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Register the same handler for multiple signals
+trap 'echo test' TERM 2 EXIT
+trap
+## STDOUT:
+trap -- 'echo test' EXIT
+trap -- 'echo test' SIGINT
+trap -- 'echo test' SIGTERM
+test
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Remove multiple handlers with trap -
+trap "echo int" INT
+trap "echo e" EXIT
+trap - int 0 3
+trap
+
+echo ---
+trap "echo int" INT
+trap "echo e" EXIT
+trap - int 0 -99
+if test $? -ne 0; then
+  echo ok
+fi
+## STDOUT:
+---
+ok
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### trap EXIT clears the EXIT trap
+trap "echo INT" INT
+trap "echo EXIT" EXIT
+trap
+echo ---
+trap EXIT
+trap
+echo ---
+trap INT
+trap
+## STDOUT:
+trap -- 'echo EXIT' EXIT
+trap -- 'echo INT' SIGINT
+---
+trap -- 'echo INT' SIGINT
+---
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### trap 0 is equivalent to trap EXIT
+trap "echo INT" INT
+trap "echo EXIT" 0  # EXIT
+trap
+echo ---
+trap 0
+trap
+## STDOUT:
+trap -- 'echo EXIT' EXIT
+trap -- 'echo INT' SIGINT
+---
+trap -- 'echo INT' SIGINT
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### trap 1 is equivalent to SIGHUP; HUP is equivalent to SIGHUP
+trap 'echo HUP' SIGHUP
+echo status=$?
+trap 'echo HUP' HUP
+echo status=$?
+trap 'echo HUP' 1
+echo status=$?
+trap - HUP
+echo status=$?
+## STDOUT:
+status=0
+status=0
+status=0
+status=0
+## END
+## status: 0
+## timeout: 10
+
+#### trap 0 2 resets EXIT AND SIGINT
+
+trap "echo EXIT" EXIT
+echo ---
+trap
+echo ---
+trap 0 2
+trap
+echo ---
+trap "echo INT" INT
+trap "echo EXIT" EXIT
+trap 2 EXIT
+trap
+## STDOUT:
+---
+trap -- 'echo EXIT' EXIT
+---
+---
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### trap '' EXIT - printing state
+
+trap 'echo exit' EXIT
+trap
+echo
+
+trap '' EXIT
+trap
+echo
+
+trap '# comment' EXIT
+trap
+## STDOUT:
+trap -- 'echo exit' EXIT
+
+trap -- '' EXIT
+
+trap -- '# comment' EXIT
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### trap EXIT sees $? of the last command, with sh -c
+$SH -c 'trap "echo status=\$?" EXIT; ( exit 5 )'
+echo outer=$?
+## STDOUT:
+status=5
+outer=5
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Remove trap with an unsigned integer
+
+$SH -e -c '
+trap "echo noprint" EXIT
+trap 0 EXIT
+echo ok0
+'
+echo
+
+$SH -e -c '
+trap "echo noprint" EXIT
+trap " 42 " EXIT
+echo ok42space
+'
+echo
+
+# corner case: sometimes 07 is treated as octal, but not here
+$SH -e -c '
+trap "echo noprint" EXIT
+trap 07 EXIT
+echo ok07
+'
+echo
+
+$SH -e -c '
+trap "echo trap-exit" EXIT
+trap -1 EXIT
+echo bad
+'
+if test $? -ne 0; then
+  echo failure
+fi
+## STDOUT:
+ok0
+
+ok42space
+
+ok07
+
+trap-exit
+failure
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-trap builtin-trap (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### trap with command.NoOp - check internal invariant
+
+$SH -c 'trap "> zz" EXIT'
+wc -l zz  # should exist
+## stdout: 0 zz
+## status: 0
+## timeout: 10
+## real-launcher

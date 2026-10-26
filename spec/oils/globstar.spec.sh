@@ -56,3 +56,33 @@ directory/leaf.md
 ## END
 ## status: 0
 ## timeout: 10
+
+#### globstar is off -> ** is treated like *
+case $SH in zsh) exit ;; esac
+
+shopt -u globstar
+
+mkdir -p c/subdir
+touch {leaf.md,c/leaf.md,c/subdir/leaf.md}
+
+echo **/*.* | sort
+## stdout: c/leaf.md
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### in zsh, ***/ follows symlinked directories, while **/ does not
+case $SH in bash) exit ;; esac
+
+mkdir directory-1
+mkdir directory-2
+touch directory-2/leaf-2.md
+ln -s -T ../directory-2 directory-1/symlink
+
+echo **/*.* | sort
+echo ***/*.* | sort
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-globstar globstar (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

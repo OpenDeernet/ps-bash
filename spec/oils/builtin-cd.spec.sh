@@ -207,3 +207,136 @@ pwd / >/dev/null || echo 'too many args!'
 ## stdout:
 ## status: 0
 ## timeout: 10
+
+#### 'unset PWD; pwd' before any cd (tickles a rare corner case)
+dir=/tmp/oil-spec-test/pwd-2
+mkdir -p $dir
+cd $dir
+
+# ensure clean shell process state
+$SH -c 'unset PWD; pwd'
+## stdout: /tmp/oil-spec-test/pwd-2
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### lie about PWD; pwd before any cd
+dir=/tmp/oil-spec-test/pwd-3
+mkdir -p $dir
+cd $dir
+
+# ensure clean shell process state
+$SH -c 'PWD=foo; pwd'
+## stdout: /tmp/oil-spec-test/pwd-3
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-cd builtin-cd (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Change directory in non-shell parent process (make or Python)
+
+# inspired by Perl package bug
+
+old_dir=$(pwd)
+
+mkdir -p cpan/Encode/Byte
+
+# Simulate make changing the dir
+wrapped_chdir() {
+  #set -- $SH -c 'echo BEFORE; pwd; echo CD; cd Byte; echo AFTER; pwd'
+
+  set -- $SH -c 'cd Byte; pwd'
+  # strace comes out the same - one getcwd() and one chdir()
+  #set -- strace -e 'getcwd,chdir' "$@"
+
+  python2 -c '
+from __future__ import print_function
+import os, sys, subprocess
+
+argv = sys.argv[1:]
+print("Python PWD = %r" % os.getenv("PWD"), file=sys.stderr)
+print("Python argv = %r" % argv, file=sys.stderr)
+
+os.chdir("cpan/Encode")
+subprocess.check_call(argv)
+' "$@"
+}
+
+#wrapped_chdir
+new_dir=$(wrapped_chdir)
+
+#echo $old_dir
+
+# Make the test insensitive to absolute paths
+echo "${new_dir##$old_dir}"
+## STDOUT:
+
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### What happens when inherited $PWD and current dir disagree?
+
+DIR=/tmp/osh-spec-cd
+mkdir -p $DIR
+cd $DIR
+
+old_dir=$(pwd)
+
+mkdir -p cpan/Encode/Byte
+
+# Simulate make changing the dir
+wrapped_chdir() {
+  #set -- $SH -c 'echo BEFORE; pwd; echo CD; cd Byte; echo AFTER; pwd'
+
+  # disagreement before we gert here
+  set -- $SH -c '
+echo "PWD = $PWD"; pwd
+cd Byte; echo cd=$?
+echo "PWD = $PWD"; pwd
+'
+
+  # strace comes out the same - one getcwd() and one chdir()
+  #set -- strace -e 'getcwd,chdir' "$@"
+
+  python2 -c '
+from __future__ import print_function
+import os, sys, subprocess
+
+argv = sys.argv[1:]
+print("Python argv = %r" % argv, file=sys.stderr)
+
+os.chdir("cpan/Encode")
+print("Python PWD = %r" % os.getenv("PWD"), file=sys.stdout)
+sys.stdout.flush()
+
+subprocess.check_call(argv)
+' "$@"
+}
+
+#unset PWD
+wrapped_chdir
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### Survey of getcwd() syscall
+
+# This is not that important -- see core/sh_init.py
+# Instead of verifying that stat('.') == stat(PWD), which is two sycalls,
+# OSH just calls getcwd() unconditionally.
+
+# so C++ leak sanitizer  doesn't print to stderr
+export ASAN_OPTIONS='detect_leaks=0'
+
+strace -e getcwd -- $SH -c 'echo hi; pwd; echo $PWD' 1> /dev/null 2> err.txt
+
+wc -l err.txt
+#cat err.txt
+## stdout: 1 err.txt
+## status: 0
+## timeout: 10
+## real-launcher

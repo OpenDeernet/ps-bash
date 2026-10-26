@@ -195,3 +195,82 @@ cat test_osh
 ## stdout:
 ## status: 0
 ## timeout: 10
+
+#### : 3>&3 (OSH regression)
+
+# mksh started being flaky on the continuous build and during release.  We
+# don't care!  Related to issue #330.
+case $SH in mksh) exit ;; esac
+
+: 3>&3
+echo hello
+## stdout: hello
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### >&word redirects stdout and stderr when word is not a number or -
+
+# dash, mksh don't implement this bash behaviour.
+case $SH in dash|mksh) exit 1 ;; esac
+
+tmp="$(basename $SH)-$$.txt"  # unique name for shell and test case
+
+stdout_stderr.py >&$tmp
+
+# order is indeterminate
+grep STDOUT $tmp
+grep STDERR $tmp
+## stdout:
+## status: 1
+## XFAIL ps-bash gap-oils-redirect redirect (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### exec {fd}>&- (OSH regression: fails to close fd)
+# mksh, dash do not implement {fd} redirections.
+case $SH in mksh|dash) exit 1 ;; esac
+# oil 0.8.pre4 fails to close fd by {fd}&-.
+exec {fd}>file1
+echo foo55 >&$fd
+exec {fd}>&-
+echo bar >&$fd
+cat file1
+## stdout: foo55
+## status: 0
+## XFAIL ps-bash gap-oils-redirect redirect (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Parsing of x={myvar} and related cases
+case $SH in dash) exit ;; esac
+
+echo {myvar}>/dev/stdout
+# Bash chooses fds starting with 10 here, osh with 100, and there can already
+# be some open fds, so compare further fds against this one
+starting_fd=$myvar
+
+echo x={myvar}>/dev/stdout
+echo $((myvar-starting_fd))
+echo x={myvar} >/dev/stdout
+echo $((myvar-starting_fd))
+echo x= {myvar}>/dev/stdout
+echo $((myvar-starting_fd))
+
+echo +{myvar}>/dev/stdout
+echo $((myvar-starting_fd))
+echo +{myvar} >/dev/stdout
+echo $((myvar-starting_fd))
+echo + {myvar}>/dev/stdout
+echo $((myvar-starting_fd))
+## STDOUT:
+0
+0
+0
+0
+0
+0
+## END
+## status: 0
+## timeout: 10
+## real-launcher

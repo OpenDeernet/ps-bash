@@ -66,3 +66,91 @@ c
 ## status: 0
 ## XFAIL ps-bash gap-oils-arith-context arith-context (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### Triple parens should be disambiguated
+# The first paren is part of the math, parens 2 and 3 are a single token ending
+# arith sub.
+((a=1 + (2*3)))
+echo $a $((1 + (2*3)))
+## stdout: 7 7
+## status: 0
+## timeout: 10
+
+#### Quadruple parens should be disambiguated
+((a=1 + (2 * (3+4))))
+echo $a $((1 + (2 * (3+4))))
+## stdout: 15 15
+## status: 0
+## timeout: 10
+
+#### Empty expression for (( ))
+
+for (( ; ; )); do
+  echo one
+  break
+done
+## stdout: one
+## status: 0
+## timeout: 10
+
+#### Empty expression in ${a[@]: : }
+
+a=(a b c d e f)
+
+# space required here -- see spec/var-op-slice
+echo slice ${a[@]: }
+echo status=$?
+echo
+
+echo slice ${a[@]: : }
+echo status=$?
+echo
+
+# zsh doesn't accept this
+echo slice ${a[@]:: }
+echo status=$?
+## STDOUT:
+slice a b c d e f
+status=0
+
+slice
+status=0
+
+slice
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-arith-context arith-context (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Empty expression a[]
+
+a=(1 2 3)
+
+a[]=42
+echo status=$?
+echo ${a[@]}
+
+echo ${a[]}
+echo status=$?
+
+
+
+# runtime failures
+
+
+
+
+# Others 
+# [ 1+2 -eq 3 ]
+# [[ 1+2 -eq 3 ]]
+# unset a[]
+# printf -v a[]
+## STDOUT:
+status=1
+1 2 3
+status=1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-arith-context arith-context (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10

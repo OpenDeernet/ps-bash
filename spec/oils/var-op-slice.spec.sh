@@ -221,3 +221,83 @@ argv.py ${@:0:}
 ## END
 ## status: 127
 ## timeout: 10
+
+#### ${@:offset} and ${*:offset}
+case $SH in zsh) return ;; esac  # zsh is very different
+
+argv.shell-name-checked () {
+  argv.py "${@//$0/SHELL}"
+}
+fun() {
+  argv.shell-name-checked -${*:0}- # include $0
+  argv.shell-name-checked -${*:1}- # from $1
+  argv.shell-name-checked -${*:3}- # last parameter $3
+  argv.shell-name-checked -${*:4}- # empty
+  argv.shell-name-checked -${*:5}- # out of boundary
+  argv.shell-name-checked -${@:0}-
+  argv.shell-name-checked -${@:1}-
+  argv.shell-name-checked -${@:3}-
+  argv.shell-name-checked -${@:4}-
+  argv.shell-name-checked -${@:5}-
+  argv.shell-name-checked "-${*:0}-"
+  argv.shell-name-checked "-${*:1}-"
+  argv.shell-name-checked "-${*:3}-"
+  argv.shell-name-checked "-${*:4}-"
+  argv.shell-name-checked "-${*:5}-"
+  argv.shell-name-checked "-${@:0}-"
+  argv.shell-name-checked "-${@:1}-"
+  argv.shell-name-checked "-${@:3}-"
+  argv.shell-name-checked "-${@:4}-"
+  argv.shell-name-checked "-${@:5}-"
+}
+fun "a 1" "b 2" "c 3"
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### ${@:offset:length} and ${*:offset:length}
+case $SH in zsh) return ;; esac  # zsh is very different
+
+argv.shell-name-checked () {
+  argv.py "${@//$0/SHELL}"
+}
+fun() {
+  argv.shell-name-checked -${*:0:2}- # include $0
+  argv.shell-name-checked -${*:1:2}- # from $1
+  argv.shell-name-checked -${*:3:2}- # last parameter $3
+  argv.shell-name-checked -${*:4:2}- # empty
+  argv.shell-name-checked -${*:5:2}- # out of boundary
+  argv.shell-name-checked -${@:0:2}-
+  argv.shell-name-checked -${@:1:2}-
+  argv.shell-name-checked -${@:3:2}-
+  argv.shell-name-checked -${@:4:2}-
+  argv.shell-name-checked -${@:5:2}-
+  argv.shell-name-checked "-${*:0:2}-"
+  argv.shell-name-checked "-${*:1:2}-"
+  argv.shell-name-checked "-${*:3:2}-"
+  argv.shell-name-checked "-${*:4:2}-"
+  argv.shell-name-checked "-${*:5:2}-"
+  argv.shell-name-checked "-${@:0:2}-"
+  argv.shell-name-checked "-${@:1:2}-"
+  argv.shell-name-checked "-${@:3:2}-"
+  argv.shell-name-checked "-${@:4:2}-"
+  argv.shell-name-checked "-${@:5:2}-"
+}
+fun "a 1" "b 2" "c 3"
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher
+
+#### ${array[@]:} vs ${array[@]: }  - bash and zsh inconsistent
+
+$SH -c 'array=(1 2 3); argv.py ${array[@]:}'
+$SH -c 'array=(1 2 3); argv.py space ${array[@]: }'
+
+$SH -c 's=123; argv.py ${s:}'
+$SH -c 's=123; argv.py space ${s: }'
+## stdout:
+## status: 127
+## timeout: 10
+## real-launcher

@@ -158,3 +158,30 @@ rm dir/cmd
 ## stdout: path
 ## status: 0
 ## timeout: 10
+
+#### sourcing along PATH should ignore directories
+
+mkdir -p _tmp/shell
+mkdir -p _tmp/dir/hello.sh
+printf 'echo hi' >_tmp/shell/hello.sh
+
+DIR=$PWD/_tmp/dir
+SHELL=$PWD/_tmp/shell
+
+# Should find the file hello.sh right away and source it
+PATH="$SHELL:$PATH" . hello.sh
+echo status=$?
+
+# Should fail because hello.sh cannot be found
+PATH="$DIR:$SHELL:$PATH" . hello.sh
+echo status=$?
+## STDOUT:
+hi
+status=0
+hi
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-builtin-eval-source builtin-eval-source (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

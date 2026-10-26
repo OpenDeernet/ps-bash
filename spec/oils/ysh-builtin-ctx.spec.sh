@@ -42,3 +42,40 @@ json write (b)
 ## stdout:
 ## status: 2
 ## timeout: 10
+
+#### mini-parseArgs
+proc parser (; place ; ; block_def) {
+  var p = {}
+  ctx push (p; ; block_def)
+  call place->setValue(p)
+}
+
+var Bool = "Bool"
+var Int = "Int"
+proc flag (short_name, long_name; type; help) {
+  ctx emit flag ({short_name, long_name, type, help})
+}
+
+proc arg (name) {
+  ctx emit arg ({name})
+}
+
+parser (&spec) {
+  flag -t --tsv (Bool, help='Output as a TSV')
+  flag -r --recursive (Bool, help='Recurse into the given directory')
+  flag -N --count (Int, help='Process no more than N files')
+  arg path
+}
+json write (spec)
+## stdout:
+## status: 2
+## timeout: 10
+
+#### ctx with value.Place, not List/Dict (error location bug fix)
+
+ctx push (&p) {
+  true
+}
+## stdout:
+## status: 2
+## timeout: 10

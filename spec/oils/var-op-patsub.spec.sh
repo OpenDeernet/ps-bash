@@ -174,3 +174,192 @@ z/git/oilshell
 ## status: 0
 ## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### Replace fixed strings
+s=xx_xx
+echo ${s/xx/yy} ${s//xx/yy} ${s/#xx/yy} ${s/%xx/yy}
+## stdout: yy_xx yy_yy yy_xx xx_yy
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Replace char class
+s=xx_xx_xx
+echo ${s//[[:alpha:]]/y} ${s//[^[:alpha:]]/-}
+## stdout: yy_yy_yy xx-xx-xx
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Replace hard glob
+s='aa*bb+cc'
+echo ${s//\**+/__}  # Literal *, then any sequence of characters, then literal +
+## stdout: aa__cc
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### ${v/} is empty search and replacement
+v=abcde
+echo -${v/}-
+echo status=$?
+## STDOUT:
+-abcde-
+status=0
+## END
+## status: 0
+## timeout: 10
+
+#### ${v//} is empty search and replacement
+v='a/b/c'
+echo -${v//}-
+echo status=$?
+## STDOUT:
+-a/b/c-
+status=0
+## END
+## status: 0
+## timeout: 10
+
+#### Confusing unquoted slash matches bash (and ash)
+x='/_/'
+echo ${x////c}
+
+echo ${x//'/'/c}
+## STDOUT:
+c_c
+c_c
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Synthesized ${x///} bug (similar to above)
+
+# found via test/parse-errors.sh
+
+x='slash / brace } hi'
+echo 'ambiguous:' ${x///}
+
+echo 'quoted:   ' ${x//'/'}
+
+# Wow we have all combination here -- TERRIBLE
+## STDOUT:
+ambiguous: slash brace } hi
+quoted:    slash brace } hi
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### ${v/a} is the same as ${v/a/}  -- no replacement string
+v='aabb'
+echo ${v/a}
+echo status=$?
+## STDOUT:
+abb
+status=0
+## END
+## status: 0
+## timeout: 10
+
+#### Replacement with special chars (bug fix)
+v=xx
+echo ${v/x/"?"}
+## stdout: ?x
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Replace backslash
+v='[\f]'
+x='\f'
+echo ${v/"$x"/_}
+
+# mksh and zsh differ on this case, but this is consistent with the fact that
+# \f as a glob means 'f', not '\f'.  TODO: Warn that it's a bad glob?
+# The canonical form is 'f'.
+echo ${v/$x/_}
+
+echo ${v/\f/_}
+echo ${v/\\f/_}
+## STDOUT:
+[_]
+[\_]
+[\_]
+[_]
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Replace right ]
+v='--]--'
+x=']'
+echo ${v/"$x"/_}
+echo ${v/$x/_}
+## STDOUT:
+--_--
+--_--
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Substitute glob characters in pattern, quoted and unquoted
+
+# INFINITE LOOP in ash!
+case $SH in ash) exit ;; esac
+
+g='*'
+v='a*b'
+echo ${v//"$g"/-}
+echo ${v//$g/-}
+## STDOUT:
+a-b
+-
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Substitute one unicode character (UTF-8)
+export LANG='en_US.UTF-8'
+
+s='_μ_ and _μ_'
+
+# ? should match one char
+
+echo ${s//_?_/foo}  # all
+echo ${s/#_?_/foo}  # left
+echo ${s/%_?_/foo}  # right
+## STDOUT:
+foo and foo
+foo and _μ_
+_μ_ and foo
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Chromium from http://www.oilshell.org/blog/2016/11/07.html
+
+case $SH in zsh) exit ;; esac
+
+HOST_PATH=/foo/bar/baz
+echo ${HOST_PATH////\\/}
+
+# The way bash parses it
+echo ${HOST_PATH//'/'/\\/}
+
+
+# zsh has crazy bugs
+## STDOUT:
+\/foo\/bar\/baz
+\/foo\/bar\/baz
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-var-op-patsub var-op-patsub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

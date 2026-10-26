@@ -709,3 +709,196 @@ echo status=$?
 ## status: 0
 ## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### Integer constant validation
+check() {
+  $SH -c "shopt --set strict_arith; echo $1"
+  echo status=$?
+}
+
+check '$(( 0x1X ))'
+check '$(( 09 ))'
+check '$(( 2#A ))'
+check '$(( 02#0110 ))'
+## STDOUT:
+status=1
+status=1
+status=1
+status=1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### More 64-bit ops
+case $SH in dash) exit ;; esac
+
+#shopt -s strict_arith
+
+# This overflows - the extra 9 puts it above 2**31
+#echo $(( 12345678909 ))
+
+[[ 12345678909 = $(( 1 << 30 )) ]]
+echo eq=$?
+[[ 12345678909 = 12345678909 ]]
+echo eq=$?
+
+# Try both [ and [[
+[ 12345678909 -gt $(( 1 << 30 )) ]
+echo greater=$?
+[[ 12345678909 -gt $(( 1 << 30 )) ]]
+echo greater=$?
+
+[[ 12345678909 -ge $(( 1 << 30 )) ]]
+echo ge=$?
+[[ 12345678909 -ge 12345678909 ]]
+echo ge=$?
+
+[[ 12345678909 -le $(( 1 << 30 )) ]]
+echo le=$?
+[[ 12345678909 -le 12345678909 ]]
+echo le=$?
+
+
+# mksh still uses int!
+## STDOUT:
+eq=1
+eq=0
+greater=0
+greater=0
+ge=0
+ge=0
+le=1
+le=0
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### Invalid constant
+
+echo $((a + x42))
+echo status=$?
+
+# weird asymmetry -- the above is a syntax error, but this isn't
+$SH -c 'echo $((a + 42x))'
+echo status=$?
+
+# regression
+echo $((a + 42x))
+echo status=$?
+## STDOUT:
+0
+status=0
+status=1
+status=1
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### Negative numbers with bit shift
+
+echo $(( 5 << 1 ))
+echo $(( 5 << 0 ))
+$SH -c 'echo $(( 5 << -1 ))'  # implementation defined - OSH fails
+echo ---
+
+echo $(( 16 >> 1 ))
+echo $(( 16 >> 0 ))
+$SH -c 'echo $(( 16 >> -1 ))'  # not sure why this is zero
+$SH -c 'echo $(( 16 >> -2 ))'  # also 0
+echo ---
+## STDOUT:
+10
+5
+-9223372036854775808
+---
+8
+16
+0
+0
+---
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### undef[0]
+case $SH in dash) exit ;; esac
+
+echo ARITH $(( undef[0] ))
+echo status=$?
+echo
+
+(( undef[0] ))
+echo status=$?
+echo
+
+echo UNDEF ${undef[0]}
+echo status=$?
+## STDOUT:
+ARITH 0
+status=0
+
+status=1
+
+UNDEF
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### undef[0] with nounset
+case $SH in dash) exit ;; esac
+
+set -o nounset
+echo UNSET $(( undef[0] ))
+echo status=$?
+## stdout:
+## status: 1
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### s[0] with string abc
+case $SH in dash) exit ;; esac
+
+s='abc'
+echo abc $(( s[0] )) $(( s[1] ))
+echo status=$?
+echo
+
+(( s[0] ))
+echo status=$?
+echo
+## STDOUT:
+abc 0 0
+status=0
+
+status=1
+
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### s[0] with string 42
+case $SH in dash) exit ;; esac
+
+s='42'
+echo 42 $(( s[0] )) $(( s[1] ))
+echo status=$?
+## STDOUT:
+42 42 0
+status=0
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

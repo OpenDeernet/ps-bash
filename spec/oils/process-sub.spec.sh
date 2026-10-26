@@ -74,3 +74,84 @@ fork
 ## END
 ## status: 0
 ## timeout: 10
+
+#### status code is available
+
+shopt --set parse_at
+
+cat <(seq 2; exit 2) <(seq 3; exit 3)
+
+case $SH in bash*|zsh) exit ;; esac
+
+echo status @_process_sub_status
+echo done
+## STDOUT:
+1
+2
+1
+2
+3
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-process-sub process-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### shopt -s process_sub_fail
+
+case $SH in bash*|zsh) exit ;; esac
+
+shopt --set parse_at
+
+cat <(echo a; exit 2) <(echo b; exit 3)
+echo status=$? ps @_process_sub_status
+
+echo __
+shopt -s process_sub_fail
+
+cat <(echo a; exit 2) <(echo b; exit 3)
+echo status=$? ps @_process_sub_status
+
+# Now exit because of it
+set -o errexit
+
+cat <(echo a; exit 2) <(echo b; exit 3)
+echo status=$? ps @_process_sub_status
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-process-sub process-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### process subs and pipelines together
+
+# zsh is very similar to bash, but don't bother with the assertions
+case $SH in bash*|zsh) exit ;; esac
+
+shopt --set parse_at
+
+f() {
+  cat <(seq 1; exit 1) | {
+    cat <(seq 2; exit 2) <(seq 3; exit 3)
+
+    # 2022-11 workaround for race condition: sometimes we get pipeline=141 4
+    # instead of pipeline=0 4, which means that the first 'cat' got SIGPIPE.
+    # If we make this part of the pipeline take longer, then 'cat' should have
+    # a chance to finish.
+
+    sleep 0.01
+
+    (exit 4)
+  }
+  echo status=$?
+  echo process_sub @_process_sub_status
+  echo pipeline @_pipeline_status
+  echo __
+}
+
+f
+## stdout:
+## status: 0
+## XFAIL ps-bash gap-oils-process-sub process-sub (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

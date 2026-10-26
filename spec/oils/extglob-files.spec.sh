@@ -299,3 +299,25 @@ status=0
 ## status: 0
 ## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### no match
+shopt -s extglob
+echo @(__nope__)
+
+# OSH has glob quoting here
+echo @(__nope__*|__nope__?|'*'|'?'|'[:alpha:]'|'|')
+
+if test $SH != osh; then
+  exit
+fi
+
+# OSH has this alias for @()
+echo ,(osh|style)
+## STDOUT:
+@(__nope__)
+@(__nope__*|__nope__?|*|?|[:alpha:]||)
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-extglob-files extglob-files (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

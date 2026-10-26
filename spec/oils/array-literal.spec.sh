@@ -226,3 +226,65 @@ status=1
 ## status: 127
 ## XFAIL ps-bash gap-oils-array-literal array-literal (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### (strict_array) s+=()
+case $SH in bash) ;; *) shopt --set strict_array ;; esac
+
+s1=hello
+s2=world
+
+# Overwriting Str with a new BashArray is allowed
+eval 's1=(1 2 3 4)'
+echo status=$?
+declare -p s1
+# Promoting Str to a BashArray is disallowed
+eval 's2+=(1 2 3 4)'
+echo status=$?
+declare -p s2
+## STDOUT:
+status=0
+declare -a s1=([0]="1" [1]="2" [2]="3" [3]="4")
+status=0
+declare -a s2=([0]="world" [1]="1" [2]="2" [3]="3" [4]="4")
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-literal array-literal (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### (strict_array) declare -A s+=()
+case $SH in bash) ;; *) shopt --set strict_array ;; esac
+
+s1=hello
+s2=world
+
+# Overwriting Str with a new BashAssoc is allowed
+eval 'declare -A s1=([a]=x [b]=y)'
+echo status=$?
+declare -p s1
+# Promoting Str to a BashAssoc is disallowed
+eval 'declare -A s2+=([a]=x [b]=y)'
+echo status=$?
+declare -p s2
+## STDOUT:
+status=0
+declare -A s1=([b]="y" [a]="x" )
+status=0
+declare -A s2=([0]="world" [b]="y" [a]="x" )
+## END
+## status: 0
+## XFAIL ps-bash gap-oils-array-literal array-literal (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher
+
+#### (strict_array) assoc=(key value ...) is not allowed
+case $SH in bash) ;; *) shopt --set strict_array ;; esac
+
+declare -A a=([a]=b)
+eval "a=(1 2 3 4)"
+declare -p a
+## stdout: declare -A a=([3]="4" [1]="2" )
+## status: 0
+## XFAIL ps-bash gap-oils-array-literal array-literal (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+## real-launcher

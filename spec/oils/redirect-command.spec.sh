@@ -72,3 +72,102 @@ end
 ## status: 0
 ## XFAIL ps-bash gap-oils-redirect-command redirect-command (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
+
+#### < file in pipeline and subshell doesn't work
+echo FOO > file2
+
+# This only happens in command subs, which is weird
+< file2 | tr A-Z a-z
+( < file2 )
+echo end
+## stdout: end
+## status: 0
+## XFAIL ps-bash gap-oils-redirect-command redirect-command (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
+## timeout: 10
+
+#### Redirect in command sub
+FOO=$(echo foo 1>&2)
+echo $FOO
+## STDOUT:
+
+## END
+## status: 0
+## timeout: 10
+
+#### Redirect in function body
+fun() { echo hi; } 1>&2
+fun
+## stdout:
+## status: 0
+## timeout: 10
+
+#### Redirect in function body AND function call
+fun() { echo hi; } 1>&2
+fun 2>&1
+## stdout: hi
+## status: 0
+## timeout: 10
+
+#### redirect bash extensions:   [[  ((  for ((
+
+case $SH in dash|mksh) exit ;; esac
+
+rm -f dbracket dparen for-expr
+
+[[ x = x ]] > dbracket
+
+(( 42 )) > dparen
+
+for ((x = 0; x < 1; ++x)); do
+  echo for-expr
+done > for-expr
+
+wc -l dbracket dparen for-expr
+## STDOUT:
+0 dbracket
+0 dparen
+1 for-expr
+1 total
+## END
+## status: 0
+## timeout: 10
+## real-launcher
+
+#### redirect if
+if true; then
+  echo if-body
+fi >out
+
+cat out
+## stdout: if-body
+## status: 0
+## timeout: 10
+
+#### redirect case
+case foo in
+  foo)
+    echo case-body
+    ;;
+esac > out
+
+cat out
+## stdout: case-body
+## status: 0
+## timeout: 10
+
+#### redirect while
+while true; do
+  echo while-body
+  break
+done > out
+
+cat out
+## stdout: while-body
+## status: 0
+## timeout: 10
+
+#### redirect subshell
+( echo foo ) 1>&2
+## stdout:
+## status: 0
+## timeout: 10
