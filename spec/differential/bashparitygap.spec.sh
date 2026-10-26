@@ -14,7 +14,6 @@ f(){ local v=1; }; f; echo "[${v-unset}]"
 f(){ declare y=5; }; f; echo "[${y-unset}]"
 ## stdout: [unset]
 ## status: 0
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
 
 #### Readonly_RejectsReassignment
 readonly r=1; r=2; echo "r=$r"

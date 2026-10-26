@@ -1590,6 +1590,20 @@ public class BashParserTests
         Assert.Equal(2, list.Commands.Length);
     }
 
+    [Theory]
+    [InlineData("f(){ declare y=5; }", true)]
+    [InlineData("f(){ typeset y=5; }", true)]
+    [InlineData("f(){ declare -g y=5; }", false)]   // -g is global even inside a function
+    public void Parse_DeclareAssignmentInAFunction_IsLocalUnlessGlobalFlag(string script, bool local)
+    {
+        var fn = Assert.IsType<Command.ShFunction>(Parse(script));
+        Assert.Equal(local, fn.Body is Command.ShAssignment { IsLocal: true });
+    }
+
+    [Fact]
+    public void Parse_DeclareAssignmentOutsideAFunction_IsGlobal()
+        => Assert.False(Parse("declare y=5") is Command.ShAssignment { IsLocal: true });
+
     [Fact]
     public void Parse_LocalAssignment_ReturnsShAssignmentWithIsLocal()
     {

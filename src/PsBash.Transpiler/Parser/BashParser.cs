@@ -1179,6 +1179,13 @@ public sealed partial class BashParser
     /// </remarks>
     private Command ParseFunctionBody()
     {
+        _functionDepth++;
+        try { return ParseFunctionBodyCore(); }
+        finally { _functionDepth--; }
+    }
+
+    private Command ParseFunctionBodyCore()
+    {
         if (Peek().Kind != BashTokenKind.LBrace)
             return ParseCompoundOrSimple();
 

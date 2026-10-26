@@ -10,12 +10,23 @@ namespace PsBash.Core.Parser;
 /// </summary>
 public sealed partial class BashParser
 {
+    private int _functionDepth;
+
+    /// <summary>`declare`/`typeset` followed directly by a NAME[=VAL] word (no -g/-x/-A… flag) inside a function body.</summary>
+    private bool IsFunctionScopedDeclare()
+        => _functionDepth > 0
+           && Peek().Value is "declare" or "typeset"
+           && _pos + 1 < _tokens.Count
+           && _tokens[_pos + 1] is { Kind: BashTokenKind.Word or BashTokenKind.AssignmentWord } next
+           && !next.Value.StartsWith('-');
+
     private Command ParseSimpleCommand()
     {
         // `export` / `local` NAME=VAL … — see ParseDeclarationPairs for the shape.
-        if (Peek().Kind == BashTokenKind.Word && Peek().Value is "export" or "local")
+        if (Peek().Kind == BashTokenKind.Word && (Peek().Value is "export" or "local" || IsFunctionScopedDeclare()))
         {
-            bool isLocal = Peek().Value == "local";
+            // Inside a function a plain `declare NAME=VAL` is function-local, exactly like `local`.
+            bool isLocal = Peek().Value is "local" or "declare" or "typeset";
             int saved = _pos;
             Advance(); // consume the keyword
 
