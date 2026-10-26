@@ -1591,6 +1591,18 @@ public class BashParserTests
     }
 
     [Theory]
+    [InlineData("echo $((!(1 || 2)))")]
+    [InlineData("echo $((~(1|2)))")]
+    [InlineData("a=1; b=2; echo $((a,(b+1)))")]
+    [InlineData("echo $(( (1+2) * (3+4) ))")]
+    [InlineData("echo $(( ((1+2)) ))")]
+    public void Parse_ArithmeticEndingInAGroup_ClosesOnTheOuterParens(string script)
+    {
+        var ex = Record.Exception(() => Parse(script));
+        Assert.Null(ex);
+    }
+
+    [Theory]
     [InlineData("f(){ declare y=5; }", true)]
     [InlineData("f(){ typeset y=5; }", true)]
     [InlineData("f(){ declare -g y=5; }", false)]   // -g is global even inside a function

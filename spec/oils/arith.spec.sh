@@ -185,7 +185,6 @@ b=2
 echo $((a,(b+1)))
 ## stdout: 3
 ## status: 0
-## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Augmented assignment
@@ -227,7 +226,6 @@ echo $((!(1 || 2)))
 0
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Logical Ops Short Circuit
@@ -261,7 +259,6 @@ echo $((~(1|2)))
 -4
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-arith arith (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Unary minus and plus

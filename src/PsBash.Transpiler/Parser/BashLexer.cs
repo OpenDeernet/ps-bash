@@ -743,26 +743,20 @@ public static class BashLexer
     private static int ScanArithBody(string input, int pos)
     {
         int len = input.Length;
-        int depth = 1;
-        while (pos < len && depth > 0)
+        // Single-paren depth: the body ends at the first `))` met with no group still open, so
+        // `$((!(1 || 2)))` closes on its last two `)`, not on the pair inside the group.
+        int open = 0;
+        while (pos < len)
         {
-            if (pos + 1 < len && input[pos] == '(' && input[pos + 1] == '(')
+            char c = input[pos];
+            if (c == '(') open++;
+            else if (c == ')')
             {
-                depth++;
-                pos += 2;
+                if (open > 0) open--;
+                else if (pos + 1 < len && input[pos + 1] == ')') return pos + 2;
             }
-            else if (pos + 1 < len && input[pos] == ')' && input[pos + 1] == ')')
-            {
-                depth--;
-                if (depth > 0) pos += 2;
-            }
-            else
-            {
-                pos++;
-            }
+            pos++;
         }
-        if (pos < len)
-            pos += 2; // skip closing ))
         return pos;
     }
 
