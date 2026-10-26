@@ -129,6 +129,15 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_QuotedParamOperatorResult_IsNotWordSplit(string bash)
         => Assert.DoesNotContain("ConvertTo-BashWords", BashTranspiler.Transpile(bash));
 
+    // Oracle: bash `x=010; echo $((10#$x + 1))` -> 11 and `h=ff; echo $((16#$h))` -> 255; `10#$x` was a parse error (invalid arithmetic number '10#').
+
+    [Theory]
+    [InlineData("echo $((10#$x + 1))")]
+    [InlineData("echo $((16#${h}))")]
+    [InlineData("echo $(( 10#$n + 10#$n ))")]
+    public void Transpile_ArithmeticBaseWithVariableDigits_Transpiles(string bash)
+        => Assert.NotEmpty(BashTranspiler.Transpile(bash));
+
     // ── Finding: subshell input redirect fell to the raw 0<file fallback ────
     // (cmd) < file -> "'<' is reserved for future use". Must become Invoke-BashCat -RawStdinBytes | & {}.
 

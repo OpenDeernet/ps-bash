@@ -199,6 +199,16 @@ public sealed class BashArithmeticParser
                 int start = i++;
                 while (i < source.Length && (char.IsLetterOrDigit(source[i]) || source[i] is '#' or '@' or '_')) i++;
                 string text = source[start..i];
+                // `10#$x` / `16#${h}`: the digits are a run-time expansion. The value cannot be known here, so it stays an
+                // opaque parameter (never folded to a constant); the evaluator expands `$x` in the source before parsing.
+                if (text.EndsWith('#') && i < source.Length && source[i] == '$')
+                {
+                    int pStart = i++;
+                    if (i < source.Length && source[i] == '{') { while (i < source.Length && source[i] != '}') i++; if (i < source.Length) i++; }
+                    else while (i < source.Length && (source[i] == '_' || char.IsLetterOrDigit(source[i]))) i++;
+                    result.Add(new Tok(T.Parameter, Text: text + source[pStart..i], Key: source[pStart..i].Trim('$', '{', '}')));
+                    continue;
+                }
                 result.Add(new Tok(T.Num, ParseNumber(text))); continue;
             }
             if (c == '`')

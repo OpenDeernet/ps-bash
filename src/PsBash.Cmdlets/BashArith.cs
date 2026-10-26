@@ -85,6 +85,14 @@ public static class BashArith
             // same stripped key and therefore naturally read as zero when unset.
             case ArithmeticExpr.Parameter parameter:
             {
+                // `16#$h` / `10#${x}`: the base prefix is followed by the variable's raw text (digits like "ff"), not its numeric value.
+                int baseHash = parameter.Spelling.IndexOf('#');
+                if (baseHash > 0 && baseHash + 1 < parameter.Spelling.Length && parameter.Spelling[baseHash + 1] == '$'
+                    && parameter.Spelling[..baseHash].All(char.IsDigit))
+                {
+                    string raw = readRaw?.Invoke(parameter.LookupKey) ?? read(parameter.LookupKey).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    return Evaluate(parameter.Spelling[..(baseHash + 1)] + raw, read, write, readRaw);
+                }
                 if (parameter.UnbracedSuffix.Length == 0) return read(parameter.LookupKey);
                 // Normally eliminated by whole-source expansion before parsing.
                 // Retain a numeric fallback for manually constructed syntax nodes.
