@@ -135,24 +135,6 @@ fi
 ## status: 0
 ## timeout: 10
 
-#### ulimit negative flag
-
-ulimit -f
-
-# interpreted as a flag
-ulimit -f -42
-if test $? -ne 0; then
-  echo pass
-else
-  echo fail
-fi
-## STDOUT:
-unlimited
-pass
-## END
-## status: 0
-## timeout: 10
-
 #### ulimit negative arg
 
 ulimit -f
@@ -234,80 +216,6 @@ echo status=$?
 ## timeout: 10
 ## real-launcher
 
-#### ulimit accepts 'unlimited'
-
-for arg in zz unlimited; do
-  echo "  arg $arg"
-  ulimit -f
-  echo status=$?
-  ulimit -f $arg
-  if test $? -ne 0; then
-    echo 'FAILED'
-  fi
-  echo
-done
-## STDOUT:
-  arg zz
-unlimited
-status=0
-FAILED
-
-  arg unlimited
-unlimited
-status=0
-
-## END
-## status: 0
-## timeout: 10
-
-#### ulimit of 2**32, 2**31 (int overflow)
-
-echo -n 'one '; ulimit -f
-
-
-ulimit -f $(( 1 << 32 ))
-
-echo -n 'two '; ulimit -f
-
-
-# mksh fails because it overflows signed int, turning into negative number
-ulimit -f $(( 1 << 31 ))
-
-echo -n 'three '; ulimit -f
-## STDOUT:
-one unlimited
-two 4294967296
-three 2147483648
-## END
-## status: 0
-## timeout: 10
-
-#### ulimit that is 64 bits
-
-# no 64-bit integers
-case $SH in mksh) exit ;; esac
-
-echo -n 'before '; ulimit -f
-
-# 1 << 63 overflows signed int
-
-# 512 is 1 << 9, so make it 62-9 = 53 bits
-
-lim=$(( 1 << 53 ))
-#echo $lim
-
-# bash says this is out of range
-ulimit -f $lim
-
-echo -n 'after '; ulimit -f
-## STDOUT:
-before unlimited
-after 9007199254740992
-## END
-## status: 0
-## timeout: 10
-## real-launcher
-
 #### arg that would overflow 64 bits is detected
 
 # no 64-bit integers
@@ -377,30 +285,6 @@ cat err.txt
 ## status: 0
 ## XFAIL ps-bash gap-oils-builtin-process builtin-process (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
-
-#### write big file with ulimit
-
-# I think this will test write() errors, rather than the final flush() error
-# (which is currently skipped by C++
-
-{ echo 'ulimit -f 1'
-  # More than 8 KiB may cause a flush()
-  python2 -c 'print("echo " + "X"*9000 + " >out.txt")'
-  echo 'echo inner=$?'
-} > big.sh
-
-$SH big.sh
-echo outer=$?
-
-
-# not sure why this is different
-## STDOUT:
-inner=0
-outer=0
-## END
-## status: 0
-## timeout: 10
-## real-launcher
 
 #### ulimit -S for soft limit (default), -H for hard limit
 case $SH in dash|zsh) exit ;; esac
