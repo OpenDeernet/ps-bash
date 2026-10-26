@@ -709,6 +709,10 @@ public static class PsEmitter
     [ThreadStatic]
     private static List<(string Break, string Continue)>? _loopLabels;
 
+    /// <summary>How many function bodies enclose the code being emitted; a definition inside one is global (bash has no function scope).</summary>
+    [ThreadStatic]
+    private static int _functionDepth;
+
     /// <summary>Push the label pair for a loop at <paramref name="depth"/>; returns the
     /// <c>:label </c> prefix to put directly before the (outer) loop keyword.</summary>
     private static string PushLoopLabel(int depth, string? continueLabel = null)
@@ -1381,7 +1385,10 @@ public static class PsEmitter
         {
             // A function is typically a FILTER (`echo x | f`): its stdin is whatever it is called with, not the
             // launcher's. Under the launcher-stdin scope its body therefore reads `$input`/the pipe as before.
-            var body = _launcherStdin ? WithStdinScope(false, () => EmitBody(func.Body)) : EmitBody(func.Body);
+            _functionDepth++;
+            string body;
+            try { body = _launcherStdin ? WithStdinScope(false, () => EmitBody(func.Body)) : EmitBody(func.Body); }
+            finally { _functionDepth--; }
             // Wrap the function body with save/restore of $global:BashPositional so
             // that recursive calls each see their own positional args ($1, $2, $@, $#)
             // rather than the top-level caller's args. Without this, a recursive call
@@ -1391,7 +1398,9 @@ public static class PsEmitter
             // that shares its name would never run; drop the alias first.
             if (PsDefaultAliases.Contains(func.Name))
                 sb.Append("Remove-Item -LiteralPath ").Append(PsBuild.SingleQuote("Alias:" + func.Name)).Append(" -Force -ErrorAction SilentlyContinue; ");
-            sb.Append("function ").Append(func.Name);
+            // `outer() { inner() { :; }; }` defines `inner` for the whole shell when `outer` runs; a PowerShell
+            // function declared in a function body would die with it.
+            sb.Append("function ").Append(_functionDepth > 0 ? "global:" : "").Append(func.Name);
             sb.Append(" {").Append(PsBuild.FunctionPrologue);
             if (dynLocals.Count > 0)
             {

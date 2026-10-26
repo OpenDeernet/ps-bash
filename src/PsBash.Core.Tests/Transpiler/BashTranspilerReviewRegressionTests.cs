@@ -151,6 +151,17 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_QuotedParamOperatorResult_IsNotWordSplit(string bash)
         => Assert.DoesNotContain("ConvertTo-BashWords", BashTranspiler.Transpile(bash));
 
+    // Oracle: bash defines a function declared inside another function globally once the outer one runs
+    // (`o() { i() { echo hi; }; }; o; i` -> hi); a PowerShell function in a function body is local to it.
+
+    [Fact]
+    public void Transpile_FunctionDefinedInsideAFunction_IsGlobal()
+    {
+        var ps = BashTranspiler.Transpile("o() { i() { echo hi; }; i; }");
+        Assert.Contains("function global:i", ps);
+        Assert.DoesNotContain("function global:o", ps);   // the outer one keeps its plain definition
+    }
+
     // Oracle: bash `x=010; echo $((10#$x + 1))` -> 11 and `h=ff; echo $((16#$h))` -> 255; `10#$x` was a parse error (invalid arithmetic number '10#').
 
     [Theory]
