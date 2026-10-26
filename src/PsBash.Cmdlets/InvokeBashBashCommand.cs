@@ -159,13 +159,9 @@ public sealed class InvokeBashBashCommand : PSCmdlet
 
         if (!string.IsNullOrEmpty(stdout))
         {
-            // Strip a single trailing newline so Emit-BashLine does not
-            // synthesize a spurious empty trailing line. EmitBashLines
-            // splits on '\n' and emits one object per slice — a trailing
-            // '\n' would otherwise produce an extra empty record.
+            // EmitBashLines drops one trailing newline itself and flags only a genuinely unterminated last line;
+            // stripping it here made `bash -c 'echo hi'; echo next` print `hinext`.
             var normalized = stdout.Replace("\r\n", "\n");
-            if (normalized.EndsWith('\n'))
-                normalized = normalized.Substring(0, normalized.Length - 1);
             foreach (var obj in BashRuntime.EmitBashLines(normalized))
             {
                 WriteObject(obj);

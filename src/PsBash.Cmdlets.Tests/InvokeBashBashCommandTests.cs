@@ -191,6 +191,19 @@ public class InvokeBashBashCommandTests : IClassFixture<SharedPwshFixture>
             $"Unexpected binder error: {err}");
     }
 
+    // Oracle: `bash -c 'echo hi'; echo next` prints two lines. The child's output was stripped of its final
+    // newline and flagged NoTrailingNewline, so the next command's output glued on (`hinext`).
+    [SkippableFact]
+    public void Bash_DashC_OutputLastLineIsNewlineTerminated()
+    {
+        Skip.If(LocatePsBash() == null, "ps-bash binary not on PATH or next to test runtime");
+
+        var (lines, err, _) = Run(
+            "(Invoke-BashBash -c 'echo hello' | Select-Object -Last 1).NoTrailingNewline -eq $true");
+        Assert.True(string.IsNullOrEmpty(err), $"unexpected error: {err}");
+        Assert.Equal(new[] { "False" }, lines);
+    }
+
     [SkippableFact]
     public void Bash_InjectionProbe_ScriptStaysLiteral()
     {
