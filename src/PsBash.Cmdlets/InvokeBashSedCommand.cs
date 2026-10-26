@@ -1511,6 +1511,19 @@ public sealed class InvokeBashSedCommand : PSCmdlet
                     };
                     pos = endSlash2 + 1;
                 }
+                else if (pos < expression.Length && (expression[pos] == '$' || char.IsDigit(expression[pos])))
+                {
+                    // /re/,$ and /re/,N: the range runs to the end of input / through line N (End; EndPattern stays null).
+                    int endNum = int.MaxValue;
+                    if (expression[pos] == '$') pos++;
+                    else
+                    {
+                        int numStart = pos;
+                        while (pos < expression.Length && char.IsDigit(expression[pos])) pos++;
+                        if (!int.TryParse(expression.AsSpan(numStart, pos - numStart), out endNum)) endNum = int.MaxValue;
+                    }
+                    addr = new SedAddress { Type = AddressType.RangeRegex, StartPattern = addr.Pattern, End = endNum };
+                }
             }
         }
         else if (expression.Length > 0 && expression[pos] == '$')

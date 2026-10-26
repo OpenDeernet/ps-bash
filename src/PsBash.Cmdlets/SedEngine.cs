@@ -578,7 +578,7 @@ internal sealed class SedEngine
             {
                 if (!st.Active && Regex.IsMatch(raw, addr.StartPattern!)) st.Active = true;
                 bool inRange = st.Active;
-                if (st.Active && Regex.IsMatch(raw, addr.EndPattern!)) st.Active = false;
+                if (st.Active && (addr.EndPattern is null ? _pulled >= addr.End : Regex.IsMatch(raw, addr.EndPattern))) st.Active = false;
                 if (cycleStart)
                 {
                     st.CycleInRange = inRange;

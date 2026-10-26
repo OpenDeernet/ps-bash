@@ -76,12 +76,12 @@ internal static class LegacySedEngine
                         inRange = true;
                     }
                     if (rangeActive && ri + 1 != lineNum
-                        && Regex.IsMatch(allLines[ri], addr.EndPattern!))
+                        && (addr.EndPattern is null ? ri + 1 >= addr.End : Regex.IsMatch(allLines[ri], addr.EndPattern)))
                     {
                         rangeActive = false;
                     }
                     if (rangeActive && ri + 1 == lineNum
-                        && Regex.IsMatch(allLines[ri], addr.EndPattern!))
+                        && (addr.EndPattern is null ? ri + 1 >= addr.End : Regex.IsMatch(allLines[ri], addr.EndPattern)))
                     {
                         rangeActive = false;
                     }

@@ -89,6 +89,16 @@ public class SedGnuBehaviorTests : IClassFixture<SharedPwshFixture>, IDisposable
         Assert.Equal(new[] { "a1", "foo", "b2", "c3" }, Run($"Invoke-BashSed '-e' '1a\\' '-e' 'foo' {_a}").AssertSuccess().Lines);
     }
 
+    // Oracle: GNU sed `/re/,$` runs to end of input and `/re/,N` through line N (a regex start then `$`/N was "unknown command: `$'").
+    [Fact]
+    public void RegexStartRange_EndingInLastLineOrLineNumber()
+    {
+        Assert.Equal(new[] { "b2", "c3" }, Run($"Invoke-BashSed '-n' '/b/,$p' {_a}").AssertSuccess().Lines);
+        Assert.Equal(new[] { "b2" }, Run($"Invoke-BashSed '-n' '/b/,2p' {_a}").AssertSuccess().Lines);
+        Assert.Equal(new[] { "c3" }, Run($"Invoke-BashSed '-n' '/c/,1p' {_a}").AssertSuccess().Lines);
+        Assert.Equal(new[] { "a1" }, Run($"Invoke-BashSed '/b/,$d' {_a}").AssertSuccess().Lines);
+    }
+
     [Fact]
     public void DoubleDash_ScriptMayStartWithDash()
     {

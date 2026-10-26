@@ -130,7 +130,9 @@ internal static class SedDebugFormat
             case AddressType.RangeNum:
                 return a.Start + "," + (a.End == int.MaxValue ? "$" : a.End.ToString());
             case AddressType.RangeRegex:
-                return "/" + EscapeText(RegexSource(a.StartPattern!)) + "/,/" + EscapeText(RegexSource(a.EndPattern!)) + "/";
+                return "/" + EscapeText(RegexSource(a.StartPattern!)) + "/," + (a.EndPattern is null
+                    ? (a.End == int.MaxValue ? "$" : a.End.ToString())
+                    : "/" + EscapeText(RegexSource(a.EndPattern)) + "/");
             case AddressType.RangeNumToRegex:
                 return a.Start + ",/" + EscapeText(RegexSource(a.EndPattern!)) + "/";
         }
