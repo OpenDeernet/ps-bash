@@ -108,6 +108,27 @@ public class BashTranspilerReviewRegressionTests
         Assert.Contains("Invoke-BashTest", ps);
     }
 
+    // Oracle: bash word-splits an UNQUOTED trim/replace/slice/case result (`s="a  b"; printf '<%s>' ${s%b}` -> <a>),
+    // exactly as it does `$s`; only the :- / :+ forms were split.
+
+    [Theory]
+    [InlineData("echo ${s#*o}")]
+    [InlineData("echo ${s##*o}")]
+    [InlineData("echo ${s%c}")]
+    [InlineData("echo ${s/b/Z}")]
+    [InlineData("echo ${s//b/Z}")]
+    [InlineData("echo ${s:1}")]
+    [InlineData("echo ${s:1:2}")]
+    [InlineData("echo ${s^^}")]
+    public void Transpile_UnquotedParamOperatorResult_IsWordSplit(string bash)
+        => Assert.Contains("ConvertTo-BashWords", BashTranspiler.Transpile(bash));
+
+    [Theory]
+    [InlineData("echo \"${s#*o}\"")]
+    [InlineData("echo \"${s/b/Z}\"")]
+    public void Transpile_QuotedParamOperatorResult_IsNotWordSplit(string bash)
+        => Assert.DoesNotContain("ConvertTo-BashWords", BashTranspiler.Transpile(bash));
+
     // ── Finding: subshell input redirect fell to the raw 0<file fallback ────
     // (cmd) < file -> "'<' is reserved for future use". Must become Invoke-BashCat -RawStdinBytes | & {}.
 

@@ -5654,15 +5654,23 @@ public static class PsEmitter
         => IsPureUnquotedVarWord(word) || IsPureUnquotedCommandSubWord(word) || IsGlobWord(word)
            || IsBraceGlobWord(word) || IsArrayValuedWord(word) || IsUnquotedDefaultAltWord(word);
 
+    /// <summary>The suffix of <c>${#v}</c> / <c>${#a[@]}</c> / <c>${#a[0]}</c>: a number, never split.</summary>
+    private static bool IsLengthSuffix(string s)
+        => s == "#" || (s.Length > 2 && s[0] == '#' && s[1] == '[' && s[^1] == ']' && s.IndexOf(']') == s.Length - 1);
+
     /// <summary>
-    /// Bare <c>${v:-x}</c> / <c>${v-x}</c> / <c>${v:+x}</c> / <c>${v+x}</c>: the result is word-split like any unquoted
+    /// Bare <c>${v:-x}</c> / <c>${v+x}</c> / <c>${v#p}</c> / <c>${v/a/b}</c> / <c>${v:1}</c> / <c>${v^^}</c>: the result is word-split like any unquoted
     /// expansion, so an empty result is no argument at all (<c>echo ${empty:+x} y</c> prints <c>y</c>, not <c> y</c>).
     /// Positional-parameter names (<c>$@</c>, <c>$*</c>) are arrays with their own rules and are left alone.
     /// </summary>
     private static bool IsUnquotedDefaultAltWord(CompoundWord word)
         => word.Parts is [WordPart.BracedVarSub { Suffix: { } s, Name: var n }]
            && n is not ("@" or "*") && IsOrdinaryVarName(n)
-           && (s.StartsWith(":-") || s.StartsWith(":+") || (s.Length > 0 && s[0] is '-' or '+'));
+           && (s.StartsWith(":-") || s.StartsWith(":+") || (s.Length > 0 && s[0] is '-' or '+')
+               // Trim / replace / slice / case-change results are split like any other unquoted expansion:
+               // `${s#*o}` of "Hello World" is the two words " World" -> World, not one argument with its space.
+               || (s.Length > 0 && s[0] is '#' or '%' or '/' or '^' or ',' && !IsLengthSuffix(s))
+               || (s.Length > 1 && s[0] == ':' && s[1] is not ('-' or '+' or '=' or '?')));
 
     /// <summary>
     /// Bare <c>${a[@]}</c> / <c>${a[*]}</c>: every element, each split again on IFS. Left as a bare array it is
