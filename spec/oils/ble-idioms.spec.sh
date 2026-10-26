@@ -45,7 +45,6 @@ echo $((0?(y):(n))):$((a))
 321:321
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-ble-idioms ble-idioms (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### recursive arith: side effects
