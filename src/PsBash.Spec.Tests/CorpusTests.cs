@@ -99,7 +99,7 @@ public class CorpusTests
             File.WriteAllText(path, SpecParser.Format(file));
         }
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var results = await SpecRunner.RunAsync(file, Executors.Get(), parallelism: SpecParallelism());
+        var results = await SpecRunner.RunAsync(file, Executors.Get(), parallelism: SpecParallelism(), launcher: new PsBashExecutor());
         LogTiming(name, file.Cases.Count, sw.ElapsedMilliseconds);
         foreach (var slow in results.OrderByDescending(r => r.Actual?.WallMs ?? 0).Take(4))
             LogTiming($"  slowest[{slow.Actual?.WallMs}ms] {slow.Case.Name}", 0, 0);
@@ -122,6 +122,7 @@ public class CorpusTests
             for (var i = 0; i < file.Cases.Count; i += 25)
             {
                 var c = file.Cases[i];
+                if (c.RealLauncher) continue; // already ran through the launcher; nothing to compare
                 var viaLauncher = SpecRunner.Judge(c, await new PsBashExecutor().RunAsync(c.Script, c.Timeout ?? SpecRunner.DefaultTimeout, default));
                 Assert.True(viaLauncher.Verdict == results[i].Verdict,
                     $"fast path and launcher disagree on '{c.Name}': in-host {results[i].Verdict}, launcher {viaLauncher.Verdict}");

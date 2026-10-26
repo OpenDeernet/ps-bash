@@ -192,7 +192,7 @@ Memory: 4 slots = 4 hosts (~0.4-0.8 GB each at peak); `PSBASH_SPEC_PAR` lowers i
 
 - **Oils**: every file in `oils-for-unix/oils` `spec/` except `builtin-fc` is in `spec/oils/` (bulk import: `PSBASH_SPEC_IMPORT_DIR=<dir>`
   with empty `spec/oils/NAME.spec.sh` placeholders, plus `PSBASH_SPEC_RECORD=1 PSBASH_SPEC_TRIAGE=1`). Cases that need the Oils harness or
-  `ysh` are dropped by `SpecImporter`; `builtin-fc` is out because it is an interactive-shell test (`## tags: interactive`): every case pipes a script into a nested `$SH --norc -i` and checks its history/`fc` output, which a corpus of non-interactive scripts cannot express (the in-host executor and the launcher disagree on every such case). Interactive behaviour is covered by the PTY tests.
+  `ysh` are dropped by `SpecImporter`; `builtin-fc` is in with 3 of its 14 cases (the ones that do not use the harness's `$SH`); they are marked `## real-launcher`, so they run through the launcher instead of the shared in-host runspace (the two disagree on `fc`). The other 11 pipe a script into a nested `$SH --norc -i` (`## tags: interactive`) to check history output, which a corpus of non-interactive scripts cannot express; interactive behaviour is covered by the PTY tests.
 - **Differential**: `PSBASH_ORACLE_CAPTURE=<file>` makes `AssertOracle.EqualAsync/GoldenAsync` and `PsBashRunner.RunScriptAsync` append
   `{class, method, script}` and return without running anything (`PsBash.Testing/ScriptCapture.cs`), so a `Differential.Tests` run takes
   seconds and yields the exact script of every test, including ones built by `Tree()`/`WithArchive()`. `tools/absorb-capture.ps1 -Capture <file>`

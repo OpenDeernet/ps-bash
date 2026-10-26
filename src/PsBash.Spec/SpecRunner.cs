@@ -21,7 +21,8 @@ public static class SpecRunner
     }
 
     public static async Task<IReadOnlyList<CaseResult>> RunAsync(
-        SpecFile file, IScriptExecutor executor, int parallelism = 4, CancellationToken cancel = default)
+        SpecFile file, IScriptExecutor executor, int parallelism = 4, CancellationToken cancel = default,
+        IScriptExecutor? launcher = null)
     {
         var results = new CaseResult[file.Cases.Count];
         using var gate = new SemaphoreSlim(Math.Max(1, parallelism));
@@ -31,7 +32,9 @@ public static class SpecRunner
             try
             {
                 ExecResult actual;
-                try { actual = await executor.RunAsync(c.Script, TimeoutFor(c), cancel); }
+                // `## real-launcher`: the case needs a whole shell process (interactive shell, own stdin), not the shared in-host runspace.
+                var runner = c.RealLauncher && launcher is not null ? launcher : executor;
+                try { actual = await runner.RunAsync(c.Script, TimeoutFor(c), cancel); }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     actual = new ExecResult(-1, "", "runner error: " + ex.Message);

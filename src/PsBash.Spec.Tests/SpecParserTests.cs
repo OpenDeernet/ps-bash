@@ -155,6 +155,32 @@ public class SpecParserNoTrailingNewlineTests
 }
 
 
+public class SpecRunnerLauncherRoutingTests
+{
+    private sealed class Fixed(string stdout) : IScriptExecutor
+    {
+        public Task<ExecResult> RunAsync(string script, TimeSpan timeout, CancellationToken cancel)
+            => Task.FromResult(new ExecResult(0, stdout, ""));
+    }
+
+    private static SpecFile File(bool realLauncher)
+        => new("t", "", [new SpecCase("c", "echo", new Expectation("launcher\n", 0, null), Array.Empty<Expectation>(), null, null, realLauncher)]);
+
+    [Fact]
+    public async Task A_real_launcher_case_runs_on_the_launcher_not_the_in_host_executor()
+    {
+        var r = await SpecRunner.RunAsync(File(true), new Fixed("in-host\n"), launcher: new Fixed("launcher\n"));
+        Assert.Equal(Verdict.Pass, r[0].Verdict);
+    }
+
+    [Fact]
+    public async Task An_ordinary_case_stays_on_the_in_host_executor()
+    {
+        var r = await SpecRunner.RunAsync(File(false), new Fixed("in-host\n"), launcher: new Fixed("launcher\n"));
+        Assert.Equal(Verdict.Fail, r[0].Verdict);
+    }
+}
+
 public class SpecRunnerTimeoutTests
 {
     private static SpecCase Case(XfailMark? xfail, TimeSpan? timeout)
