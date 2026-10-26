@@ -52,6 +52,21 @@ public class BashTranspilerReviewRegressionTests
         Assert.DoesNotContain("'b'c'd'", ps);  // never the broken un-escaped form
     }
 
+    // Oracle: bash prints `a1 b1` for `x=1; echo {a,b}$x`; the variable was spliced into a single-quoted item as `$env:x`.
+
+    [Theory]
+    [InlineData("echo {a,b}$x")]
+    [InlineData("echo $x{a,b}")]
+    [InlineData("echo {1..2}\"$x\"")]
+    [InlineData("echo {a,b}$(echo c)")]
+    public void Transpile_BraceExpansionNextToAnExpansion_DoesNotQuoteTheExpansionAsText(string bash)
+    {
+        var ps = BashTranspiler.Transpile(bash);
+        Assert.DoesNotContain("'a$env:x'", ps);
+        Assert.DoesNotContain("$env:x'", ps);
+        Assert.DoesNotMatch(@"'[^']*\$\(", ps); // command text never sits inside a single-quoted item
+    }
+
     // ── Finding: subshell input redirect fell to the raw 0<file fallback ────
     // (cmd) < file -> "'<' is reserved for future use". Must become Invoke-BashCat -RawStdinBytes | & {}.
 

@@ -131,7 +131,6 @@ i=0
 echo {a,b,c}-$((i++))
 ## stdout: a-0 b-1 c-2
 ## status: 0
-## XFAIL ps-bash gap-oils-brace-expansion brace-expansion (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Invalid brace expansions don't expand

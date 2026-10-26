@@ -4770,9 +4770,33 @@ public static class PsEmitter
         // With 2+ brace parts, compute the full Cartesian product across all segments
         // (each brace contributes its item list; every other part is one literal segment).
         int braceCount = 0;
+        bool dynamicPart = false;
         foreach (var p in parts)
+        {
             if (p is WordPart.BracedTuple or WordPart.BracedRange)
                 braceCount++;
+            else if (p is not (WordPart.Literal or WordPart.EscapedLiteral or WordPart.SingleQuoted or WordPart.GlobPart))
+                dynamicPart = true;
+        }
+        // `{a,b}$x`, `{1..3}"$y"`, `{a,b}$(cmd)`: a non-literal part cannot be spliced into a single-quoted
+        // item (it emitted `a$env:x`). Build each combination as a part list and emit it as one expansion-aware word.
+        if (dynamicPart)
+        {
+            var combos = new List<ImmutableArray<WordPart>> { ImmutableArray<WordPart>.Empty };
+            foreach (var part in parts)
+            {
+                var alts = part is WordPart.BracedTuple or WordPart.BracedRange
+                    ? ExpandBrace(part).ConvertAll(s => (WordPart)new WordPart.Literal(s))
+                    : new List<WordPart> { part };
+                CheckBraceWords((long)combos.Count * alts.Count);
+                var next = new List<ImmutableArray<WordPart>>(combos.Count * alts.Count);
+                foreach (var head in combos)
+                    foreach (var alt in alts)
+                        next.Add(head.Add(alt));
+                combos = next;
+            }
+            return $"@({string.Join(',', combos.ConvertAll(FlattenPartsToDoubleQuotedString))})";
+        }
         if (braceCount >= 2)
         {
             var combos = new List<string> { "" };
