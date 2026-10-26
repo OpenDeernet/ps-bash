@@ -95,7 +95,7 @@ public class BashTranspilerTests
     public void Transpile_SubscriptAssignmentWithVar_ExpandsInsteadOfLiteral()
     {
         var result = BashTranspiler.Transpile("declare -A m; m[k]=$x");
-        Assert.Contains("$m['k'] = \"$env:x\"", result);
+        Assert.Contains("$m = Set-BashElement $m \"k\" \"$env:x\"", result);
         Assert.DoesNotContain("= '$env:x'", result);
     }
 

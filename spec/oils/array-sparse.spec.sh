@@ -773,7 +773,6 @@ case $SH in mksh) exit 99 ;; esac
 a[-1]=1
 ## stdout:
 ## status: 1
-## XFAIL ps-bash gap-oils-array-sparse array-sparse (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 ## real-launcher
 

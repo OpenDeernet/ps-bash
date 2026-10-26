@@ -2770,14 +2770,13 @@ public static class PsEmitter
                 int bracketIdx = pair.Name.IndexOf('[');
                 string baseName = pair.Name[..bracketIdx];
                 string subscript = pair.Name[(bracketIdx + 1)..^1]; // strip [ and ]
-                sb.Append('$');
-                sb.Append(baseName);
-                sb.Append("['");
-                sb.Append(subscript);
-                sb.Append("'] = ");
-                // Emit the value as a properly-quoted PS expression; single-quoting
-                // EmitWord() stored the literal "$env:x" for a $x value.
-                sb.Append(EmitAssignmentValue(pair.Value));
+                // `a[$i]=v` / `a[i+1]+=v` / `m[key]=v`: the subscript is a WORD (expanded here) and, for an indexed
+                // array, then evaluated as arithmetic at run time; Set-BashElement pads/keys and returns the container.
+                string target = "$" + ResolveNameref(baseName);
+                sb.Append(target).Append(" = Set-BashElement ").Append(target).Append(' ')
+                  .Append(FlattenPartsToDoubleQuotedString(BashParser.DecomposeWord(subscript))).Append(' ')
+                  .Append(EmitAssignmentValue(pair.Value));
+                if (pair.Op == AssignOp.PlusEqual) sb.Append(" -Append");
                 continue;
             }
 

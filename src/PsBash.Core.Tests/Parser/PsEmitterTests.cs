@@ -4216,7 +4216,18 @@ public class PsEmitterTests
     public void Transpile_AssociativeArrayAssignment_EmitsHashtableEntry()
     {
         var result = PsEmitter.Transpile("map[key]=val");
-        Assert.Equal("$map['key'] = \"val\"", result);
+        Assert.Equal("$map = Set-BashElement $map \"key\" \"val\"", result);
+    }
+
+    // Oracle: bash `c[$i]=v` assigns element $i (the subscript was the literal text '$i') and `a[2]=x` on a
+    // 2-element array appends (PowerShell threw "Index was outside the bounds of the array").
+    [Theory]
+    [InlineData("c[$i]=v", "Set-BashElement $c \"$env:i\" \"v\"")]
+    [InlineData("a[i+1]=x", "Set-BashElement $a \"i+1\" \"x\"")]
+    [InlineData("a[2]+=x", "Set-BashElement $a \"2\" \"x\" -Append")]
+    public void Transpile_IndexedElementAssignment_GoesThroughSetBashElement(string bash, string expected)
+    {
+        Assert.Contains(expected, PsEmitter.Transpile(bash));
     }
 
     [Fact]

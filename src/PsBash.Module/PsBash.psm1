@@ -565,6 +565,29 @@ function Write-BashFileRaw {
 
 # --- BashObject Factory ---
 
+function Set-BashElement {
+    <#
+    .SYNOPSIS
+        `name[key]=value` / `name[key]+=value`. An associative array (hashtable) is keyed by the string; an indexed
+        array evaluates the subscript as ARITHMETIC (`a[i+1]`, `a[$n]`), and an index past the end pads the gap
+        (a PowerShell array cannot be indexed past its Count). Returns the array/table to assign back.
+    #>
+    param($__psbashTarget, [string]$__psbashKey, $__psbashValue, [Alias('Append')][switch]$__psbashAppend)
+    if ($__psbashTarget -is [System.Collections.IDictionary]) {
+        $__psbashTarget[$__psbashKey] = if ($__psbashAppend) { "$($__psbashTarget[$__psbashKey])$__psbashValue" } else { $__psbashValue }
+        return $__psbashTarget
+    }
+    $__psbashIdx = 0L
+    if (-not [long]::TryParse($__psbashKey, [ref]$__psbashIdx)) { $__psbashIdx = [long](Invoke-BashArith $__psbashKey) }
+    $__psbashArr = [System.Collections.Generic.List[object]]::new()
+    if ($null -ne $__psbashTarget) { $__psbashArr.AddRange([object[]]@($__psbashTarget)) }
+    if ($__psbashIdx -lt 0) { $__psbashIdx += $__psbashArr.Count }
+    if ($__psbashIdx -lt 0) { Write-BashHostStderr "bash: ${__psbashKey}: bad array subscript"; $global:LASTEXITCODE = 1; return ,$__psbashArr.ToArray() }
+    while ($__psbashArr.Count -le $__psbashIdx) { $__psbashArr.Add($null) }
+    $__psbashArr[[int]$__psbashIdx] = if ($__psbashAppend) { "$($__psbashArr[[int]$__psbashIdx])$__psbashValue" } else { $__psbashValue }
+    return ,$__psbashArr.ToArray()
+}
+
 function Set-BashDisplayProperty {
     # Normalizes BashText by stripping any trailing \n.
     # ToString() is now provided at the type level via Update-TypeData (module init),

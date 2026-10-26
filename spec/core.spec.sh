@@ -328,3 +328,18 @@ rc=127
 rc=127
 ## END
 ## status: 0
+
+#### indexed element assignment: variable subscript, append past the end, arithmetic subscript, +=
+a=(1 2); a[2]=3; c=(); for i in 0 1 2; do c[$i]=v$i; done; j=1; e=(a b c); e[j+1]=Z; e[$j]+=Y
+echo "${a[@]}" "${c[@]}" "${e[@]}"
+## stdout: 1 2 3 v0 v1 v2 a bY Z
+## status: 0
+
+#### associative element assignment with a variable and a spaced key
+declare -A m; k=k3; m[k1]=v1; m["k 2"]=v2; m[$k]=v3; for x in k1 "k 2" k3; do echo "$x=${m[$x]}"; done
+## STDOUT:
+k1=v1
+k 2=v2
+k3=v3
+## END
+## status: 0

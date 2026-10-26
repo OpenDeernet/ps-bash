@@ -434,7 +434,6 @@ x=1
 y=2
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Dynamic parsing of RHS ${a[$code]}
@@ -597,7 +596,6 @@ a[-1]=1
 # Note: mksh interprets -1 as 0xFFFFFFFF
 ## stdout:
 ## status: 1
-## XFAIL ps-bash gap-oils-array array (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Regression: Negative index in [[ -v a[index] ]]

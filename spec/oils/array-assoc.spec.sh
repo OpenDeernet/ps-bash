@@ -80,7 +80,6 @@ foo
 x
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### retrieve values with ${A[@]}
@@ -98,7 +97,6 @@ bar
 c
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### coerce to string with ${A[*]}, etc.
@@ -112,7 +110,6 @@ argv.py ${A[@]}
 argv.py ${!A[@]}
 ## stdout:
 ## status: 127
-## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### ${A[@]/b/B}
@@ -598,7 +595,6 @@ a['a+1']=c
 echo "${a[a+1]}"
 ## stdout: c
 ## status: 0
-## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### bash bug: "i+1" and i+1 are the same key
@@ -641,7 +637,6 @@ d['key']="${array[@]}"
 argv.py "${d['key']}"
 ## stdout:
 ## status: 127
-## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Indexed array as key of associative array coerces to string (without shopt -s strict_array)
@@ -672,7 +667,6 @@ A['x']+='bar'
 argv.py "${A["x"]}"
 ## stdout:
 ## status: 127
-## XFAIL ps-bash gap-oils-array-assoc array-assoc (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Slice of associative array doesn't make sense in bash
