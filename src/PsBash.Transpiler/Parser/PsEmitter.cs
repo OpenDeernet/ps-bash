@@ -4104,6 +4104,12 @@ public static class PsEmitter
                     pos++;
                 }
             }
+            else if (body[pos] == '$' && pos + 1 < len && body[pos + 1] is (>= '0' and <= '9') or '#' or '?' or '@' or '*' or '$' or '!')
+            {
+                // Positional / special parameter ($1 $# $@ $* $? $$ $!): one character, `$10` is `$1` then `0`.
+                sb.Append(EmitSimpleVar(body[pos + 1].ToString(), inDoubleQuote: true, strict: true));
+                pos += 2;
+            }
             else if (body[pos] == '$' && pos + 1 < len && IsHereDocVarStart(body[pos + 1]))
             {
                 pos++; // skip $

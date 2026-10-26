@@ -40,6 +40,28 @@ public class BashTranspilerReviewRegressionTests
         Assert.Contains("`$", ps); // literal dollar, backtick-escaped for @"..."@
     }
 
+    // Oracle: bash expands $1 $# $@ $* $? $$ in an unquoted heredoc body (`f() { cat <<EOT\na=$1\nEOT\n}; f x` -> a=x);
+    // only letter-led names were translated, so positional parameters printed as literal `$1`.
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("#")]
+    [InlineData("@")]
+    [InlineData("*")]
+    [InlineData("?")]
+    public void Transpile_HereDocPositionalOrSpecialParam_IsExpandedNotLiteral(string name)
+    {
+        var ps = BashTranspiler.Transpile("f() { cat <<EOT\nv=$" + name + "\nEOT\n}");
+        Assert.DoesNotContain("v=$" + name + "\n", ps);
+    }
+
+    [Fact]
+    public void Transpile_HereDocEscapedPositional_StaysLiteral()
+    {
+        var ps = BashTranspiler.Transpile("cat <<EOT\nlit=\\$1\nEOT");
+        Assert.Contains("lit=`$1", ps);
+    }
+
     // ── Finding: brace-expansion items hand-quoted with no escaping ─────────
     // echo {a,b'c'd} emitted @('a','b'c'd') — a PowerShell parse error. Items must
     // route through PsBuild.SingleQuote (which doubles the embedded quote).
