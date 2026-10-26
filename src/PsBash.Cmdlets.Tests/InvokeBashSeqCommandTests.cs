@@ -36,6 +36,23 @@ public class InvokeBashSeqCommandTests : IClassFixture<SharedPwshFixture>
         Assert.Equal(new[] { "1", "2", "3", "4", "5" }, lines);
     }
 
+    // Oracle: GNU seq. `-s,` / `-s ' '` (value glued to the flag) and `-f FORMAT` were "input string '-s,' was not in a correct format".
+    [Theory]
+    [InlineData("'-s,' 1 4", "1,2,3,4")]
+    [InlineData("'-s ' 3", "1 2 3")]
+    [InlineData("'-s' '-' 2 4", "2-3-4")]
+    [InlineData("'-f' '%02g' 1 3", "01\n02\n03")]
+    [InlineData("'-f%.2f' 1 0.5 2", "1.00\n1.50\n2.00")]
+    [InlineData("'--format=n%g' 2", "n1\nn2")]
+    [InlineData("'-f' 'x%%%g' 1 2", "x%1\nx%2")]
+    [InlineData("'-s:' '-f' '%03g' 1 3", "001:002:003")]
+    public void Seq_AttachedSeparatorAndFormat_MatchGnu(string args, string expected)
+    {
+        // `-s` joins into one bare string (no BashText); otherwise one typed record per value.
+        var lines = RunLines($"Invoke-BashSeq {args} | ForEach-Object {{ if ($null -ne $_.BashText) {{ $_.BashText }} else {{ [string]$_ }} }}");
+        Assert.Equal(expected, string.Join("\n", lines));
+    }
+
     [Fact]
     public void Seq_TwoArgs_EmitsFirstToLast()
     {

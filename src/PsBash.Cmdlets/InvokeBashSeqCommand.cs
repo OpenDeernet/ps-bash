@@ -95,10 +95,10 @@ public sealed class InvokeBashSeqCommand : PSCmdlet
             if (Stopping) return;
             var obj = new PSObject();
             obj.TypeNames.Insert(0, "PsBash.SeqOutput");
-            object value = isInteger
-                ? (object)(long)Math.Round(
-                    double.Parse(text, CultureInfo.InvariantCulture))
-                : double.Parse(text, CultureInfo.InvariantCulture);
+            // -f can make the text non-numeric ("n1"); the typed Value then falls back to the text.
+            object value = !double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed)
+                ? text
+                : isInteger ? (long)Math.Round(parsed) : parsed;
             obj.Properties.Add(new PSNoteProperty("Value", value));
             obj.Properties.Add(new PSNoteProperty("Index", j));
             obj.Properties.Add(new PSNoteProperty("BashText", text));
@@ -138,6 +138,7 @@ internal static class SeqCore
         badIncrement = null;
 
         bool equalWidth = equalWidthFlag;
+        string? format = null;
         var operands = new List<string>();
 
         int i = 0;
@@ -149,6 +150,36 @@ internal static class SeqCore
             {
                 i++;
                 if (i < args.Length) { separator = args[i]; }
+                i++;
+                continue;
+            }
+
+            if (arg == "-f" || arg == "--format")
+            {
+                i++;
+                if (i < args.Length) { format = args[i]; }
+                i++;
+                continue;
+            }
+
+            if (arg.StartsWith("--format=", StringComparison.Ordinal))
+            {
+                format = arg.Substring("--format=".Length);
+                i++;
+                continue;
+            }
+
+            // Attached values: `-s,` `-s " "` `-f%02g` (getopt allows the value glued to the flag).
+            if (arg.Length > 2 && arg[0] == '-' && arg[1] == 's')
+            {
+                separator = arg.Substring(2);
+                i++;
+                continue;
+            }
+
+            if (arg.Length > 2 && arg[0] == '-' && arg[1] == 'f')
+            {
+                format = arg.Substring(2);
                 i++;
                 continue;
             }
@@ -226,7 +257,8 @@ internal static class SeqCore
 
         // Everything that can fail (operand parse, zero increment) has been decided above, so
         // errors surface at the same moment as before; only the value loop is deferred.
-        values = Enumerate(first, increment, last, isInteger, equalWidth, padWidth, decPlaces);
+        var generated = Enumerate(first, increment, last, isInteger, equalWidth, padWidth, decPlaces);
+        values = format is null ? generated : generated.Select(v => FormatValue(format, double.Parse(v, CultureInfo.InvariantCulture)));
         return Status.Ok;
     }
 
@@ -260,6 +292,87 @@ internal static class SeqCore
             index++;
             current = first + (increment * index);
             if (increment == 0) break;
+        }
+    }
+
+    /// <summary>
+    /// <c>seq -f FORMAT</c>: one printf floating conversion (<c>%e %f %g</c>, flags <c>-+ 0#</c>, width, precision)
+    /// amid literal text; <c>%%</c> is a percent sign.
+    /// </summary>
+    internal static string FormatValue(string format, double value)
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < format.Length; i++)
+        {
+            char c = format[i];
+            if (c != '%') { sb.Append(c); continue; }
+            if (i + 1 < format.Length && format[i + 1] == '%') { sb.Append('%'); i++; continue; }
+            int j = i + 1;
+            bool left = false, plus = false, space = false, zero = false;
+            for (; j < format.Length && format[j] is '-' or '+' or ' ' or '0' or '#'; j++)
+            {
+                if (format[j] == '-') left = true;
+                else if (format[j] == '+') plus = true;
+                else if (format[j] == ' ') space = true;
+                else if (format[j] == '0') zero = true;
+            }
+            int width = 0;
+            while (j < format.Length && char.IsAsciiDigit(format[j])) width = width * 10 + (format[j++] - '0');
+            int prec = -1;
+            if (j < format.Length && format[j] == '.')
+            {
+                j++; prec = 0;
+                while (j < format.Length && char.IsAsciiDigit(format[j])) prec = prec * 10 + (format[j++] - '0');
+            }
+            if (j >= format.Length || format[j] is not ('e' or 'E' or 'f' or 'F' or 'g' or 'G'))
+            {
+                sb.Append(format, i, Math.Min(j + 1, format.Length) - i);   // not a conversion we model: keep as text
+                i = Math.Min(j, format.Length - 1);
+                continue;
+            }
+            char conv = format[j];
+            string body = FormatFloat(Math.Abs(value), conv, prec < 0 ? 6 : prec);
+            string sign = value < 0 || (value == 0 && double.IsNegative(value)) ? "-" : plus ? "+" : space ? " " : "";
+            string text = sign + body;
+            if (text.Length < width)
+            {
+                if (left) text = text.PadRight(width);
+                else if (zero) text = sign + body.PadLeft(width - sign.Length, '0');
+                else text = text.PadLeft(width);
+            }
+            sb.Append(text);
+            i = j;
+        }
+        return sb.ToString();
+    }
+
+    private static string FormatFloat(double v, char conv, int prec)
+    {
+        switch (conv)
+        {
+            case 'f': case 'F':
+                return v.ToString("F" + prec.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+            case 'e': case 'E':
+            {
+                string s = v.ToString((conv == 'e' ? "0." + new string('0', prec) + "e+00" : "0." + new string('0', prec) + "E+00"), CultureInfo.InvariantCulture);
+                return prec == 0 ? s.Replace(".", "") : s;
+            }
+            default:   // g / G: precision = significant digits (0 -> 1), trailing zeros dropped
+            {
+                int p = prec == 0 ? 1 : prec;
+                if (v == 0) return "0";
+                int exp = (int)Math.Floor(Math.Log10(v));
+                string s;
+                if (exp < -4 || exp >= p)
+                {
+                    s = v.ToString("0." + new string('#', Math.Max(p - 1, 0)) + (conv == 'g' ? "e+00" : "E+00"), CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    s = Math.Round(v, Math.Max(p - 1 - exp, 0), MidpointRounding.ToEven).ToString("0." + new string('#', Math.Max(p - 1 - exp, 0)), CultureInfo.InvariantCulture);
+                }
+                return s;
+            }
         }
     }
 
