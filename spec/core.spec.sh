@@ -402,3 +402,13 @@ j=0; while [ $j -lt 3 ]; do j=$((j+1)); done; echo $j
 3
 3
 ## END
+
+#### += on a declare -i variable adds; on a plain variable appends
+declare -i num=5; num+=2; echo $num
+declare -i k; k+=3; k+=4; echo $k
+s=ab; s+=cd; echo $s
+## STDOUT:
+7
+7
+abcd
+## END

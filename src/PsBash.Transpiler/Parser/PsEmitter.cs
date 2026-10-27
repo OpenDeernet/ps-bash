@@ -2808,11 +2808,15 @@ public static class PsEmitter
             }
             else
             {
-                sb.Append(pair.Op == AssignOp.PlusEqual ? " += " : " = ");
+                bool intPlus = pair.Op == AssignOp.PlusEqual && _intVars?.Contains(pair.Name) == true;
+                sb.Append(pair.Op == AssignOp.PlusEqual && !intPlus ? " += " : " = ");
                 string assigned = EmitAssignmentValue(pair.Value);
-                sb.Append(pair.Op == AssignOp.Equal && _intVars?.Contains(pair.Name) == true
-                    ? "[string](Invoke-BashArith ([string](" + assigned + ")))"
-                    : assigned);
+                // A `declare -i` variable evaluates its value as arithmetic: `n=5; n+=2` adds (7), not appends (52).
+                sb.Append(intPlus
+                    ? "[string](Invoke-BashArith (" + PsBuild.SingleQuote(pair.Name + "+(") + " + [string](" + assigned + ") + ')'))"
+                    : pair.Op == AssignOp.Equal && _intVars?.Contains(pair.Name) == true
+                        ? "[string](Invoke-BashArith ([string](" + assigned + ")))"
+                        : assigned);
             }
         }
         // `local`/`export x=$(false)`: the status is the BUILTIN's (0), not the substitution's —

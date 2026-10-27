@@ -236,6 +236,17 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_ForInLoop_DropsItsLexicalLoopVariableAfterwards()
         => Assert.Contains("Remove-Variable -Name i", BashTranspiler.Transpile("for i in 1 2 3; do :; done"));
 
+    // Oracle: `declare -i n=5; n+=2; echo $n` prints 7 - an integer variable adds on `+=` (it appended: 52).
+    // A plain variable still appends.
+
+    [Fact]
+    public void Transpile_PlusEqualOnIntegerVariable_IsArithmeticAdd()
+        => Assert.Contains("Invoke-BashArith", BashTranspiler.Transpile("declare -i n=5; n+=2"));
+
+    [Fact]
+    public void Transpile_PlusEqualOnPlainVariable_StaysAppend()
+        => Assert.Contains("$env:s += ", BashTranspiler.Transpile("s=ab; s+=cd"));
+
     // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
     // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
 
