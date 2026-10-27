@@ -37,7 +37,6 @@ big=$(head -c 40000 /dev/zero | tr '\0' a); echo ${#big}
 declare -i n=3; n+=2; echo $n
 ## stdout: 5
 ## status: 0
-## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### DeclareNameref_WritesThrough
 v=a; declare -n ref=v; ref=b; echo $v
@@ -48,7 +47,6 @@ v=a; declare -n ref=v; ref=b; echo $v
 f(){ local IFS=,; echo "$*"; }; f a b c
 ## stdout: a,b,c
 ## status: 0
-## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### UnexportedVariable_IsNotInChildEnvironment
 x=1; env | grep -c '^x='
@@ -111,7 +109,6 @@ U
 ok
 ## END
 ## status: 0
-## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### Funcname_InFunction
 f(){ echo "$FUNCNAME"; }; f

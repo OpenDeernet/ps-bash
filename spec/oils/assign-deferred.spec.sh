@@ -28,7 +28,6 @@ f() {
 f
 ## stdout: status=0
 ## status: 127
-## XFAIL ps-bash gap-oils-assign-deferred assign-deferred (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### readonly a[7]=8
