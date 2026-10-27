@@ -247,6 +247,22 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_PlusEqualOnPlainVariable_StaysAppend()
         => Assert.Contains("$env:s += ", BashTranspiler.Transpile("s=ab; s+=cd"));
 
+    // Oracle: `IFS=:; echo "$*"` joins with the first character of IFS (a:b:c); "$@" and "${a[@]}" always join with a
+    // space. The quoted forms were hard-wired to a space.
+
+    [Theory]
+    [InlineData("echo \"$*\"")]
+    [InlineData("echo \"${arr[*]}\"")]
+    [InlineData("echo \"x $*\"")]
+    public void Transpile_QuotedStarExpansion_JoinsWithIfs(string bash)
+        => Assert.Contains("$env:IFS", BashTranspiler.Transpile(bash));
+
+    [Theory]
+    [InlineData("echo \"$@\"")]
+    [InlineData("echo \"${arr[@]}\"")]
+    public void Transpile_QuotedAtExpansion_DoesNotUseIfs(string bash)
+        => Assert.DoesNotContain("$env:IFS", BashTranspiler.Transpile(bash));
+
     // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
     // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
 

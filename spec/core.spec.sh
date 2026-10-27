@@ -424,3 +424,17 @@ got-int
 after2
 after3
 ## END
+
+#### "$*" and "${a[*]}" join with the first character of IFS, "$@" with a space
+set -- a b c; arr=(p q r)
+IFS=:; echo "$*"; echo "$@"; echo "${arr[*]}"; echo "${arr[@]}"
+f() { local IFS=,; echo "$*"; }; f x y
+unset IFS; echo "$*"
+## STDOUT:
+a:b:c
+a b c
+p:q:r
+p q r
+x,y
+a b c
+## END

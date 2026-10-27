@@ -5511,7 +5511,8 @@ public static class PsEmitter
             inner = sigil switch
             {
                 "#" => "if ($global:BashPositional) { $global:BashPositional.Count } else { $args.Count }",
-                "@" or "*" => "if ($global:BashPositional) { $global:BashPositional -join ' ' } else { $args -join ' ' }",
+                "@" => "if ($global:BashPositional) { $global:BashPositional -join ' ' } else { $args -join ' ' }",
+                "*" => "if ($global:BashPositional) { $global:BashPositional -join " + PsBuild.IfsJoinSeparator + " } else { $args -join " + PsBuild.IfsJoinSeparator + " }",
                 "?" => "$global:LASTEXITCODE",
                 "$" => "$PID",
                 "!" => "$global:BashBgLastPid",
@@ -6117,6 +6118,9 @@ public static class PsEmitter
                 if (subOp.Length == 0)
                 {
                     // ${arr[@]} -> $arr (whole array); an associative array (hashtable) yields its VALUES.
+                    // "${a[*]}" joins with the first character of IFS ("${a[@]}" with a space).
+                    if (subscript == "*" && inDoubleQuote)
+                        return $"$(@(if ({arrayVar} -is [System.Collections.IDictionary]) {{ {arrayVar}.Values }} else {{ {arrayVar} }}) -join {PsBuild.IfsJoinSeparator})";
                     if (subscript is "@" or "*")
                         return $"$(if ({arrayVar} -is [System.Collections.IDictionary]) {{ {arrayVar}.Values }} else {{ {arrayVar} }})";
                     // ${m[$k]} / ${a[$i]}: the subscript is a variable's value.

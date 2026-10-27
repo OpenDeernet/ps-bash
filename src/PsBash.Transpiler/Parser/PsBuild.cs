@@ -720,6 +720,15 @@ public static class PsBuild
             _ => throw new System.ArgumentException($"Not a positional sigil: '{sigil}'", nameof(sigil)),
         };
 
+    /// <summary>
+    /// PowerShell expression for the separator `"$*"` / `"${a[*]}"` join with: the first character of IFS, a space
+    /// when IFS is unset (bash). A `local IFS=...` is a lexical `$IFS`, which wins over the shell variable and may be
+    /// empty (join with nothing); an empty `$env:IFS` cannot be told from unset (setting it removes it).
+    /// </summary>
+    public const string IfsJoinSeparator =
+        "$(& { $__psbash_ifs = if ($null -ne $IFS) { [string]$IFS } else { $env:IFS }; "
+        + "if ($null -eq $__psbash_ifs) { ' ' } elseif ($__psbash_ifs.Length -eq 0) { '' } else { $__psbash_ifs.Substring(0, 1) } })";
+
     // ───────────────────────────── Special-variable mapping ────────────────────────────
 
     /// <summary>
@@ -762,6 +771,9 @@ public static class PsBuild
                 return braced ? "${global:LASTEXITCODE}" : "$global:LASTEXITCODE";
             case "RANDOM":
                 return braced ? null : "$(Get-Random -Maximum 32768)";
+            case "*" when inDoubleQuote:
+                // "$*" joins the positionals with the first character of IFS (a space by default).
+                return "$(@(if ($global:BashPositional) { $global:BashPositional } else { $args }) -join " + IfsJoinSeparator + ")";
             case "@":
             case "*":
             case "#":
