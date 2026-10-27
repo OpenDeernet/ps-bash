@@ -60,19 +60,16 @@ x=1; env | grep -c '^x='
 x=5; echo $((x++)) $x
 ## stdout: 5 6
 ## status: 0
-## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### ArithAssign_ThenPlainExpansion
 x=1; echo $((x+=2)) $x
 ## stdout: 3 3
 ## status: 0
-## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### DefaultAssign_ThenPlainExpansion
 unset y; echo ${y:=d} $y
 ## stdout: d d
 ## status: 0
-## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### ArraySliceNextToLength
 a=(1 2 3); echo ${#a[@]} ${a[@]:1}
@@ -126,7 +123,6 @@ f(){ echo "$FUNCNAME"; }; f
 echo $LINENO
 ## stdout: 1
 ## status: 0
-## XFAIL ps-bash gap-differential-bashparitygap bashparitygap (differential): differs from bash 5.2; see docs/specs/spec-gaps.md
 
 #### Exec_RedirectOnly_PrintsNothing
 exec 5<&0; echo ok

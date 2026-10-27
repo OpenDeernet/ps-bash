@@ -283,7 +283,6 @@ f() {
 f
 ## stdout: 1
 ## status: 127
-## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $LINENO in [[
@@ -294,7 +293,6 @@ one
 OK
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $LINENO in ((
@@ -336,7 +334,6 @@ done
 3 c
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $LINENO in for (( loop
@@ -367,7 +364,6 @@ echo $b1 $b2
 2 2
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $LINENO in case
@@ -377,7 +373,6 @@ case $LINENO in
 esac
 ## stdout: got line 1
 ## status: 0
-## XFAIL ps-bash gap-oils-vars-special vars-special (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### $_ with simple command and evaluation

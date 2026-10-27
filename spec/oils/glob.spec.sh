@@ -54,7 +54,6 @@ g='_tmp/*.zzzZ'
 echo $g ${g%Z}
 ## stdout: _tmp/*.zzzZ _tmp/bar.zzz _tmp/foo.zzz
 ## status: 0
-## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Glob after part joining
@@ -95,7 +94,6 @@ echo ${x//[]z]/>}
 [foo>
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### PatSub of negated unescaped [[] and []]
@@ -111,7 +109,6 @@ echo ${x//[^[z]/<}  # also accepted
 [<<<<
 ## END
 ## status: 0
-## XFAIL ps-bash gap-oils-glob glob (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### \ in unquoted substitutions does not match a backslash

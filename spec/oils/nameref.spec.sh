@@ -544,7 +544,6 @@ ref[0]=xx
 echo ${array[@]}
 ## stdout: xx Y Z
 ## status: 0
-## XFAIL ps-bash gap-oils-nameref nameref (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### bad mutation through nameref: ref[0]= where ref is array[0]
@@ -592,5 +591,4 @@ p() {
 p
 ## stdout:
 ## status: 127
-## XFAIL ps-bash gap-oils-nameref nameref (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10

@@ -292,7 +292,6 @@ d['bar']=world
 argv.py ${d['0']} ${d['foo']} ${d['bar']}
 ## stdout:
 ## status: 127
-## XFAIL ps-bash gap-oils-ble-features ble-features (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### [compat_array] ${alpha@a}
