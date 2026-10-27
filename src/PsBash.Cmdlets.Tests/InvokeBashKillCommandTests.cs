@@ -56,6 +56,26 @@ public class InvokeBashKillCommandTests : IClassFixture<SharedPwshFixture>
         return errs;
     }
 
+    // Oracle: `trap 'echo got' USR1; kill -USR1 $$; echo after` prints got then after - the trap runs and the script
+    // carries on (it ended the script with status 138). `trap '' USR2` ignores the signal.
+    [Fact]
+    public void Kill_SelfWithTrap_RunsTheTrapAndContinues()
+    {
+        var lines = RunBashText(
+            "$global:BashTrapHandlers = @{}; Invoke-BashTrap 'Write-Output ran-trap' USR1; Invoke-BashKill -USR1 ([System.Environment]::ProcessId); 'after'");
+
+        Assert.Equal(new[] { "ran-trap", "after" }, lines);
+    }
+
+    [Fact]
+    public void Kill_SelfWithIgnoredSignal_DoesNothing()
+    {
+        var lines = RunBashText(
+            "$global:BashTrapHandlers = @{}; Invoke-BashTrap '' USR2; Invoke-BashKill -USR2 ([System.Environment]::ProcessId); 'after'");
+
+        Assert.Equal(new[] { "after" }, lines);
+    }
+
     [Fact]
     public void Kill_RealProcess_ActuallyTerminatesIt()
     {

@@ -122,6 +122,13 @@ public sealed class InvokeBashTrapCommand : PSCmdlet
         foreach (var signal in signals)
         {
             bool drop = resetMode || action == "";
+            // `trap '' USR2` IGNORES the signal (kept as an empty action so `kill -USR2 $$` does nothing);
+            // only EXIT/ERR/RETURN have no meaning as "ignore" and are simply dropped.
+            if (!resetMode && action == "" && dict != null && signal is not ("EXIT" or "ERR" or "RETURN" or "0"))
+            {
+                dict[signal] = "";
+                continue;
+            }
             if (drop)
             {
                 if (dict != null && dict.Contains(signal))
@@ -156,7 +163,7 @@ public sealed class InvokeBashTrapCommand : PSCmdlet
     }
 
     /// <summary>The action is bash text (<c>$?</c>, <c>$((..))</c>, ...), so it runs transpiled; text that does not parse runs as written.</summary>
-    private static string TranspileAction(string action)
+    internal static string TranspileAction(string action)
     {
         try { return PsBash.Core.Transpiler.BashTranspiler.Transpile(action, PsBash.Core.Transpiler.TranspileContext.Eval) ?? action; }
         catch (Exception) { return action; }

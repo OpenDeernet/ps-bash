@@ -27,6 +27,8 @@ public sealed class InvokeBashKillCommand : PSCmdlet
         ["3"] = "SIGQUIT", ["QUIT"] = "SIGQUIT",
         ["6"] = "SIGABRT", ["ABRT"] = "SIGABRT",
         ["9"] = "SIGKILL", ["KILL"] = "SIGKILL",
+        ["10"] = "SIGUSR1", ["USR1"] = "SIGUSR1",
+        ["12"] = "SIGUSR2", ["USR2"] = "SIGUSR2",
         ["14"] = "SIGALRM", ["ALRM"] = "SIGALRM",
         ["15"] = "SIGTERM", ["TERM"] = "SIGTERM",
         ["18"] = "SIGCONT", ["CONT"] = "SIGCONT",
@@ -164,6 +166,9 @@ public sealed class InvokeBashKillCommand : PSCmdlet
             }
         }
 
+        if (signalSelf && RunSelfSignalTrap(signalName ?? "SIGTERM"))
+            signalSelf = false;   // a trap handled it: bash runs the handler and the script carries on
+
         if (signalSelf)
         {
             // The script ends as if killed by the signal: status 128+N (137 for -9, 143 for TERM).
@@ -176,6 +181,27 @@ public sealed class InvokeBashKillCommand : PSCmdlet
         }
 
         FileSystemHelpers.SetLastExitCode(this, hadError ? 1 : 0);
+    }
+
+    /// <summary>
+    /// `kill -USR1 $$` / `kill -INT $$` with a `trap ... USR1` installed runs the trap in this shell instead of
+    /// ending it. Returns true when a handler ran.
+    /// </summary>
+    private bool RunSelfSignalTrap(string signalName)
+    {
+        string bare = signalName.StartsWith("SIG", StringComparison.Ordinal) ? signalName.Substring(3) : signalName;
+        var dict = (SessionState.PSVariable.Get("global:BashTrapHandlers")
+                    ?? SessionState.PSVariable.Get("BashTrapHandlers"))?.Value as System.Collections.IDictionary;
+        if (dict is null) return false;
+        string? action = null;
+        foreach (var key in new[] { bare, "SIG" + bare, SignalNumber(signalName).ToString(System.Globalization.CultureInfo.InvariantCulture) })
+            if (dict.Contains(key) && dict[key] is string s) { action = s; break; }
+        if (action is null) return false;
+        if (action.Length == 0) return true;   // an empty action IGNORES the signal
+        foreach (var obj in InvokeCommand.InvokeScript(InvokeBashTrapCommand.TranspileAction(action)))
+            WriteObject(obj);
+        FileSystemHelpers.SetLastExitCode(this, 0);
+        return true;
     }
 
     /// <summary>The number of a resolved signal name (<c>SIGKILL</c> → 9); 15 (TERM) when unknown.</summary>

@@ -412,3 +412,15 @@ s=ab; s+=cd; echo $s
 7
 abcd
 ## END
+
+#### kill -SIG $$ runs the shell's own trap and the script continues
+trap 'echo got-usr1' USR1; kill -USR1 $$; echo after1
+trap 'echo got-int' INT; kill -INT $$; echo after2
+trap '' USR2; kill -USR2 $$; echo after3
+## STDOUT:
+got-usr1
+after1
+got-int
+after2
+after3
+## END
