@@ -33,16 +33,49 @@ internal static class DeclarePrinter
         if (val is null) return false;
 
         string text;
-        if (val is System.Collections.IDictionary)
-            text = $"declare -A {name}={ToCompactJson(cmdlet, val)}";
-        else if (val is System.Collections.IList && val is not string)
-            text = $"declare -a {name}={ToCompactJson(cmdlet, val)}";
+        if (val is System.Collections.IDictionary dict)
+            text = $"declare -A {name}={FormatAssociative(dict)}";
+        else if (val is System.Collections.IList list && val is not string)
+            text = $"declare -a {name}={FormatIndexed(list)}";
         else
-            text = $"declare -- {name}=\"{val}\"";
+            text = $"declare -- {name}={QuoteValue(val.ToString())}";
 
         foreach (var line in BashRuntime.EmitBashLines(text + "\n"))
             cmdlet.WriteObject(line);
         return true;
+    }
+
+    /// <summary>bash <c>declare -p</c> value text: double-quoted, with <c>"</c>, <c>\</c>, <c>$</c> and backtick escaped.</summary>
+    internal static string QuoteValue(string? value)
+    {
+        var sb = new System.Text.StringBuilder("\"");
+        foreach (char c in value ?? "")
+        {
+            if (c is (char)34 or (char)92 or (char)36 or (char)96) sb.Append((char)92);
+            sb.Append(c);
+        }
+        return sb.Append((char)34).ToString();
+    }
+
+    /// <summary>bash indexed-array form: <c>([0]="a" [1]="b c")</c>.</summary>
+    internal static string FormatIndexed(System.Collections.IList list)
+    {
+        var sb = new System.Text.StringBuilder("(");
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (i > 0) sb.Append((char)32);
+            sb.Append("[").Append(i).Append("]=").Append(QuoteValue(list[i]?.ToString()));
+        }
+        return sb.Append(")").ToString();
+    }
+
+    /// <summary>bash associative-array form: <c>([k]="v" [j]="w" )</c> (note the trailing space bash prints).</summary>
+    internal static string FormatAssociative(System.Collections.IDictionary dict)
+    {
+        var sb = new System.Text.StringBuilder("(");
+        foreach (System.Collections.DictionaryEntry e in dict)
+            sb.Append("[").Append(e.Key).Append("]=").Append(QuoteValue(e.Value?.ToString())).Append((char)32);
+        return sb.Append(")").ToString();
     }
 
     /// <summary>The bash-defined function NAME, or null when NAME is not one.</summary>
@@ -110,22 +143,5 @@ internal static class DeclarePrinter
         sb.Append("}\n");
         foreach (var line in BashRuntime.EmitBashLines(sb.ToString()))
             cmdlet.WriteObject(line);
-    }
-
-    private static string ToCompactJson(PSCmdlet cmdlet, object val)
-    {
-        // Delegate to ConvertTo-Json so the format matches the psm1 oracle byte-for-byte (integer vs string
-        // boxing, key escaping).
-        try
-        {
-            var results = cmdlet.InvokeCommand.InvokeScript("param($v) $v | ConvertTo-Json -Compress", val);
-            if (results.Count > 0 && results[0] != null)
-                return results[0].ToString() ?? "";
-        }
-        catch
-        {
-            // Fall through to an empty representation.
-        }
-        return "";
     }
 }

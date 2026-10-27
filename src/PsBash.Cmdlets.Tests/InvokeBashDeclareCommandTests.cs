@@ -119,6 +119,31 @@ public class InvokeBashDeclareCommandTests : IClassFixture<SharedPwshFixture>
         Assert.Equal(new[] { "declare -- psbvar_x=\"1\"" }, Texts(r));
     }
 
+    // Oracle: bash prints arrays as `declare -a a=([0]="1" [1]="2 3")` and escapes `"` `\` `$` in values.
+    [Fact]
+    public void DeclareP_IndexedArray_PrintsBashForm()
+    {
+        var r = Run("$global:psbarr = @('1', '2 3'); Invoke-BashDeclare '-p' psbarr").AssertSuccess();
+
+        Assert.Equal(new[] { "declare -a psbarr=([0]=\"1\" [1]=\"2 3\")" }, Texts(r));
+    }
+
+    [Fact]
+    public void DeclareP_AssociativeArray_PrintsBashFormWithTrailingSpace()
+    {
+        var r = Run("$global:psbmap = [ordered]@{ k = 'v' }; Invoke-BashDeclare '-p' psbmap").AssertSuccess();
+
+        Assert.Equal(new[] { "declare -A psbmap=([k]=\"v\" )" }, Texts(r));
+    }
+
+    [Fact]
+    public void DeclareP_ValueWithQuoteAndDollar_IsEscaped()
+    {
+        var r = Run("$global:psbq = 'a\"b$c'; Invoke-BashDeclare '-p' psbq").AssertSuccess();
+
+        Assert.Equal(new[] { "declare -- psbq=\"a\\\"b\\$c\"" }, Texts(r));
+    }
+
     [Fact]
     public void DeclareP_DirectCall_DecoySwitchStillWorks()
     {
