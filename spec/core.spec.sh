@@ -359,3 +359,16 @@ cleanup
 c2
 rc=3
 ## END
+
+#### $LINENO is the source line of the command
+echo $LINENO
+f() {
+  echo "in f $LINENO"
+}
+f
+echo '$LINENO' "at ${LINENO}"
+## STDOUT:
+1
+in f 3
+$LINENO at 6
+## END

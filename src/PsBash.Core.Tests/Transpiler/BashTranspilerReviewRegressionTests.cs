@@ -180,6 +180,22 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_ShDashC_RoutesToNestedShellCmdlet()
         => Assert.Contains("Invoke-BashBash", BashTranspiler.Transpile("sh -c 'echo hi'"));
 
+    // Oracle: `$LINENO` is the 1-based source line of the command (it was always empty, so error messages
+    // like `echo "failed at line $LINENO"` lost their location). Single-quoted and escaped forms stay literal.
+
+    [Theory]
+    [InlineData("echo $LINENO", "Invoke-BashEcho 1")]
+    [InlineData("echo a\necho \"at ${LINENO}\"", "at 2")]
+    public void Transpile_Lineno_IsTheSourceLine(string bash, string expected)
+        => Assert.Contains(expected, BashTranspiler.Transpile(bash));
+
+    [Theory]
+    [InlineData("echo '$LINENO'")]
+    [InlineData("echo \\$LINENO")]
+    [InlineData("echo $LINENOX")]
+    public void Transpile_LinenoLookalike_IsNotSubstituted(string bash)
+        => Assert.DoesNotContain("echo 1", BashTranspiler.Transpile(bash).Replace("Invoke-BashEcho", "echo"));
+
     // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
     // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
 

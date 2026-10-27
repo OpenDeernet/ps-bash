@@ -282,6 +282,8 @@ public static class BashLexer
                 continue;
             }
 
+            if (value.Contains("LINENO", StringComparison.Ordinal))
+                value = SubstituteLineNumber(value, input, wordStart);
             BashTokenKind wordKind = ClassifyWord(value);
             tokens.Add(new BashToken(wordKind, value, wordStart));
 
@@ -372,6 +374,37 @@ public static class BashLexer
     /// non-reserved word; or after <c>in</c> (a for-list / the first case pattern) or a case-arm
     /// terminator <c>;;</c> <c>;&amp;</c> <c>;;&amp;</c> (the next pattern), newlines allowed between.
     /// </summary>
+    /// <summary>
+    /// Replaces <c>$LINENO</c> / <c>${LINENO}</c> in a word with the 1-based source line the word starts on
+    /// (bash: the line of the command being run). Single-quoted spans and a backslash-escaped <c>$</c> stay literal.
+    /// </summary>
+    private static string SubstituteLineNumber(string word, string input, int wordStart)
+    {
+        int line = 1;
+        for (int i = 0; i < wordStart; i++)
+            if (input[i] == (char)10) line++;
+        string lineText = line.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        var sb = new System.Text.StringBuilder(word.Length);
+        bool inSingle = false;
+        for (int i = 0; i < word.Length; i++)
+        {
+            char c = word[i];
+            if (c == (char)39) { inSingle = !inSingle; sb.Append(c); continue; }
+            if (!inSingle && c == (char)92 && i + 1 < word.Length) { sb.Append(c).Append(word[++i]); continue; }
+            if (!inSingle && c == (char)36)
+            {
+                if (string.CompareOrdinal(word, i, "$LINENO", 0, 7) == 0
+                    && (i + 7 >= word.Length || !(char.IsLetterOrDigit(word[i + 7]) || word[i + 7] == (char)95)))
+                { sb.Append(lineText); i += 6; continue; }
+                if (string.CompareOrdinal(word, i, "${LINENO}", 0, 9) == 0)
+                { sb.Append(lineText); i += 8; continue; }
+            }
+            sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
     private static bool IsArgumentOrPatternPosition(List<BashToken> tokens)
     {
         int i = tokens.Count - 1;
