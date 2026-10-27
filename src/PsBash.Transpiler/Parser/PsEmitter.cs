@@ -831,7 +831,12 @@ public static class PsEmitter
             }
 
             sb.Append(" }");
-            return ApplyCompoundRedirects(sb.ToString(), forIn.Redirects);
+            string loop = ApplyCompoundRedirects(sb.ToString(), forIn.Redirects);
+            // The PowerShell loop variable outlives the loop with its last value, and arithmetic reads a PowerShell
+            // variable before the shell variable: `for i in 1 2 3; do :; done; i=0; ...$((i+1))` then counted from 3.
+            // The shell variable (`$env:`) already holds the last value, so drop the lexical one. A name the
+            // enclosing function declared `local` (already a lexical variable) is left alone.
+            return added ? loop + "; Remove-Variable -Name " + forIn.Var + " -ErrorAction SilentlyContinue" : loop;
         }
         finally
         {

@@ -393,3 +393,12 @@ n=3; echo $((n+=2)) $n; echo ${w=q} $w; echo ${z:=a} $z
 q q
 a a
 ## END
+
+#### a for-in loop variable does not leak into later arithmetic
+for i in 1 2 3; do :; done
+i=0; until [ $i -ge 3 ]; do i=$((i+1)); done; echo $i
+j=0; while [ $j -lt 3 ]; do j=$((j+1)); done; echo $j
+## STDOUT:
+3
+3
+## END

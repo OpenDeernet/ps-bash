@@ -228,6 +228,14 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_ComparisonInArithmetic_IsNotTreatedAsAssignment()
         => Assert.DoesNotContain("$__bashsplat1 =", BashTranspiler.Transpile("echo $((n==2)) $n"));
 
+    // Oracle: `for i in 1 2 3; do :; done; i=0; until [ $i -ge 3 ]; do i=$((i+1)); done; echo $i` prints 3. The
+    // PowerShell loop variable lingered with its last value and arithmetic reads it before the shell variable (it
+    // counted from 3 and printed 4), so the loop drops it.
+
+    [Fact]
+    public void Transpile_ForInLoop_DropsItsLexicalLoopVariableAfterwards()
+        => Assert.Contains("Remove-Variable -Name i", BashTranspiler.Transpile("for i in 1 2 3; do :; done"));
+
     // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
     // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
 
