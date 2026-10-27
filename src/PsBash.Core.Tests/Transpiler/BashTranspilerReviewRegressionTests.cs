@@ -162,6 +162,17 @@ public class BashTranspilerReviewRegressionTests
         Assert.DoesNotContain("function global:o", ps);   // the outer one keeps its plain definition
     }
 
+    // Oracle: `( trap 'echo bye' EXIT; echo body )` prints body then bye - a subshell fires its own EXIT trap
+    // when it ends (it never fired), and a subshell with no trap pays nothing for it.
+
+    [Fact]
+    public void Transpile_SubshellSettingExitTrap_FiresItAtSubshellEnd()
+        => Assert.Contains("__BashTrapEXIT", BashTranspiler.Transpile("( trap 'echo bye' EXIT; echo body )"));
+
+    [Fact]
+    public void Transpile_SubshellWithoutTrap_HasNoTrapEpilogue()
+        => Assert.DoesNotContain("__BashTrapEXIT", BashTranspiler.Transpile("( echo body )"));
+
     // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
     // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
 

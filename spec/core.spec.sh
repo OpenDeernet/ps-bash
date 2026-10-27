@@ -349,3 +349,13 @@ a=($(printf '%s\n' c a b)); x="p q r"; g=($x); h=("$x"); i=("$(printf 'a\nb')");
 echo ${#a[@]} ${#g[@]} ${#h[@]} ${#i[@]} ${#u[@]}
 ## stdout: 3 3 1 1 2
 ## status: 0
+
+#### subshell fires its own EXIT trap when it ends
+( trap 'echo cleanup' EXIT; echo body )
+( trap 'echo c2' EXIT; exit 3 ); echo "rc=$?"
+## STDOUT:
+body
+cleanup
+c2
+rc=3
+## END

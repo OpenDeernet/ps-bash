@@ -1510,6 +1510,11 @@ public static class PsEmitter
         // [System.Environment]::CurrentDirectory) — see PsBuild.PopLocationRestoringProcessCwd for why
         // a bare `Pop-Location` silently made `(cd sub); cat data.txt | …` stream the wrong file. It
         // runs on the scoped-exit path (`$LASTEXITCODE = N; return`) and on any exception too.
+        // A subshell starts with no EXIT trap (bash resets traps) and fires the one it sets when it ends:
+        // `( trap 'echo bye' EXIT; echo body )` prints body, then bye. Only a body that calls `trap` pays for it.
+        if (body.Contains("Invoke-BashTrap", StringComparison.Ordinal))
+            body = "$global:__BashTrapEXIT = $null; try { " + body + " } finally { "
+                 + "$__psbash_xs = $global:LASTEXITCODE; try { if ($global:__BashTrapEXIT) { & $global:__BashTrapEXIT } } catch { }; $global:LASTEXITCODE = $__psbash_xs }";
         var sb = new StringBuilder(PsBuild.ShellStateScope(
             "Push-Location; " + body, PsBuild.PopLocationRestoringProcessCwd));
 
