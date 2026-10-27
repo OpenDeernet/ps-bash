@@ -207,6 +207,27 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_FunctionWithoutTrap_HasNoReturnWrapper()
         => Assert.DoesNotContain("__BashTrapRETURN", BashTranspiler.Transpile("f() { echo in; }"));
 
+    // Oracle: `echo ${w=q} $w` prints `q q` and `echo $((n+=2)) $n` prints `5 5`: a word that assigns runs before a
+    // later unquoted word reads the variable. The unquoted words are hoisted into temps first, so the assigning
+    // word is hoisted (in order) with them.
+
+    [Theory]
+    [InlineData("echo ${w=q} $w")]
+    [InlineData("echo ${w:=q} $w")]
+    [InlineData("echo $((n+=2)) $n")]
+    [InlineData("echo $((i++)) $i")]
+    public void Transpile_AssigningWordBeforeUnquotedRead_IsEvaluatedInOrder(string bash)
+    {
+        string ps = BashTranspiler.Transpile(bash);
+        int assign = ps.IndexOf("$__bashsplat0 = ", System.StringComparison.Ordinal);
+        int read = ps.IndexOf("$__bashsplat1 = ", System.StringComparison.Ordinal);
+        Assert.True(assign >= 0 && read > assign, ps);
+    }
+
+    [Fact]
+    public void Transpile_ComparisonInArithmetic_IsNotTreatedAsAssignment()
+        => Assert.DoesNotContain("$__bashsplat1 =", BashTranspiler.Transpile("echo $((n==2)) $n"));
+
     // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
     // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
 

@@ -33,7 +33,6 @@ a[zero+5-4]=X
 echo ${a[@]}
 ## stdout: 1 X 3
 ## status: 0
-## XFAIL ps-bash gap-oils-arith-context arith-context (oils): differs from bash 5.2; see docs/specs/spec-gaps.md
 ## timeout: 10
 
 #### Array index on LHS with indices

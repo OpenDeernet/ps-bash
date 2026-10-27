@@ -385,3 +385,11 @@ cleanup 5
 work
 cleanup 5
 ## END
+
+#### an assigning word runs before a later unquoted read in the same command
+n=3; echo $((n+=2)) $n; echo ${w=q} $w; echo ${z:=a} $z
+## STDOUT:
+5 5
+q q
+a a
+## END

@@ -6026,10 +6026,19 @@ public static class PsEmitter
         call.Append(commandName);
 
         int splatCounter = 0;
+        // A word that assigns (`$((n+=2))`, `${w=q}`) must run BEFORE a later word reads the variable, but the
+        // hoisted splat temps all run first. Such a word is evaluated in order into the prelude as well, so
+        // `echo $((n+=2)) $n` prints `5 5`.
         for (int i = 0; i < args.Length; i++)
         {
             call.Append(' ');
-            if (IsUnquotedSplitWord(args[i]))
+            if (!IsUnquotedSplitWord(args[i]) && MutatesShellState(args[i]))
+            {
+                string v = $"$__bashsplat{splatCounter++}";
+                prelude.Append(v).Append(" = ").Append(emitPlainArg(i)).Append("; ");
+                call.Append(v);
+            }
+            else if (IsUnquotedSplitWord(args[i]))
             {
                 string tempVar = $"$__bashsplat{splatCounter++}";
                 prelude.Append(tempVar)
@@ -6046,6 +6055,19 @@ public static class PsEmitter
         call.Append(trailingTokens);
 
         return $"& {{ {prelude}{call} }}";
+    }
+
+    /// <summary>True when expanding the word assigns a shell variable: `$((n+=2))`, `$((i++))`, `${w=q}`, `${w:=q}`.</summary>
+    private static bool MutatesShellState(CompoundWord word)
+    {
+        foreach (var part in word.Parts)
+        {
+            if (part is WordPart.BracedVarSub { Suffix: { } s } && (s.StartsWith("=") || s.StartsWith(":=")))
+                return true;
+            if (part is WordPart.ArithSub a && System.Text.RegularExpressions.Regex.IsMatch(a.Expr.Source, @"\+\+|--|(?<![=!<>])=(?!=)|[-+*/%&|^]=|<<=|>>="))
+                return true;
+        }
+        return false;
     }
 
     private static string EmitBracedVar(WordPart.BracedVarSub bvs, bool inDoubleQuote = false)
