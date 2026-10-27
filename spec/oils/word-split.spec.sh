@@ -630,7 +630,7 @@ argv.py ' "$@" ' "$@"
  "$@"  -one- -- -two-
 ## END
 ## status: 127
-## XFAIL ps-bash triage differs from bash 5.2 (auto-marked; investigate)
+## XFAIL ps-bash gap-oils-word-split an unquoted word MIXING literal text and a variable (-$i-) is not split on IFS; only a whole-word expansion is
 ## timeout: 10
 ## real-launcher
 
