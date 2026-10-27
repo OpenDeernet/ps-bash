@@ -173,6 +173,13 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_SubshellWithoutTrap_HasNoTrapEpilogue()
         => Assert.DoesNotContain("__BashTrapEXIT", BashTranspiler.Transpile("( echo body )"));
 
+    // Oracle: `sh -c 'echo hi'` runs a POSIX shell; ps-bash had no `sh` ("sh: command not found") although
+    // agent scripts and `#!/bin/sh` one-liners call it. It routes to the same nested-shell cmdlet as `bash`.
+
+    [Fact]
+    public void Transpile_ShDashC_RoutesToNestedShellCmdlet()
+        => Assert.Contains("Invoke-BashBash", BashTranspiler.Transpile("sh -c 'echo hi'"));
+
     // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
     // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
 
