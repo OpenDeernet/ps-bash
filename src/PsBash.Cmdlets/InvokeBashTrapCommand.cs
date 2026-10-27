@@ -128,9 +128,9 @@ public sealed class InvokeBashTrapCommand : PSCmdlet
                 {
                     dict.Remove(signal);
                 }
-                if (signal == "EXIT" || signal == "ERR")
+                if (signal == "EXIT" || signal == "ERR" || signal == "RETURN")
                 {
-                    var name = signal == "EXIT" ? "__BashTrapEXIT" : "__BashTrapERR";
+                    var name = "__BashTrap" + signal;
                     InvokeCommand.InvokeScript(
                         "param($n) Set-Variable -Name $n -Value $null -Scope Global -Force",
                         name);
@@ -145,9 +145,9 @@ public sealed class InvokeBashTrapCommand : PSCmdlet
             {
                 dict[signal] = action!;
             }
-            if (signal == "EXIT" || signal == "ERR")
+            if (signal == "EXIT" || signal == "ERR" || signal == "RETURN")
             {
-                var slotName = signal == "EXIT" ? "__BashTrapEXIT" : "__BashTrapERR";
+                var slotName = "__BashTrap" + signal;
                 InvokeCommand.InvokeScript(
                     "param($name, $a) Set-Variable -Name $name -Value ([scriptblock]::Create($a)) -Scope Global -Force",
                     slotName, TranspileAction(action!));

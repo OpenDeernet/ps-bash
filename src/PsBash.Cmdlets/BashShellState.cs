@@ -38,7 +38,7 @@ public static class BashShellState
     [
         "__BashErrexit", "__BashErrexitSuppress", "__BashErrexitTail", "__BashXtrace", "__BashNoglob", "__BashPipefail", "__BashNounset", "__BashNoclobber",
         "BashFlags", "BashPositional", "BashPositional0", "BASH_REMATCH", "BASH_SOURCE",
-        "BashTrapHandlers", "__BashTrapERR", "__BashTrapEXIT", "BashBgLastPid",
+        "BashTrapHandlers", "__BashTrapERR", "__BashTrapEXIT", "__BashTrapRETURN", "BashBgLastPid",
         "BashUserAliases", "BashLastArg", "BashDirStack",
     ];
 

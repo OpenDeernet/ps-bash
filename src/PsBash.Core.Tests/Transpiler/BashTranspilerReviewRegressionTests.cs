@@ -196,6 +196,17 @@ public class BashTranspilerReviewRegressionTests
     public void Transpile_LinenoLookalike_IsNotSubstituted(string bash)
         => Assert.DoesNotContain("echo 1", BashTranspiler.Transpile(bash).Replace("Invoke-BashEcho", "echo"));
 
+    // Oracle: `f() { trap 'echo ret' RETURN; echo in; }; f` prints in then ret - a RETURN trap runs when the
+    // function returns (it was never run). A function with no trap carries no wrapper.
+
+    [Fact]
+    public void Transpile_FunctionSettingReturnTrap_FiresItOnReturn()
+        => Assert.Contains("__BashTrapRETURN", BashTranspiler.Transpile("f() { trap 'echo ret' RETURN; echo in; }"));
+
+    [Fact]
+    public void Transpile_FunctionWithoutTrap_HasNoReturnWrapper()
+        => Assert.DoesNotContain("__BashTrapRETURN", BashTranspiler.Transpile("f() { echo in; }"));
+
     // Oracle: bash word-splits an unquoted expansion inside an array literal: `a=($(printf "%s\n" c a b))` has 3 elements
     // (the whole output was ONE element, so `sorted=($(... | sort))` was never an array of lines).
 

@@ -1389,6 +1389,12 @@ public static class PsEmitter
             string body;
             try { body = _launcherStdin ? WithStdinScope(false, () => EmitBody(func.Body)) : EmitBody(func.Body); }
             finally { _functionDepth--; }
+            // `trap '...' RETURN` inside the function runs when the function returns (then is spent, so a
+            // later call does not re-fire it). Only a body that calls `trap` pays for the wrapper.
+            if (body.Contains("Invoke-BashTrap", StringComparison.Ordinal))
+                body = "$global:__BashTrapRETURN = $null; try { " + body + " } finally { "
+                     + "$__psbash_rs = $global:LASTEXITCODE; $__psbash_rt = $global:__BashTrapRETURN; $global:__BashTrapRETURN = $null; "
+                     + "try { if ($__psbash_rt) { & $__psbash_rt } } catch { }; $global:LASTEXITCODE = $__psbash_rs }";
             // Wrap the function body with save/restore of $global:BashPositional so
             // that recursive calls each see their own positional args ($1, $2, $@, $#)
             // rather than the top-level caller's args. Without this, a recursive call

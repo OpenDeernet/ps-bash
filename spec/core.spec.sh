@@ -372,3 +372,16 @@ echo '$LINENO' "at ${LINENO}"
 in f 3
 $LINENO at 6
 ## END
+
+#### trap RETURN fires when the function returns, keeping its status
+f() { trap 'echo ret' RETURN; echo in; return 4; }; f; echo "rc=$?"
+g() { trap 'echo cleanup $x' RETURN; x=5; echo work; }; g; g
+## STDOUT:
+in
+ret
+rc=4
+work
+cleanup 5
+work
+cleanup 5
+## END

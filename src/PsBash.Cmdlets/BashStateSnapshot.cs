@@ -20,7 +20,7 @@ public static class BashStateSnapshot
 {
     /// <summary>Globals a child does not inherit: caught traps are reset in a subshell, <c>$!</c> is the parent's.</summary>
     internal static readonly string[] NotInherited =
-        ["BashTrapHandlers", "__BashTrapERR", "__BashTrapEXIT", "BashBgLastPid"];
+        ["BashTrapHandlers", "__BashTrapERR", "__BashTrapEXIT", "__BashTrapRETURN", "BashBgLastPid"];
 
     /// <summary>Functions PowerShell or the runspace setup define; they exist in the job's runspace already.</summary>
     private static readonly HashSet<string> RunspaceFunctions = new(StringComparer.OrdinalIgnoreCase)
